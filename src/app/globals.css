@@ -1,26 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 @import "tailwindcss";
 
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #080808;
+  --bg-secondary: #111111;
+  --bg-card: #141414;
+  --accent: #FF4500;
+  --accent-hover: #FF6030;
+  --accent-gold: #FFB800;
+  --text-primary: #FFFFFF;
+  --text-muted: #777777;
+  --border: rgba(255, 255, 255, 0.07);
+
+  /* Typography */
+  --font-display: 'Bebas Neue', 'Impact', sans-serif;
+  --font-body: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Reset ────────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+/* ─── Custom cursor on desktop ─────────────────────────────────────────────── */
+@media (pointer: fine) {
+  *, *::before, *::after {
+    cursor: none !important;
+  }
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+/* ─── Typography utility classes ───────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  line-height: 0.95;
+}
+
+.font-body {
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+/* ─── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(255,69,0,0.45), 0 0 50px rgba(255,69,0,0.12); }
+  50%       { box-shadow: 0 0 28px rgba(255,69,0,0.65), 0 0 60px rgba(255,69,0,0.2); }
+}
+
+@keyframes fire-gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ─── Utility classes ──────────────────────────────────────────────────────── */
+.glow-btn {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+.fire-text {
+  background: linear-gradient(90deg, #FF4500, #FFB800, #FF6A00, #FF4500);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fire-gradient 4s ease infinite;
+}
+
+/* Animated underline for nav links */
+.nav-link {
+  position: relative;
+  font-family: var(--font-body);
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  background: linear-gradient(90deg, #FF4500, #FFB800);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s ease;
+}
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.float-anim {
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  animation: ticker 28s linear infinite;
+  will-change: transform;
+}
+
+/* ─── Admin-specific resets ────────────────────────────────────────────────── */
+/* Disable custom cursor inside admin routes */
+[data-admin="true"] *,
+[data-admin="true"] *::before,
+[data-admin="true"] *::after {
+  cursor: auto !important;
 }
