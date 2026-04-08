@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .aider*
+
+# node_modules
+.next
+.env
+logs
+.DS_Store
