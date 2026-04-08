@@ -17,3 +17,5 @@ Crear interfaces modernas tipo startup premium.
 - Minimalista
 - Elegante
 - Enfocado en conversión
+- Uso de gradientes y sombras suaves para crear un efecto premium
+- Tipografía moderna y espaciada para mejorar la legibilidad
