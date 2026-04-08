@@ -1,3 +1,5 @@
+'use client';
+
 // Importamos los componentes necesarios
 import { motion } from 'framer-motion';
 import { Card, CardGroup } from '../components/Card';

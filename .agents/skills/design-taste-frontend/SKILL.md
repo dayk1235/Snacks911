@@ -1,21 +1,27 @@
-# DESIGN SKILL
+# Design Taste Frontend Skill
 
-## GOAL
-Crear interfaces modernas tipo startup premium.
+## PURPOSE
+Improve the UI of a Next.js food website to a premium level.
 
-## RULES
-- Usar espacios amplios
-- Tipografía clara
-- Botones grandes
-- Colores contrastantes
+---
 
-## AVOID
-- Diseños genéricos
-- UI saturada
+## 🔒 CORE RULES (DO NOT MODIFY)
 
-## STYLE
-- Minimalista
-- Elegante
-- Enfocado en conversión
-- Uso de gradientes y sombras suaves para crear un efecto premium
-- Tipografía moderna y espaciada para mejorar la legibilidad
+- Do NOT break functionality
+- Do NOT remove components
+- Keep Tailwind CSS
+- Keep structure clean
+
+---
+
+## ✏️ IMPROVABLE SECTION (AGENT CAN EDIT BELOW)
+
+## DESIGN IMPROVEMENTS
+
+- Improve hierarchy
+- Improve spacing
+
+## STYLE IDEAS
+
+- Dark theme
+- Rounded cards
