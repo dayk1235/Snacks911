@@ -1,6 +1,15 @@
 // ─── Admin Types ──────────────────────────────────────────────────────────────
 
-export type ProductCategory = 'alitas' | 'boneless' | 'papas' | 'combos';
+// Allow custom categories alongside built-in ones
+export type ProductCategory = string;
+
+export const DEFAULT_CATEGORIES: { id: string; label: string; emoji: string }[] = [
+  { id: 'alitas',   label: '🍗 Alitas',   emoji: '🍗' },
+  { id: 'boneless', label: '🔥 Boneless', emoji: '🔥' },
+  { id: 'papas',    label: '🍟 Papas',    emoji: '🍟' },
+  { id: 'combos',   label: '🚨 Combos',   emoji: '🚨' },
+  { id: 'extras',   label: '🍋 Extras',   emoji: '🍋' },
+];
 
 export interface AdminProduct {
   id: string;
@@ -51,6 +60,12 @@ export interface BusinessSettings {
   openHours: Record<string, DayHours>;
 }
 
+export interface CustomCategory {
+  id: string;
+  label: string;
+  emoji: string;
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending:   '⏳ Pendiente',
   preparing: '🔥 Preparando',
@@ -65,9 +80,19 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   delivered: '#555555',
 };
 
-export const CATEGORY_LABELS: Record<ProductCategory, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
   alitas:   '🍗 Alitas',
   boneless: '🔥 Boneless',
   papas:    '🍟 Papas',
   combos:   '🚨 Combos',
+  extras:   '🍋 Extras',
 };
+
+/** Get all category labels including custom ones */
+export function getAllCategoryLabels(customCategories: CustomCategory[]): Record<string, string> {
+  const labels = { ...CATEGORY_LABELS };
+  for (const cat of customCategories) {
+    labels[cat.id] = cat.label;
+  }
+  return labels;
+}

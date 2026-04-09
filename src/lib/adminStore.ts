@@ -1,14 +1,15 @@
 import type {
   AdminProduct, Order, OrderStatus,
-  SaleRecord, BusinessSettings,
+  SaleRecord, BusinessSettings, CustomCategory,
 } from './adminTypes';
 
 // ─── localStorage keys ────────────────────────────────────────────────────────
 const K = {
-  PRODUCTS: 'snacks911_admin_products',
-  ORDERS:   'snacks911_admin_orders',
-  SETTINGS: 'snacks911_admin_settings',
-  SALES:    'snacks911_admin_sales',
+  PRODUCTS:   'snacks911_admin_products',
+  ORDERS:     'snacks911_admin_orders',
+  SETTINGS:   'snacks911_admin_settings',
+  SALES:      'snacks911_admin_sales',
+  CATEGORIES: 'snacks911_admin_categories',
 } as const;
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -23,6 +24,15 @@ const SEED_PRODUCTS: AdminProduct[] = [
   { id: 'p4', name: 'Boneless BBQ Ranch',       price: 125, category: 'boneless', available: false, description: '10 boneless en salsa BBQ con aderezo ranch',      imageUrl: '' },
   { id: 'p5', name: 'Papas Gajo Loaded',        price: 80,  category: 'papas',    available: true,  description: 'Papas gajo con queso, tocino y jalapeños',       imageUrl: '' },
   { id: 'p6', name: 'Combo 911',                price: 220, category: 'combos',   available: true,  description: '12 alitas + papas gajo + 2 refrescos',           imageUrl: '' },
+  // Extras
+  { id: 'e1', name: 'Salsa Valentina',      price: 5,   category: 'extras', available: true, description: 'Salsa Valentina extra',            imageUrl: '' },
+  { id: 'e2', name: 'Salsa Buffalo',         price: 10,  category: 'extras', available: true, description: 'Porción extra de salsa buffalo',    imageUrl: '' },
+  { id: 'e3', name: 'Limones (6)',           price: 0,   category: 'extras', available: true, description: '6 limones frescos',                imageUrl: '' },
+  { id: 'e4', name: 'Cebolla Curtida',       price: 10,  category: 'extras', available: true, description: 'Porción de cebolla curtida',       imageUrl: '' },
+  { id: 'e5', name: 'Zanahorias',            price: 10,  category: 'extras', available: true, description: 'Zanahorias con limón y chile',     imageUrl: '' },
+  { id: 'e6', name: 'Queso Extra',           price: 20,  category: 'extras', available: true, description: 'Porción extra de queso derretido', imageUrl: '' },
+  { id: 'e7', name: 'Refresco',              price: 25,  category: 'extras', available: true, description: 'Refresco de 600ml',                imageUrl: '' },
+  { id: 'e8', name: 'Salsa Habanero',        price: 10,  category: 'extras', available: true, description: 'Salsa habanero artesanal 🌶️',     imageUrl: '' },
 ];
 
 const SEED_ORDERS: Order[] = [
@@ -171,6 +181,23 @@ export const AdminStore = {
     const stored = read<SaleRecord[] | null>(K.SALES, null);
     if (!stored) { write(K.SALES, SEED_SALES); return SEED_SALES; }
     return stored;
+  },
+
+  // ── Custom Categories ─────────────────────────────────────────────────────
+  getCustomCategories(): CustomCategory[] {
+    return read<CustomCategory[]>(K.CATEGORIES, []);
+  },
+
+  saveCustomCategory(cat: CustomCategory): void {
+    const all = this.getCustomCategories();
+    const idx = all.findIndex(c => c.id === cat.id);
+    if (idx >= 0) { all[idx] = cat; } else { all.push(cat); }
+    write(K.CATEGORIES, all);
+  },
+
+  deleteCustomCategory(id: string): void {
+    const all = this.getCustomCategories().filter(c => c.id !== id);
+    write(K.CATEGORIES, all);
   },
 
   // ── Auth ──────────────────────────────────────────────────────────────────

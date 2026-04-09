@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 /* ─── Design tokens ────────────────────────────────────────────────────────── */
@@ -16,6 +16,18 @@
   /* Typography */
   --font-display: 'Bebas Neue', 'Impact', sans-serif;
   --font-body: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* ── Liquid Glass tokens ──────────────────────────────────────────────── */
+  --glass-bg:            rgba(255, 255, 255, 0.04);
+  --glass-bg-strong:     rgba(255, 255, 255, 0.08);
+  --glass-border:        rgba(255, 255, 255, 0.10);
+  --glass-border-fire:   rgba(255, 69, 0, 0.18);
+  --glass-blur:          blur(20px);
+  --glass-blur-heavy:    blur(40px);
+  --glass-shadow:        0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  --glass-shadow-fire:   0 8px 32px rgba(255,69,0,0.12), inset 0 1px 0 rgba(255,120,0,0.08);
+  --glass-radius:        20px;
+  --glass-radius-sm:     14px;
 }
 
 /* ─── Reset ────────────────────────────────────────────────────────────────── */
@@ -67,6 +79,34 @@ body {
   line-height: 1.6;
 }
 
+/* ─── Liquid Glass utility classes ─────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-fire {
+  background: rgba(255, 69, 0, 0.06);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-fire);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: var(--glass-shadow-fire);
+}
+
 /* ─── Keyframes ────────────────────────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
@@ -92,6 +132,29 @@ body {
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes glass-shimmer {
+  0%   { transform: translateX(-100%) skewX(-15deg); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(200%) skewX(-15deg); opacity: 0; }
+}
+
+@keyframes flame-flicker {
+  0%,100% { transform: scaleY(1) translateY(0); filter: brightness(1); }
+  25%     { transform: scaleY(1.08) translateY(-2px); filter: brightness(1.15); }
+  75%     { transform: scaleY(0.95) translateY(1px); filter: brightness(0.9); }
+}
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes review-pop {
+  0%   { opacity: 0; transform: scale(0.85) translateY(20px); }
+  60%  { opacity: 1; transform: scale(1.02) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ─── Utility classes ──────────────────────────────────────────────────────── */
@@ -147,4 +210,14 @@ body {
 [data-admin="true"] *::before,
 [data-admin="true"] *::after {
   cursor: auto !important;
+}
+
+/* ─── Responsive utilities ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: flex !important; }
+}
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+  .show-mobile  { display: none !important; }
 }

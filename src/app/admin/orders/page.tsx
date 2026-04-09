@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AdminStore } from '@/lib/adminStore';
 import { Order, OrderStatus, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/lib/adminTypes';
 
@@ -20,21 +20,144 @@ const STATUS_BTN: Record<OrderStatus, string> = {
 
 const ALL_STATUSES: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered'];
 
+/* ── Receipt printer ──────────────────────────────────────────────────────── */
+function printReceipt(order: Order) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+  const itemsHTML = order.items.map(item =>
+    `<tr>
+      <td style="text-align:left;padding:2px 0">${item.quantity}x ${item.productName}</td>
+      <td style="text-align:right;padding:2px 0">$${(item.price * item.quantity).toLocaleString()}</td>
+    </tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ticket ${order.id}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: 80mm auto;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      width: 80mm;
+      max-width: 80mm;
+      padding: 8mm 4mm;
+      color: #000;
+      background: #fff;
+    }
+    .center { text-align: center; }
+    .divider {
+      border: none;
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
+    .bold { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; }
+    .total-row td { 
+      font-weight: bold; 
+      font-size: 14px; 
+      padding-top: 6px;
+      border-top: 1px solid #000;
+    }
+    .header-logo {
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div class="header-logo">🚨 SNACKS 911</div>
+    <div style="font-size:10px;margin-top:2px">Cuando el antojo no puede esperar</div>
+    <hr class="divider">
+  </div>
+  
+  <div style="margin: 4px 0">
+    <div><strong>Pedido:</strong> ${order.id}</div>
+    <div><strong>Cliente:</strong> ${order.customerName}</div>
+    ${order.customerPhone ? `<div><strong>Tel:</strong> ${order.customerPhone}</div>` : ''}
+    <div><strong>Fecha:</strong> ${dateStr} ${timeStr}</div>
+    <div><strong>Estado:</strong> ${ORDER_STATUS_LABELS[order.status]}</div>
+  </div>
+  
+  <hr class="divider">
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:2px 0;font-size:11px">PRODUCTO</th>
+        <th style="text-align:right;padding:2px 0;font-size:11px">PRECIO</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHTML}
+    </tbody>
+  </table>
+  
+  <hr class="divider">
+  
+  <table>
+    <tr class="total-row">
+      <td style="text-align:left">TOTAL</td>
+      <td style="text-align:right">$${order.total.toLocaleString()}</td>
+    </tr>
+  </table>
+  
+  ${order.notes ? `
+  <hr class="divider">
+  <div style="font-size:11px"><strong>Notas:</strong> ${order.notes}</div>
+  ` : ''}
+  
+  <hr class="divider">
+  
+  <div class="center" style="margin-top:4px;font-size:10px">
+    ¡Gracias por tu preferencia! 🔥<br>
+    Síguenos en redes: @snacks911<br>
+    <br>
+    --- SNACKS 911 ---
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      setTimeout(function() { window.close(); }, 500);
+    };
+  <\/script>
+</body>
+</html>`;
+
+  const printWindow = window.open('', '_blank', 'width=350,height=600');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }
+}
+
+/* ── Orders Page ──────────────────────────────────────────────────────────── */
 export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [filter, setFilter]     = useState<OrderStatus | 'all'>('all');
 
-  const reload = () => {
+  const reload = useCallback(() => {
     const o = AdminStore.getOrders()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setOrders(o);
-  };
+  }, []);
 
   useEffect(() => {
     reload();
     const id = setInterval(reload, 5000); // live refresh
     return () => clearInterval(id);
-  }, []);
+  }, [reload]);
 
   const advance = (id: string, currentStatus: OrderStatus) => {
     const next = STATUS_FLOW[currentStatus];
@@ -160,35 +283,63 @@ export default function OrdersPage() {
               )}
             </div>
 
-            {/* Right: total + action */}
+            {/* Right: total + actions */}
             <div style={{ textAlign: 'right', minWidth: '140px' }}>
               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#FFB800', marginBottom: '0.75rem' }}>
                 ${order.total.toLocaleString()}
               </div>
 
-              {STATUS_FLOW[order.status] && (
-                <button
-                  onClick={() => advance(order.id, order.status)}
-                  style={{
-                    padding: '0.6rem 1rem',
-                    background: `${ORDER_STATUS_COLORS[order.status]}22`,
-                    border: `1px solid ${ORDER_STATUS_COLORS[order.status]}55`,
-                    borderRadius: '10px',
-                    color: ORDER_STATUS_COLORS[order.status],
-                    fontSize: '0.8rem', fontWeight: 700,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                    transition: 'background 0.18s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '44'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '22'; }}
-                >
-                  {STATUS_BTN[order.status]}
-                </button>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {STATUS_FLOW[order.status] && (
+                  <button
+                    onClick={() => advance(order.id, order.status)}
+                    style={{
+                      padding: '0.6rem 1rem',
+                      background: `${ORDER_STATUS_COLORS[order.status]}22`,
+                      border: `1px solid ${ORDER_STATUS_COLORS[order.status]}55`,
+                      borderRadius: '10px',
+                      color: ORDER_STATUS_COLORS[order.status],
+                      fontSize: '0.8rem', fontWeight: 700,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      transition: 'background 0.18s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '44'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '22'; }}
+                  >
+                    {STATUS_BTN[order.status]}
+                  </button>
+                )}
 
-              {order.status === 'delivered' && (
-                <span style={{ fontSize: '0.78rem', color: '#444' }}>Completado ✓</span>
-              )}
+                {order.status === 'delivered' && (
+                  <span style={{ fontSize: '0.78rem', color: '#444' }}>Completado ✓</span>
+                )}
+
+                {/* Print receipt button */}
+                <button
+                  onClick={() => printReceipt(order)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '10px',
+                    color: '#888',
+                    fontSize: '0.78rem', fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    transition: 'all 0.18s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.color = '#fff';
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.25)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.color = '#888';
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  🖨️ Imprimir ticket
+                </button>
+              </div>
             </div>
           </div>
         ))}

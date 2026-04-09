@@ -3,7 +3,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: 'alitas' | 'boneless' | 'papas' | 'combos';
+  category: 'alitas' | 'boneless' | 'papas' | 'combos' | 'extras';
   image: string;
   spicy?: number;
   popular?: boolean;
@@ -97,4 +97,5 @@ export const categories = [
   { id: 'boneless', label: '🔥 Boneless' },
   { id: 'papas', label: '🍟 Papas' },
   { id: 'combos', label: '🚨 Combos' },
+  { id: 'extras', label: '🍋 Extras' },
 ];

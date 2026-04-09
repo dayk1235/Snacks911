@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import FireCanvas from './FireCanvas';
@@ -8,6 +8,7 @@ import FireCanvas from './FireCanvas';
 gsap.registerPlugin(SplitText);
 
 export default function Hero() {
+  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
   const containerRef = useRef<HTMLElement>(null);
   const badgeRef     = useRef<HTMLDivElement>(null);
   const dotRef       = useRef<HTMLSpanElement>(null);
@@ -20,6 +21,19 @@ export default function Hero() {
   const arrowRef     = useRef<HTMLDivElement>(null);
   const orb1Ref      = useRef<HTMLDivElement>(null);
   const orb2Ref      = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load WhatsApp number from AdminStore (reflects admin changes)
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('snacks911_admin_settings');
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s?.whatsappNumber) setWhatsappNumber(s.whatsappNumber);
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -200,7 +214,7 @@ export default function Hero() {
             </a>
             <a
               id="hero-cta-whatsapp"
-              href="https://wa.me/1234567890" target="_blank" rel="noopener noreferrer"
+              href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer"
               onMouseEnter={handleCtaEnter} onMouseLeave={handleCtaLeave}
               style={{
                 background: 'rgba(255,255,255,0.04)',

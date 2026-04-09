@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import gsap from 'gsap';
+import { AdminStore } from '@/lib/adminStore';
 import type { CartItem } from '@/types';
 
 interface CartProps {
@@ -17,15 +18,34 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
   const backdropRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<HTMLDivElement>(null);
   const prevItemsLength = useRef(0);
-
   const initialized = useRef(false);
+  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
+
+  /* ── Load WhatsApp number from AdminStore ─────────────────────────────── */
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const settings = AdminStore.getSettings();
+      if (settings?.whatsappNumber) {
+        setWhatsappNumber(settings.whatsappNumber);
+      }
+    }
+  }, []);
+
+  /* ── Reload WhatsApp number every time cart opens (picks up admin changes) */
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined') {
+      const settings = AdminStore.getSettings();
+      if (settings?.whatsappNumber) {
+        setWhatsappNumber(settings.whatsappNumber);
+      }
+    }
+  }, [isOpen]);
 
   // Initialize + animate on isOpen change
   useEffect(() => {
     if (!drawerRef.current || !backdropRef.current) return;
 
     if (!initialized.current) {
-      // First run: set to hidden without animation
       gsap.set(drawerRef.current, { xPercent: 100 });
       gsap.set(backdropRef.current, { opacity: 0, pointerEvents: 'none' });
       initialized.current = true;
@@ -64,12 +84,12 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
       .map((item) => `• ${item.name} x${item.quantity} — $${item.price * item.quantity}`)
       .join('\n');
     const message = `🚨 *PEDIDO SNACKS 911*\n\n${lines}\n\n💰 *Total: $${total}*\n\n¡Quiero hacer este pedido!`;
-    window.open(`https://wa.me/1234567890?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
     <>
-      {/* Backdrop — always in DOM, controlled by GSAP */}
+      {/* Backdrop */}
       <div
         ref={backdropRef}
         onClick={onClose}
@@ -82,7 +102,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
         }}
       />
 
-      {/* Drawer — always in DOM, controlled by GSAP */}
+      {/* Drawer */}
       <div
         ref={drawerRef}
         style={{
@@ -92,8 +112,10 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
           bottom: 0,
           width: '400px',
           maxWidth: '92vw',
-          background: '#111',
-          borderLeft: '1px solid rgba(255,255,255,0.07)',
+          background: 'rgba(14,14,14,0.92)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          borderLeft: '1px solid rgba(255,255,255,0.09)',
           zIndex: 300,
           display: 'flex',
           flexDirection: 'column',
@@ -155,11 +177,13 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
                   style={{
                     display: 'flex',
                     gap: '0.85rem',
-                    background: '#1a1a1a',
+                    background: 'rgba(255,255,255,0.04)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
                     borderRadius: '14px',
                     padding: '0.85rem',
                     alignItems: 'center',
-                    border: '1px solid rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.07)',
                   }}
                 >
                   {/* Thumbnail */}
@@ -182,9 +206,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.2rem' }}
-                    >
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.2rem' }}>
                       {item.name}
                     </div>
                     <div style={{ color: '#FF4500', fontWeight: 900, fontSize: '1rem' }}>
@@ -193,68 +215,32 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
                   </div>
 
                   {/* Qty controls */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
                     <button
                       onClick={() => onUpdateQuantity(item.id, -1)}
-                      onMouseEnter={(e) =>
-                        gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })
-                      }
-                      onMouseLeave={(e) =>
-                        gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })
-                      }
+                      onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })}
+                      onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '7px',
-                        background: 'rgba(255,255,255,0.08)',
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        width: '28px', height: '28px', borderRadius: '7px',
+                        background: 'rgba(255,255,255,0.08)', border: 'none',
+                        color: '#fff', cursor: 'pointer', fontSize: '1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
                       −
                     </button>
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        minWidth: '18px',
-                        textAlign: 'center',
-                        fontSize: '0.9rem',
-                      }}
-                    >
+                    <span style={{ fontWeight: 700, minWidth: '18px', textAlign: 'center', fontSize: '0.9rem' }}>
                       {item.quantity}
                     </span>
                     <button
                       onClick={() => onUpdateQuantity(item.id, 1)}
-                      onMouseEnter={(e) =>
-                        gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })
-                      }
-                      onMouseLeave={(e) =>
-                        gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })
-                      }
+                      onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })}
+                      onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '7px',
-                        background: '#FF4500',
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        width: '28px', height: '28px', borderRadius: '7px',
+                        background: '#FF4500', border: 'none',
+                        color: '#fff', cursor: 'pointer', fontSize: '1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
                       +
@@ -305,6 +291,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total }
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
+                boxShadow: '0 4px 20px rgba(37,211,102,0.2)',
               }}
             >
               📱 Pedir por WhatsApp

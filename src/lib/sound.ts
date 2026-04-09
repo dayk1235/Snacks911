@@ -8,6 +8,7 @@ interface AudioState {
   ambientGain: GainNode | null;
   ambientOscs: OscillatorNode[];
   enabled: boolean;
+  popEnabled: boolean; // always-on subtle pop
 }
 
 const state: AudioState = {
@@ -15,6 +16,7 @@ const state: AudioState = {
   ambientGain: null,
   ambientOscs: [],
   enabled: false,
+  popEnabled: true,
 };
 
 export const initAudio = (): void => {
@@ -24,6 +26,13 @@ export const initAudio = (): void => {
     (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctx) return;
   state.ctx = new Ctx();
+};
+
+/** Ensures AudioContext is running (must be called from a user gesture) */
+const ensureCtx = (): AudioContext | null => {
+  if (!state.ctx) initAudio();
+  if (state.ctx?.state === 'suspended') state.ctx.resume();
+  return state.ctx;
 };
 
 export const isSoundEnabled = (): boolean => state.enabled;
@@ -67,6 +76,63 @@ export const playClick = (): void => {
   gain.connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 0.11);
+};
+
+/**
+ * Always-on subtle pop sound for button clicks.
+ * Very gentle and warm — like a soft "toc" sound.
+ * Designed to be pleasant and not annoying even after hundreds of clicks.
+ */
+export const playButtonPop = (): void => {
+  if (!state.popEnabled) return;
+  const ctx = ensureCtx();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+
+  // Warm sine pop — very soft
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(520, now);
+  osc.frequency.exponentialRampToValueAtTime(280, now + 0.06);
+
+  // Very subtle volume — barely perceptible but satisfying
+  gain.gain.setValueAtTime(0.018, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.1);
+
+  // Tiny harmonic overtone for warmth
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1040, now);
+  osc2.frequency.exponentialRampToValueAtTime(560, now + 0.04);
+  gain2.gain.setValueAtTime(0.006, now);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc2.connect(gain2);
+  gain2.connect(ctx.destination);
+  osc2.start(now);
+  osc2.stop(now + 0.06);
+};
+
+/**
+ * Sets up global click listener so ALL buttons/links produce a subtle pop.
+ * Call once from the main page component.
+ */
+export const initGlobalButtonPop = (): (() => void) => {
+  const handler = (e: MouseEvent) => {
+    const target = e.target as Element;
+    if (target.closest('button, a, [data-cursor-hover], [role="button"]')) {
+      playButtonPop();
+    }
+  };
+  document.addEventListener('click', handler, { passive: true });
+  return () => document.removeEventListener('click', handler);
 };
 
 /** Deep ambient drone (two oscillators a perfect 5th apart) */
