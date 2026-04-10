@@ -8,140 +8,101 @@ import type { Product } from '@/data/products';
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
-  /** If provided, clicking 'Agregar' fires this instead of onAddToCart directly */
   onCustomize?: (product: Product) => void;
 }
 
 function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCardProps) {
   const [added, setAdded] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const imgRef  = useRef<HTMLDivElement>(null);
-  const btnRef  = useRef<HTMLButtonElement>(null);
-  const glowRef = useRef<HTMLDivElement>(null);
-  const shineRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnter = () => {
-    gsap.to(cardRef.current, { y: -10, duration: 0.5, ease: 'back.out(1.4)' });
-    gsap.to(imgRef.current,  { scale: 1.1, duration: 0.6, ease: 'power2.out' });
-    gsap.to(glowRef.current, { opacity: 1, duration: 0.4 });
-    // Shine sweep
-    if (shineRef.current) {
-      gsap.fromTo(shineRef.current,
-        { x: '-120%', opacity: 0.7 },
-        { x: '120%', opacity: 0, duration: 0.8, ease: 'power2.inOut' }
-      );
-    }
-    if (cardRef.current) {
-      cardRef.current.style.borderColor = 'rgba(255,69,0,0.30)';
-      cardRef.current.style.boxShadow   = '0 20px 60px rgba(0,0,0,0.55), 0 0 30px rgba(255,69,0,0.10), inset 0 1px 0 rgba(255,255,255,0.10)';
-    }
-  };
-
-  const handleMouseLeave = () => {
-    gsap.to(cardRef.current, { y: 0, duration: 0.45, ease: 'power2.inOut' });
-    gsap.to(imgRef.current,  { scale: 1, duration: 0.5, ease: 'power2.inOut' });
-    gsap.to(glowRef.current, { opacity: 0, duration: 0.4 });
-    if (cardRef.current) {
-      cardRef.current.style.borderColor = 'rgba(255,255,255,0.08)';
-      cardRef.current.style.boxShadow   = '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)';
-    }
-  };
+  const isCombo = product.category === 'combos';
 
   const handleAdd = () => {
     if (added) return;
     if (onCustomize) {
-      // Let parent open customizer modal
       onCustomize(product);
       return;
     }
     onAddToCart(product);
     setAdded(true);
-    gsap.fromTo(
-      btnRef.current,
+
+    // Fast micro-interaction: button pulse + checkmark
+    gsap.fromTo(btnRef.current,
       { scale: 1 },
-      { scale: 1.18, duration: 0.14, yoyo: true, repeat: 1, ease: 'power2.inOut',
-        onComplete: () => { setTimeout(() => setAdded(false), 1500); },
-      }
+      { scale: 1.06, duration: 0.08, yoyo: true, repeat: 1, ease: 'power2.out' }
     );
+    setTimeout(() => setAdded(false), 1200);
   };
 
   return (
     <div
       ref={cardRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       style={{
-        background: 'rgba(20,20,20,0.75)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '20px',
+        background: isCombo
+          ? 'linear-gradient(145deg, rgba(255,69,0,0.08), rgba(20,20,20,0.9))'
+          : 'rgba(20,20,20,0.85)',
+        border: isCombo
+          ? '1.5px solid rgba(255,69,0,0.25)'
+          : '1px solid rgba(255,255,255,0.07)',
+        borderRadius: isCombo ? '18px' : '14px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
-        height: '100%',
-        transition: 'border-color 0.3s, box-shadow 0.3s',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+        transition: 'border-color 0.15s',
       }}
     >
-      {/* Liquid glass inner shimmer — only on hover */}
-      <div
-        ref={glowRef}
-        style={{
-          position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
-          opacity: 0,
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,69,0,0.03) 50%, transparent 100%)',
-          borderRadius: '20px',
-        }}
-      />
-
-      {/* Shine sweep effect */}
-      <div
-        ref={shineRef}
-        style={{
-          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
-          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)',
-          borderRadius: '20px',
-          transform: 'translateX(-120%)',
-        }}
-      />
-
-      {/* Badge */}
-      {product.badge && (
-        <div
-          style={{
-            position: 'absolute', top: '12px', left: '12px', zIndex: 10,
-            background: 'rgba(0,0,0,0.7)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '8px', padding: '0.28rem 0.7rem',
-            fontSize: '0.72rem', fontWeight: 700, color: '#fff',
-          }}
-        >
-          {product.badge}
+      {/* Badges */}
+      {(product.badge || product.badges) && (
+        <div style={{
+          position: 'absolute', top: '10px', left: '10px', zIndex: 10,
+          display: 'flex', flexDirection: 'column', gap: '5px',
+        }}>
+          {(product.badges && product.badges.length > 0 ? product.badges : product.badge ? [product.badge] : []).map((b, i) => (
+            <span
+              key={i}
+              style={{
+                background: i === 0
+                  ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                  : 'rgba(0,0,0,0.7)',
+                borderRadius: '6px',
+                padding: '0.2rem 0.55rem',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                color: '#fff',
+                whiteSpace: 'nowrap',
+                letterSpacing: '0.02em',
+              }}
+            >
+              {b}
+            </span>
+          ))}
         </div>
       )}
 
       {/* Image */}
-      <div style={{ position: 'relative', height: '200px', background: '#1a1a1a', overflow: 'hidden' }}>
-        <div ref={imgRef} style={{ position: 'absolute', inset: 0 }}>
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            style={{ objectFit: 'cover', display: 'block' }}
-          />
-        </div>
+      <div style={{
+        position: 'relative',
+        height: isCombo ? '170px' : '150px',
+        background: '#1a1a1a',
+        overflow: 'hidden',
+      }}>
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          sizes="(max-width: 768px) 50vw, 33vw"
+          style={{ objectFit: 'cover', display: 'block' }}
+        />
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, rgba(14,14,14,0.7) 0%, transparent 55%)',
+          background: 'linear-gradient(to top, rgba(14,14,14,0.8) 0%, transparent 50%)',
         }} />
         {product.spicy !== undefined && product.spicy > 0 && (
-          <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex' }}>
+          <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex' }}>
             {Array.from({ length: 3 }).map((_, i) => (
-              <span key={i} style={{ opacity: i < (product.spicy ?? 0) ? 1 : 0.18, fontSize: '0.8rem' }}>
+              <span key={i} style={{ opacity: i < (product.spicy ?? 0) ? 1 : 0.18, fontSize: '0.75rem' }}>
                 🌶️
               </span>
             ))}
@@ -150,39 +111,96 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
       </div>
 
       {/* Content */}
-      <div style={{ padding: '1.2rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative', zIndex: 2 }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FFF', margin: 0 }}>
+      <div style={{
+        padding: isCombo ? '0.9rem 1rem' : '0.75rem 0.85rem',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.3rem',
+        position: 'relative',
+        zIndex: 2,
+      }}>
+        {/* Name */}
+        <h3 style={{
+          fontSize: isCombo ? '1.05rem' : '0.95rem',
+          fontWeight: 800,
+          color: isCombo ? '#FFB800' : '#fff',
+          margin: 0,
+          lineHeight: 1.2,
+          letterSpacing: '0.01em',
+        }}>
           {product.name}
         </h3>
-        <p style={{ fontSize: '0.83rem', color: '#777', margin: 0, lineHeight: 1.5, flex: 1 }}>
+
+        {/* Description — 1 line max, clamped */}
+        <p style={{
+          fontSize: '0.75rem',
+          color: '#666',
+          margin: 0,
+          lineHeight: 1.4,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          flex: 1,
+        }}>
           {product.description}
         </p>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem' }}>
-          <span style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FF4500' }}>
+        {/* Combo includes label */}
+        {isCombo && (
+          <span style={{
+            display: 'inline-block',
+            fontSize: '0.65rem',
+            color: '#FF7040',
+            fontWeight: 600,
+            padding: '0.15rem 0',
+          }}>
+            ✓ Incluye papas + aderezo
+          </span>
+        )}
+
+        {/* Price + Button row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: '0.5rem',
+          gap: '0.5rem',
+        }}>
+          <span style={{
+            fontSize: isCombo ? '1.35rem' : '1.2rem',
+            fontWeight: 900,
+            color: '#FF4500',
+            letterSpacing: '-0.02em',
+          }}>
             ${product.price}
           </span>
           <button
-            id={`add-to-cart-${product.id}`}
             ref={btnRef}
             onClick={handleAdd}
-            onMouseEnter={() => !added && gsap.to(btnRef.current, { scale: 1.06, duration: 0.15, ease: 'power2.out' })}
-            onMouseLeave={() => !added && gsap.to(btnRef.current, { scale: 1,    duration: 0.15, ease: 'power2.out' })}
             style={{
+              flex: 1,
+              maxWidth: isCombo ? '160px' : '140px',
               background: added
                 ? 'linear-gradient(135deg, #00C853, #00E676)'
-                : 'linear-gradient(135deg, #FF4500, #FF6500)',
-              border: 'none', borderRadius: '10px',
-              padding: '0.6rem 1.25rem',
-              color: '#fff', fontWeight: 700, fontSize: '0.875rem',
+                : isCombo
+                  ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                  : 'linear-gradient(135deg, #FF4500, #FF6500)',
+              border: 'none',
+              borderRadius: '10px',
+              padding: isCombo ? '0.65rem 1rem' : '0.55rem 0.85rem',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: isCombo ? '0.9rem' : '0.82rem',
               cursor: added ? 'default' : 'pointer',
-              transition: 'background 0.35s ease',
+              transition: 'background 0.2s, transform 0.08s',
               boxShadow: added
                 ? '0 4px 14px rgba(0,200,83,0.25)'
-                : '0 4px 14px rgba(255,69,0,0.25)',
+                : '0 2px 10px rgba(255,69,0,0.2)',
+              whiteSpace: 'nowrap',
             }}
           >
-            {added ? '✓ ¡Listo!' : '+ Agregar'}
+            {added ? '✅ Agregado' : 'Agregar'}
           </button>
         </div>
       </div>

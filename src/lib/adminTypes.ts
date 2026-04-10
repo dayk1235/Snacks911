@@ -41,12 +41,33 @@ export interface Order {
   customerName: string;
   customerPhone?: string;
   notes?: string;
+  handledBy?: string;      // employee name who handled this order
 }
 
 export interface SaleRecord {
   date: string;            // 'YYYY-MM-DD'
   total: number;
   orderCount: number;
+}
+
+export interface Customer {
+  phoneNumber: string;     // primary key
+  name: string;
+  totalOrders: number;
+  lastOrderDate: string;   // ISO date
+  lastOrderTotal: number;
+  favoriteProduct: string;
+  createdAt: string;       // ISO date
+}
+
+export type UserRole = 'admin' | 'employee';
+
+export interface UserProfile {
+  id: string;              // Supabase Auth UID
+  email: string;
+  name: string;
+  role: UserRole;
+  createdAt: string;
 }
 
 export interface DayHours {

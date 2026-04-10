@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ADMIN_SESSION_COOKIE, createAdminSessionToken, getAdminCredentials } from '@/lib/server/adminSession';
+import { ADMIN_SESSION_COOKIE, createSessionToken, getAdminCredentials } from '@/lib/server/adminSession';
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { user?: string; pass?: string } | null;
@@ -11,8 +11,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Credenciales inválidas' }, { status: 401 });
   }
 
-  const token = await createAdminSessionToken(user);
-  const response = NextResponse.json({ ok: true });
+  // Legacy admin login — creates admin session
+  const token = await createSessionToken(user, 'admin');
+  const response = NextResponse.json({ ok: true, user: { role: 'admin' } });
 
   response.cookies.set({
     name: ADMIN_SESSION_COOKIE,

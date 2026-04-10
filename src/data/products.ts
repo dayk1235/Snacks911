@@ -8,6 +8,7 @@ export interface Product {
   spicy?: number;
   popular?: boolean;
   badge?: string;
+  badges?: string[];
 }
 
 export const products: Product[] = [
@@ -72,30 +73,44 @@ export const products: Product[] = [
   },
   {
     id: 7,
-    name: 'Combo 911',
-    description: '12 piezas mixtas + papas grandes. Todo lo que necesitas.',
-    price: 149,
+    name: '🔥 Combo 911 (El favorito)',
+    description: 'Boneless (250g) + papas (250g) + 1 aderezo. El combo más pedido. Crujiente, jugoso y perfecto para quitar el antojo 🔥',
+    price: 115,
     category: 'combos',
     image: '/images/combo.webp',
     popular: true,
-    badge: '🚨 Mejor Valor',
+    badge: '⭐ Más vendido',
+    badges: ['⭐ Más vendido', '💥 Mejor opción'],
   },
   {
     id: 8,
-    name: 'Combo Doble',
-    description: '20 piezas mixtas + 2 papas grandes. Para compartir sin peleas.',
-    price: 229,
+    name: '💥 Combo Pareja (Mejor valor)',
+    description: '2 boneless (250g c/u) + papas + 2 aderezos. Ideal para compartir. Más comida, mejor precio 😮‍🔥',
+    price: 190,
     category: 'combos',
     image: '/images/combo.webp',
+    popular: true,
     badge: '👥 Para 2',
+    badges: ['👥 Para 2', '💰 Ahorra más'],
+  },
+  {
+    id: 9,
+    name: '💣 Combo Amigos (El más completo)',
+    description: '2 alitas + 2 boneless + papas grandes + aderezos. Para cuando el antojo es serio. El combo más grande del menú 🔥',
+    price: 260,
+    category: 'combos',
+    image: '/images/combo.webp',
+    popular: true,
+    badge: '🔥 Combo grande',
+    badges: ['🔥 Combo grande', '🍗 Para compartir'],
   },
 ];
 
 export const categories = [
   { id: 'todos', label: 'Todos' },
-  { id: 'alitas', label: '🍗 Alitas' },
-  { id: 'boneless', label: '🔥 Boneless' },
+  { id: 'combos', label: '🔥 Combos' },
+  { id: 'alitas', label: '🍗 Arma tu orden' },
+  { id: 'boneless', label: '🍗 Boneless' },
   { id: 'papas', label: '🍟 Papas' },
-  { id: 'combos', label: '🚨 Combos' },
-  { id: 'extras', label: '🍋 Extras' },
+  { id: 'extras', label: '➕ Agrega más' },
 ];

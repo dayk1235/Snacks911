@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
+  Customer,
 } from './adminTypes';
 
 // ─── Seed defaults (used when table is empty) ─────────────────────────────────
@@ -92,6 +93,7 @@ function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>
     customerName:  String(row.customer_name),
     customerPhone: String(row.customer_phone ?? ''),
     notes:         String(row.notes ?? ''),
+    handledBy:     String(row.handled_by ?? ''),
     items: items.map(i => ({
       productId:   String(i.product_id ?? ''),
       productName: String(i.product_name),
@@ -208,8 +210,10 @@ export async function dbSaveOrder(order: Order): Promise<void> {
   }
 }
 
-export async function dbUpdateOrderStatus(id: string, status: OrderStatus): Promise<void> {
-  const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+export async function dbUpdateOrderStatus(id: string, status: OrderStatus, handledBy?: string): Promise<void> {
+  const update: Record<string, unknown> = { status };
+  if (handledBy) update.handled_by = handledBy;
+  const { error } = await supabase.from('orders').update(update).eq('id', id);
   if (error) throw error;
 }
 
@@ -318,4 +322,53 @@ export async function dbSaveCustomCategory(cat: CustomCategory): Promise<void> {
 export async function dbDeleteCustomCategory(id: string): Promise<void> {
   const { error } = await supabase.from('custom_categories').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+function rowToCustomer(row: Record<string, unknown>): Customer {
+  return {
+    phoneNumber:    String(row.phone_number),
+    name:           String(row.name ?? ''),
+    totalOrders:    Number(row.total_orders ?? 0),
+    lastOrderDate:  String(row.last_order_date ?? ''),
+    lastOrderTotal: Number(row.last_order_total ?? 0),
+    favoriteProduct: String(row.favorite_product ?? ''),
+    createdAt:      String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+export async function dbGetCustomer(phone: string): Promise<Customer | null> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('phone_number', phone)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return rowToCustomer(data as Record<string, unknown>);
+}
+
+export async function dbUpsertCustomer(c: Customer): Promise<void> {
+  const row = {
+    phone_number:    c.phoneNumber,
+    name:            c.name,
+    total_orders:    c.totalOrders,
+    last_order_date: c.lastOrderDate,
+    last_order_total: c.lastOrderTotal,
+    favorite_product: c.favoriteProduct,
+    created_at:      c.createdAt,
+  };
+  const { error } = await supabase.from('customers').upsert(row);
+  if (error) throw error;
+}
+
+export async function dbGetAllCustomers(): Promise<Customer[]> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .order('total_orders', { ascending: false });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map(rowToCustomer);
 }

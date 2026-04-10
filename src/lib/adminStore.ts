@@ -6,6 +6,7 @@
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
+  Customer,
 } from './adminTypes';
 
 import {
@@ -14,6 +15,7 @@ import {
   dbGetSettings, dbSaveSettings,
   dbGetSales,
   dbGetCustomCategories, dbSaveCustomCategory, dbDeleteCustomCategory,
+  dbGetCustomer, dbUpsertCustomer, dbGetAllCustomers,
 } from './db';
 
 // ─── localStorage keys (used as offline cache) ────────────────────────────────
@@ -105,6 +107,11 @@ export const AdminStore = {
   async saveOrder(order: Order): Promise<void> {
     try {
       await dbSaveOrder(order);
+      const all = lsRead<Order[]>(K.ORDERS, []);
+      const idx = all.findIndex(o => o.id === order.id);
+      if (idx >= 0) all[idx] = order; else all.unshift(order);
+      lsWrite(K.ORDERS, all);
+      return;
     } catch (e) {
       console.warn('[AdminStore] saveOrder fallback', e);
     }
@@ -114,15 +121,42 @@ export const AdminStore = {
     lsWrite(K.ORDERS, all);
   },
 
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+  /** Quick order submit — generates ID, saves to Supabase, returns order ID */
+  async submitOrder(
+    items: { id: number; name: string; price: number; quantity: number; linkedExtras?: string[] }[],
+    total: number,
+    whatsappNumber?: string,
+    customerName?: string,
+    customerPhone?: string,
+  ): Promise<string> {
+    const id = `ord_${Date.now()}`;
+    const order: Order = {
+      id,
+      items: items.map(i => ({
+        productId: String(i.id),
+        productName: i.name + (i.linkedExtras && i.linkedExtras.length ? ` (${i.linkedExtras.join(', ')})` : ''),
+        quantity: i.quantity,
+        price: i.price,
+      })),
+      total,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      customerName: customerName || 'Web Order',
+      customerPhone: customerPhone || '',
+    };
+    await this.saveOrder(order);
+    return id;
+  },
+
+  async updateOrderStatus(id: string, status: OrderStatus, handledBy?: string): Promise<void> {
     try {
-      await dbUpdateOrderStatus(id, status);
+      await dbUpdateOrderStatus(id, status, handledBy);
     } catch (e) {
       console.warn('[AdminStore] updateOrderStatus fallback', e);
     }
     const all = lsRead<Order[]>(K.ORDERS, []);
     const order = all.find(o => o.id === id);
-    if (order) { order.status = status; lsWrite(K.ORDERS, all); }
+    if (order) { order.status = status; if (handledBy) order.handledBy = handledBy; lsWrite(K.ORDERS, all); }
   },
 
   // ── Settings ────────────────────────────────────────────────────────────────
@@ -202,5 +236,52 @@ export const AdminStore = {
     }
     const all = lsRead<CustomCategory[]>(K.CATEGORIES, []).filter(c => c.id !== id);
     lsWrite(K.CATEGORIES, all);
+  },
+
+  // ── Customers ───────────────────────────────────────────────────────────────
+  async getCustomer(phone: string): Promise<Customer | null> {
+    try { return await dbGetCustomer(phone); }
+    catch { return null; }
+  },
+
+  async upsertCustomer(c: Customer): Promise<void> {
+    try { await dbUpsertCustomer(c); }
+    catch (e) { console.warn('[AdminStore] upsertCustomer fallback', e); }
+  },
+
+  async getAllCustomers(): Promise<Customer[]> {
+    try { return await dbGetAllCustomers(); }
+    catch { return []; }
+  },
+
+  /** Update customer stats after an order. Creates if new. */
+  async trackCustomerOrder(phone: string, name: string, total: number, orderDate: string, topProduct: string): Promise<void> {
+    if (!phone || phone.length < 10) return;
+    const existing = await this.getCustomer(phone);
+    const now = new Date().toISOString();
+
+    if (existing) {
+      existing.totalOrders += 1;
+      existing.lastOrderDate = orderDate;
+      existing.lastOrderTotal = total;
+      if (name) existing.name = name;
+      // Update favorite: count occurrences
+      const favCounts: Record<string, number> = {};
+      favCounts[existing.favoriteProduct] = (favCounts[existing.favoriteProduct] || 0) + 1;
+      favCounts[topProduct] = (favCounts[topProduct] || 0) + 1;
+      const top = Object.entries(favCounts).sort(([, a], [, b]) => b - a)[0];
+      if (top) existing.favoriteProduct = top[0];
+      await this.upsertCustomer(existing);
+    } else {
+      await this.upsertCustomer({
+        phoneNumber: phone,
+        name,
+        totalOrders: 1,
+        lastOrderDate: orderDate,
+        lastOrderTotal: total,
+        favoriteProduct: topProduct,
+        createdAt: now,
+      });
+    }
   },
 };

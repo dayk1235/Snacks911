@@ -1,6 +1,7 @@
 const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 12;
 
 export const ADMIN_SESSION_COOKIE = 'snacks911_admin_session';
+export const EMPLOYEE_SESSION_COOKIE = 'snacks911_employee_session';
 
 function getSessionSecret() {
   return process.env.ADMIN_SESSION_SECRET || 'change-me-in-env';
@@ -57,9 +58,10 @@ async function signValue(value: string) {
     .replace(/=+$/g, '');
 }
 
-export async function createAdminSessionToken(username: string, maxAgeSeconds = DEFAULT_MAX_AGE_SECONDS) {
+export async function createSessionToken(userId: string, role: string, maxAgeSeconds = DEFAULT_MAX_AGE_SECONDS) {
   const payload = {
-    u: username,
+    uid: userId,
+    role,
     exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
   };
 
@@ -68,7 +70,7 @@ export async function createAdminSessionToken(username: string, maxAgeSeconds = 
   return `${payloadEncoded}.${signature}`;
 }
 
-export async function verifyAdminSessionToken(token: string | undefined | null) {
+export async function verifySessionToken(token: string | undefined | null) {
   if (!token) return null;
 
   const [payloadEncoded, signature] = token.split('.');
@@ -78,8 +80,8 @@ export async function verifyAdminSessionToken(token: string | undefined | null) 
   if (expected !== signature) return null;
 
   try {
-    const payload = JSON.parse(base64UrlDecode(payloadEncoded)) as { u?: string; exp?: number };
-    if (!payload.u || !payload.exp) return null;
+    const payload = JSON.parse(base64UrlDecode(payloadEncoded)) as { uid?: string; role?: string; exp?: number };
+    if (!payload.uid || !payload.role || !payload.exp) return null;
     if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {

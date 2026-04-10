@@ -3,8 +3,11 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
+import { track } from '@/lib/analytics';
 import type { CartItem } from '@/types';
 import type { AdminProduct } from '@/lib/adminTypes';
+import type { Product } from '@/data/products';
+import CartUpsellBanner from '@/components/CartUpsellBanner';
 
 interface CartProps {
   isOpen: boolean;
@@ -14,9 +17,174 @@ interface CartProps {
   total: number;
   onClearCart: () => void;
   onAddExtra?: (extra: AdminProduct) => void;
+  onAddProduct?: (product: Product) => void;
 }
 
-/* ── Order Confirm Modal ──────────────────────────────────────────────────── */
+/* ── Step 1: Customer Capture Modal ──────────────────────────────────────── */
+function CustomerCaptureModal({
+  onContinue,
+  onSkip,
+}: {
+  onContinue: (name: string, phone: string) => void;
+  onSkip: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState(() => {
+    // Try to prefill from previous capture
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('snacks911_customer');
+        if (saved) return JSON.parse(saved).phone || '';
+      } catch {}
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    const prev = document.body.style.cursor;
+    document.body.style.cssText += '; cursor: auto !important';
+    document.documentElement.setAttribute('data-cursor-restore', 'true');
+    return () => {
+      document.body.style.cursor = prev;
+      document.documentElement.removeAttribute('data-cursor-restore');
+    };
+  }, []);
+
+  const handleSubmit = () => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) return;
+    // Save for future prefill
+    try {
+      localStorage.setItem('snacks911_customer', JSON.stringify({ name, phone: cleanPhone }));
+    } catch {}
+    onContinue(name.trim(), cleanPhone);
+  };
+
+  return (
+    <div
+      data-order-modal="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.5rem', animation: 'cartFadeIn 0.25s ease',
+        cursor: 'default',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: '380px',
+          background: 'rgba(14,14,14,0.98)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '24px', padding: '2rem',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)',
+          animation: 'cartSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+          textAlign: 'center', cursor: 'default',
+        }}
+      >
+        <div style={{ fontSize: '3rem', marginBottom: '0.75rem', lineHeight: 1 }}>🎉</div>
+
+        <h3 style={{ margin: '0 0 0.3rem', fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
+          ¡Gracias por tu pedido!
+        </h3>
+        <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', color: '#888', lineHeight: 1.5 }}>
+          Guarda tu info para descuentos y repetir más rápido.
+        </p>
+        <div style={{
+          display: 'inline-block',
+          padding: '0.25rem 0.75rem',
+          background: 'rgba(255,69,0,0.1)',
+          border: '1px solid rgba(255,69,0,0.2)',
+          borderRadius: '50px',
+          marginBottom: '1.5rem',
+        }}>
+          <span style={{ fontSize: '0.72rem', color: '#FF4500', fontWeight: 700 }}>
+            🎁 10% OFF en tu próximo pedido
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', textAlign: 'left' }}>
+          <input
+            type="text"
+            placeholder="Tu nombre (opcional)"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            style={{
+              width: '100%', padding: '0.8rem 1rem',
+              borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)', color: '#fff',
+              fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,69,0,0.4)'; }}
+            onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
+          />
+          <input
+            type="tel"
+            placeholder="WhatsApp (55 1234 5678)"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            autoFocus={!phone}
+            style={{
+              width: '100%', padding: '0.8rem 1rem',
+              borderRadius: '12px', border: '1px solid rgba(255,69,0,0.3)',
+              background: 'rgba(255,69,0,0.04)', color: '#fff',
+              fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,69,0,0.5)'; }}
+            onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,69,0,0.3)'; }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
+          <button
+            onClick={handleSubmit}
+            disabled={phone.replace(/\D/g, '').length < 10}
+            style={{
+              width: '100%', padding: '0.85rem',
+              borderRadius: '14px', border: 'none',
+              background: phone.replace(/\D/g, '').length >= 10
+                ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                : 'rgba(255,69,0,0.2)',
+              color: '#fff', fontWeight: 800, fontSize: '0.95rem',
+              cursor: phone.replace(/\D/g, '').length >= 10 ? 'pointer' : 'default',
+              boxShadow: phone.replace(/\D/g, '').length >= 10 ? '0 4px 16px rgba(255,69,0,0.25)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            Guardar y continuar →
+          </button>
+          <button
+            onClick={onSkip}
+            style={{
+              width: '100%', padding: '0.65rem',
+              borderRadius: '10px', border: 'none',
+              background: 'none', color: '#444',
+              fontWeight: 600, fontSize: '0.8rem',
+              cursor: 'pointer',
+            }}
+          >
+            Omitir
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes cartFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes cartSlideUp { from { opacity:0; transform:translateY(20px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
+        [data-order-modal="true"],
+        [data-order-modal="true"] * { cursor: default !important; }
+        html[data-cursor-restore="true"] body *  { cursor: default !important; }
+        html[data-cursor-restore="true"] .custom-cursor-el { display: none !important; }
+      `}</style>
+    </div>
+  );
+}
+
+/* ── Step 2: Order Confirm Modal ─────────────────────────────────────────── */
 function OrderConfirmModal({
   waUrl,
   onConfirm,
@@ -28,11 +196,9 @@ function OrderConfirmModal({
   onRetry: () => void;
   onCancel: () => void;
 }) {
-  // Restore native cursor while this modal is open
   useEffect(() => {
     const prev = document.body.style.cursor;
     document.body.style.cssText += '; cursor: auto !important';
-    // Also stamp a flag on html so globals.css can react
     document.documentElement.setAttribute('data-cursor-restore', 'true');
     return () => {
       document.body.style.cursor = prev;
@@ -77,7 +243,6 @@ function OrderConfirmModal({
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {/* Confirm */}
           <button
             onClick={onConfirm}
             onMouseEnter={e => {
@@ -101,7 +266,6 @@ function OrderConfirmModal({
             ✅ Sí, pedido enviado — vaciar carrito
           </button>
 
-          {/* Retry */}
           <button
             onClick={onRetry}
             onMouseEnter={e => {
@@ -127,7 +291,6 @@ function OrderConfirmModal({
             🔄 No llegó — reintentar WhatsApp
           </button>
 
-          {/* Cancel */}
           <button
             onClick={onCancel}
             style={{
@@ -147,10 +310,8 @@ function OrderConfirmModal({
       <style>{`
         @keyframes cartFadeIn  { from { opacity:0 } to { opacity:1 } }
         @keyframes cartSlideUp { from { opacity:0; transform:translateY(20px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
-        /* Restore cursor inside this modal regardless of global rules */
         [data-order-modal="true"],
         [data-order-modal="true"] * { cursor: default !important; }
-        /* Also restore when html has data-cursor-restore attr */
         html[data-cursor-restore="true"] body *  { cursor: default !important; }
         html[data-cursor-restore="true"] .custom-cursor-el { display: none !important; }
       `}</style>
@@ -268,7 +429,7 @@ function CartExtras({
 }
 
 /* ── Main Cart ────────────────────────────────────────────────────────────── */
-export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, onClearCart, onAddExtra }: CartProps) {
+export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, onClearCart, onAddExtra, onAddProduct }: CartProps) {
   const drawerRef       = useRef<HTMLDivElement>(null);
   const backdropRef     = useRef<HTMLDivElement>(null);
   const itemsRef        = useRef<HTMLDivElement>(null);
@@ -276,8 +437,11 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
   const initialized     = useRef(false);
 
   const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
+  const [showCapture, setShowCapture]       = useState(false);
   const [showConfirm, setShowConfirm]       = useState(false);
   const [waUrl, setWaUrl]                   = useState('');
+  const [customerName, setCustomerName]     = useState('');
+  const [customerPhone, setCustomerPhone]   = useState('');
 
   /* ── Load WhatsApp number ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -365,7 +529,55 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     return `https://wa.me/${cleanNum}?text=${encodeURIComponent(message)}`;
   }, [items, total, whatsappNumber]);
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
+    // Step 1: Show customer capture modal
+    setShowCapture(true);
+  };
+
+  const handleCustomerSubmit = async (name: string, phone: string) => {
+    setCustomerName(name);
+    setCustomerPhone(phone);
+    setShowCapture(false);
+    await submitOrderAndOpenWhatsApp();
+  };
+
+  const handleCustomerSkip = async () => {
+    setShowCapture(false);
+    await submitOrderAndOpenWhatsApp();
+  };
+
+  const submitOrderAndOpenWhatsApp = async () => {
+    track('whatsapp_click', { items: items.length, total });
+    // Save order to Supabase with customer data
+    const orderId = await AdminStore.submitOrder(items, total, whatsappNumber, customerName, customerPhone).catch(() => '');
+    track('order_placed', { value: total, currency: 'MXN', orderId, customerPhone: !!customerPhone });
+
+    // Track customer stats for CRM
+    if (customerPhone && customerPhone.length >= 10) {
+      const topItem = items.reduce<{ name: string; qty: number }>(
+        (best, i) => i.quantity > best.qty ? { name: i.name, qty: i.quantity } : best,
+        { name: '', qty: 0 }
+      );
+      AdminStore.trackCustomerOrder(
+        customerPhone,
+        customerName,
+        total,
+        new Date().toISOString(),
+        topItem.name || '',
+      ).catch(() => {});
+    }
+
+    // Save for reorder flow
+    try {
+      const orderSummary = {
+        name: `Pedido ${orderId?.slice(-4) || ''}`,
+        items: items.map(i => i.name),
+        total,
+        ts: Date.now(),
+      };
+      localStorage.setItem('snacks911_last_order', JSON.stringify(orderSummary));
+    } catch {}
+
     const url = buildWaUrl();
     setWaUrl(url);
     window.open(url, '_blank');
@@ -392,6 +604,15 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
   return (
     <>
+      {/* Step 1: Customer capture */}
+      {showCapture && (
+        <CustomerCaptureModal
+          onContinue={handleCustomerSubmit}
+          onSkip={handleCustomerSkip}
+        />
+      )}
+
+      {/* Step 2: Order confirm */}
       {showConfirm && (
         <OrderConfirmModal
           waUrl={waUrl}
@@ -594,9 +815,24 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
         {/* Footer checkout */}
         {items.length > 0 && (
-          <div style={{ padding: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ color: '#777', fontSize: '0.9rem' }}>Total</span>
+          <div style={{ padding: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {/* Upsell banner when below minimum */}
+            {onAddProduct && <CartUpsellBanner total={total} onAdd={onAddProduct} />}
+
+            {total >= 150 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.4rem 0.65rem', marginBottom: '0.65rem',
+                background: 'rgba(34,197,94,0.08)', borderRadius: '8px',
+                border: '1px solid rgba(34,197,94,0.2)',
+              }}>
+                <span style={{ fontSize: '0.7rem' }}>✅</span>
+                <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 700 }}>¡Pedido mínimo alcanzado!</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <span style={{ color: '#777', fontSize: '0.85rem' }}>Total</span>
               <span style={{ fontWeight: 900, color: '#FF4500', fontSize: '1.5rem' }}>${total}</span>
             </div>
             <button
