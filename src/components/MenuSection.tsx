@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { products, categories } from '@/data/products';
@@ -14,7 +14,7 @@ interface MenuSectionProps {
   onAddToCart: (product: Product) => void;
 }
 
-export default function MenuSection({ onAddToCart }: MenuSectionProps) {
+function MenuSectionComponent({ onAddToCart }: MenuSectionProps) {
   const [activeCategory, setActiveCategory] = useState('todos');
   const sectionRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -259,3 +259,7 @@ export default function MenuSection({ onAddToCart }: MenuSectionProps) {
     </section>
   );
 }
+
+const MenuSection = memo(MenuSectionComponent);
+
+export default MenuSection;

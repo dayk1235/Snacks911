@@ -22,52 +22,58 @@ export default function CustomCursor() {
   const mouseY = useRef(0);
   const isHovering = useRef(false);
 
-  const updateTrail = useCallback(() => {
-    // Lerp with high speed factor for snappy follow
-    trailX.current += (mouseX.current - trailX.current) * 0.35;
-    trailY.current += (mouseY.current - trailY.current) * 0.35;
+  const updateRAF = useCallback(() => {
+    // Glow trail follow
+    trailX.current += (mouseX.current - trailX.current) * 0.95;
+    trailY.current += (mouseY.current - trailY.current) * 0.95;
 
     if (trailRef.current) {
       trailRef.current.style.transform =
         `translate3d(${trailX.current}px, ${trailY.current}px, 0) scale(${isHovering.current ? 1.6 : 1})`;
     }
 
-    rafId.current = requestAnimationFrame(updateTrail);
+    // Main cursor follow
+    const cursor = cursorRef.current;
+    if (cursor && visible.current) {
+      // Add very slight easing to main cursor so it feels perfectly smooth (0.98 is near instant)
+      const cx = (lastPos.current.x += (mouseX.current - lastPos.current.x) * 1);
+      const cy = (lastPos.current.y += (mouseY.current - lastPos.current.y) * 1);
+      
+      const dx = mouseX.current - lastPos.current.x;
+      const dy = mouseY.current - lastPos.current.y;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      
+      // Interpolate rotation to make it feel natural but responsive
+      targetRotation.current = Math.max(-35, Math.min(35, angle * 0.25));
+      currentRotation.current += (targetRotation.current - currentRotation.current) * 0.3;
+
+      cursor.style.transform =
+        `translate3d(${cx}px, ${cy}px, 0) rotate(${currentRotation.current}deg) scale(${isHovering.current ? 1.3 : 1})`;
+    }
+
+    rafId.current = requestAnimationFrame(updateRAF);
   }, []);
+
+  const visible = useRef(false);
+  const targetRotation = useRef(0);
+  const currentRotation = useRef(0);
 
   useEffect(() => {
     const isTouch = window.matchMedia('(pointer: coarse)').matches;
     if (isTouch) return;
 
     document.documentElement.style.cursor = 'none';
-
     const cursor = cursorRef.current!;
-    let visible = false;
 
     const show = () => {
-      if (visible) return;
-      visible = true;
+      if (visible.current) return;
+      visible.current = true;
       cursor.parentElement!.style.opacity = '1';
     };
 
     const onMove = (e: MouseEvent) => {
-      const { clientX: x, clientY: y } = e;
-
-      // Calculate tilt from movement delta
-      const dx = x - lastPos.current.x;
-      const dy = y - lastPos.current.y;
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      // Clamp rotation for a natural feel
-      const rotation = Math.max(-35, Math.min(35, angle * 0.3));
-
-      mouseX.current = x;
-      mouseY.current = y;
-
-      // Instant move via translate3d (GPU composited)
-      cursor.style.transform =
-        `translate3d(${x}px, ${y}px, 0) rotate(${rotation}deg) scale(${isHovering.current ? 1.3 : 1})`;
-
-      lastPos.current = { x, y };
+      mouseX.current = e.clientX;
+      mouseY.current = e.clientY;
       show();
     };
 
@@ -86,12 +92,12 @@ export default function CustomCursor() {
     const onClick = () => {
       cursor.style.transition = 'transform 0.08s ease-out';
       cursor.style.transform =
-        `translate3d(${mouseX.current}px, ${mouseY.current}px, 0) rotate(0deg) scale(0.7)`;
+        `translate3d(${mouseX.current}px, ${mouseY.current}px, 0) rotate(${currentRotation.current}deg) scale(0.7)`;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           cursor.style.transition = 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)';
           cursor.style.transform =
-            `translate3d(${mouseX.current}px, ${mouseY.current}px, 0) rotate(0deg) scale(1)`;
+            `translate3d(${mouseX.current}px, ${mouseY.current}px, 0) rotate(${currentRotation.current}deg) scale(1)`;
           setTimeout(() => {
             cursor.style.transition = 'filter 0.2s ease';
           }, 160);
@@ -99,10 +105,13 @@ export default function CustomCursor() {
       });
     };
 
-    // Start trail loop
+    // Start RAF loop
     trailX.current = window.innerWidth / 2;
     trailY.current = window.innerHeight / 2;
-    rafId.current = requestAnimationFrame(updateTrail);
+    lastPos.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    mouseX.current = trailX.current;
+    mouseY.current = trailY.current;
+    rafId.current = requestAnimationFrame(updateRAF);
 
     document.addEventListener('mousemove', onMove, { passive: true });
     document.addEventListener('mouseover', onEnter, { passive: true });
@@ -117,13 +126,14 @@ export default function CustomCursor() {
       document.removeEventListener('mouseout', onLeave);
       document.removeEventListener('click', onClick);
     };
-  }, [updateTrail]);
+  }, [updateRAF]);
 
   return (
     <div style={{ opacity: 0, pointerEvents: 'none' }}>
       {/* Glow trail */}
       <div
         ref={trailRef}
+        className="custom-cursor-el"
         style={{
           position: 'fixed',
           top: '-14px',
@@ -135,13 +145,13 @@ export default function CustomCursor() {
           pointerEvents: 'none',
           zIndex: 99998,
           willChange: 'transform',
-          transition: 'transform 0.08s linear',
         }}
       />
 
       {/* Main wing cursor */}
       <div
         ref={cursorRef}
+        className="custom-cursor-el"
         style={{
           position: 'fixed',
           top: '-16px',

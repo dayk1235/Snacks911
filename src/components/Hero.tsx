@@ -1,14 +1,31 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { memo, useRef, useEffect, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import FireCanvas from './FireCanvas';
+import { AdminStore } from '@/lib/adminStore';
+import type { BusinessSettings } from '@/lib/adminTypes';
 
 gsap.registerPlugin(SplitText);
 
-export default function Hero() {
-  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
+const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
+  whatsappNumber: '5215551234567',
+  heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
+  heroStats: [
+    { value: '500+', label: 'Pedidos diarios' },
+    { value: '4.9★', label: 'Calificación' },
+    { value: '30min', label: 'Tiempo promedio' },
+  ],
+  deliveryApps: [
+    { name: 'Uber Eats', href: 'https://ubereats.com',  icon: '🟢', color: '#06C167', enabled: true },
+    { name: 'Rappi',     href: 'https://rappi.com',      icon: '🟠', color: '#FF441A', enabled: true },
+    { name: 'DiDi Food', href: 'https://didiglobal.com', icon: '🟡', color: '#FF6E20', enabled: true },
+  ],
+};
+
+function HeroSection() {
+  const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
   const containerRef = useRef<HTMLElement>(null);
   const badgeRef     = useRef<HTMLDivElement>(null);
   const dotRef       = useRef<HTMLSpanElement>(null);
@@ -23,16 +40,9 @@ export default function Hero() {
   const orb2Ref      = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load WhatsApp number from AdminStore (reflects admin changes)
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('snacks911_admin_settings');
-        if (raw) {
-          const s = JSON.parse(raw);
-          if (s?.whatsappNumber) setWhatsappNumber(s.whatsappNumber);
-        }
-      } catch { /* ignore */ }
-    }
+    AdminStore.getSettings()
+      .then(s => setSiteSettings(s))
+      .catch(() => { /* ignore, fallback to defaults */ });
   }, []);
 
   useEffect(() => {
@@ -133,7 +143,7 @@ export default function Hero() {
       <div ref={orb2Ref} style={{ position: 'absolute', bottom: '22%', right: '8%', width: '380px', height: '380px', background: 'radial-gradient(circle, rgba(255,184,0,0.06) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
 
       {/* ── Main content ──── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: '80px 1.5rem 2rem' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: 'clamp(96px, 14vh, 130px) 1.5rem 2rem' }}>
         <div style={{ textAlign: 'center', maxWidth: '860px', width: '100%' }}>
           {/* Live pill */}
           <div
@@ -153,7 +163,7 @@ export default function Hero() {
             }}
           >
             <span ref={dotRef} style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#FF4500', flexShrink: 0 }} />
-            Abierto ahora · Entrega en ~30 min
+            {siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min'}
           </div>
 
           {/* Headline — Bebas Neue display font */}
@@ -214,7 +224,7 @@ export default function Hero() {
             </a>
             <a
               id="hero-cta-whatsapp"
-              href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer"
+              href={`https://wa.me/${siteSettings.whatsappNumber ?? '5215551234567'}`} target="_blank" rel="noopener noreferrer"
               onMouseEnter={handleCtaEnter} onMouseLeave={handleCtaLeave}
               style={{
                 background: 'rgba(255,255,255,0.04)',
@@ -231,13 +241,62 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Stats — clean Inter */}
+          {/* Delivery apps strip */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.6rem', flexWrap: 'wrap',
+            marginBottom: '3rem',
+          }}>
+            <span style={{
+              fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)',
+              fontFamily: 'var(--font-body)', fontWeight: 500,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+              marginRight: '0.25rem',
+            }}>
+              También en
+            </span>
+            {(siteSettings.deliveryApps ?? DEFAULT_SETTINGS.deliveryApps ?? []).filter(a => a.enabled).map(app => (
+              <a
+                key={app.name}
+                href={app.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background   = `${app.color}18`;
+                  el.style.borderColor  = `${app.color}55`;
+                  el.style.color        = '#fff';
+                  el.style.transform    = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background   = 'rgba(255,255,255,0.04)';
+                  el.style.borderColor  = 'rgba(255,255,255,0.09)';
+                  el.style.color        = 'rgba(255,255,255,0.5)';
+                  el.style.transform    = 'translateY(0)';
+                }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.4rem 1rem',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: '50px',
+                  textDecoration: 'none',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.78rem', fontWeight: 600,
+                  fontFamily: 'var(--font-body)',
+                  transition: 'all 0.22s ease',
+                }}
+              >
+                <span style={{ fontSize: '0.9rem' }}>{app.icon}</span>
+                {app.name}
+              </a>
+            ))}
+          </div>
+
+
           <div ref={statsRef} style={{ display: 'flex', gap: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {[
-              { value: '500+', label: 'Pedidos diarios' },
-              { value: '4.9★', label: 'Calificación' },
-              { value: '30min', label: 'Tiempo promedio' },
-            ].map((stat) => (
+            {(siteSettings.heroStats ?? DEFAULT_SETTINGS.heroStats ?? []).map((stat) => (
               <div key={stat.label} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.04em', color: '#FF4500' }}>
                   {stat.value}
@@ -251,32 +310,49 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* ── Bottom: arrow + ticker ── */}
-      <div style={{ position: 'relative', zIndex: 20, flexShrink: 0 }}>
+      {/* ── Bottom: only scroll arrow (ticker moved to fixed TickerBar) ── */}
+      <div style={{ position: 'relative', zIndex: 20, flexShrink: 0, paddingBottom: '3.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '0.5rem' }}>
           <div ref={arrowRef} style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1rem', userSelect: 'none' }}>↓</div>
-        </div>
-
-        <div style={{ background: '#FF4500', overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          <div className="ticker-track" style={{ display: 'flex', alignItems: 'center', width: 'max-content' }}>
-            {[0, 1].map((copy) => (
-              <div key={copy} aria-hidden={copy === 1} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, padding: '0.45rem 0' }}>
-                {['🍗 Alitas BBQ', '🔥 Boneless Picante', '🍟 Papas Loaded', '🚨 Combo 911', '⚡ Entrega Rápida', '🌶️ Sabor Extremo'].map((item) => (
-                  <span key={item} style={{
-                    display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em',
-                    color: 'rgba(255,255,255,0.95)', textTransform: 'uppercase', padding: '0 2rem',
-                  }}>
-                    {item}
-                    <span style={{ marginLeft: '2rem', opacity: 0.35, fontSize: '0.55rem' }}>◆</span>
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>
   );
 }
+
+const Hero = memo(HeroSection);
+
+export default Hero;
+
+/* ── Fixed Ticker Bar — lives above all gsap-panels ─────────────────────── */
+export const TickerBar = memo(function TickerBar() {
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0, left: 0, right: 0,
+      zIndex: 90, // below navbar (100) but above all panels
+      background: '#FF4500',
+      borderTop: '1px solid rgba(255,255,255,0.15)',
+      overflow: 'hidden',
+      pointerEvents: 'none',
+    }}>
+      <div className="ticker-track" style={{ display: 'flex', alignItems: 'center', width: 'max-content' }}>
+        {[0, 1].map((copy) => (
+          <div key={copy} aria-hidden={copy === 1} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, padding: '0.45rem 0' }}>
+            {['🍗 Alitas BBQ', '🔥 Boneless Picante', '🍟 Papas Loaded', '🚨 Combo 911', '⚡ Entrega Rápida', '🌶️ Sabor Extremo'].map((item) => (
+              <span key={item} style={{
+                display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em',
+                color: 'rgba(255,255,255,0.95)', textTransform: 'uppercase', padding: '0 2rem',
+              }}>
+                {item}
+                <span style={{ marginLeft: '2rem', opacity: 0.35, fontSize: '0.55rem' }}>◆</span>
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});

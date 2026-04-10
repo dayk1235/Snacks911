@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { AdminStore } from '@/lib/adminStore';
@@ -13,20 +13,23 @@ interface ExtrasSectionProps {
   onAddToCart: (product: Product) => void;
 }
 
-export default function ExtrasSection({ onAddToCart }: ExtrasSectionProps) {
+function ExtrasSectionComponent({ onAddToCart }: ExtrasSectionProps) {
   const [extras, setExtras] = useState<AdminProduct[]>([]);
+  const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const sectionRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const products = AdminStore.getProducts();
-    const extraItems = products.filter(p => p.category === 'extras' && p.available);
-    setExtras(extraItems);
+    AdminStore.getProducts().then(all => {
+      setExtras(all.filter(p => p.category === 'extras' && p.available));
+      setReady(true);
+    });
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     if (!headerRef.current || !gridRef.current) return;
     const ctx = gsap.context(() => {
       gsap.from(headerRef.current, {
@@ -39,7 +42,7 @@ export default function ExtrasSection({ onAddToCart }: ExtrasSectionProps) {
       });
     }, sectionRef);
     return () => ctx.revert();
-  }, [extras]);
+  }, [extras, ready]);
 
   const toggleExtra = (extra: AdminProduct) => {
     const newSelected = new Set(selected);
@@ -61,7 +64,7 @@ export default function ExtrasSection({ onAddToCart }: ExtrasSectionProps) {
     setSelected(newSelected);
   };
 
-  if (extras.length === 0) return null;
+  if (!ready || extras.length === 0) return null;
 
   return (
     <section
@@ -177,3 +180,7 @@ export default function ExtrasSection({ onAddToCart }: ExtrasSectionProps) {
     </section>
   );
 }
+
+const ExtrasSection = memo(ExtrasSectionComponent);
+
+export default ExtrasSection;

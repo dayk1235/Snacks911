@@ -1,222 +1,206 @@
+/**
+ * adminStore.ts — Thin async wrapper over db.ts (Supabase).
+ * All methods are now async. Falls back to localStorage when Supabase is unavailable.
+ */
+
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
 } from './adminTypes';
 
-// ─── localStorage keys ────────────────────────────────────────────────────────
+import {
+  dbGetProducts, dbSaveProduct, dbDeleteProduct, dbToggleProduct,
+  dbGetOrders, dbSaveOrder, dbUpdateOrderStatus,
+  dbGetSettings, dbSaveSettings,
+  dbGetSales,
+  dbGetCustomCategories, dbSaveCustomCategory, dbDeleteCustomCategory,
+} from './db';
+
+// ─── localStorage keys (used as offline cache) ────────────────────────────────
 const K = {
   PRODUCTS:   'snacks911_admin_products',
   ORDERS:     'snacks911_admin_orders',
   SETTINGS:   'snacks911_admin_settings',
-  SALES:      'snacks911_admin_sales',
   CATEGORIES: 'snacks911_admin_categories',
 } as const;
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-const today = new Date().toISOString().slice(0, 10);
-const ts = (h: number, m = 0) =>
-  new Date(new Date().setHours(h, m, 0, 0)).toISOString();
-
-const SEED_PRODUCTS: AdminProduct[] = [
-  { id: 'p1', name: 'Alitas BBQ',              price: 120, category: 'alitas',   available: true,  description: '8 alitas bañadas en salsa BBQ ahumada',          imageUrl: '' },
-  { id: 'p2', name: 'Alitas Buffalo',           price: 120, category: 'alitas',   available: true,  description: '8 alitas en salsa buffalo picante clásica',      imageUrl: '' },
-  { id: 'p3', name: 'Boneless Mango Habanero',  price: 130, category: 'boneless', available: true,  description: '10 boneless con salsa mango habanero artesanal', imageUrl: '' },
-  { id: 'p4', name: 'Boneless BBQ Ranch',       price: 125, category: 'boneless', available: false, description: '10 boneless en salsa BBQ con aderezo ranch',      imageUrl: '' },
-  { id: 'p5', name: 'Papas Gajo Loaded',        price: 80,  category: 'papas',    available: true,  description: 'Papas gajo con queso, tocino y jalapeños',       imageUrl: '' },
-  { id: 'p6', name: 'Combo 911',                price: 220, category: 'combos',   available: true,  description: '12 alitas + papas gajo + 2 refrescos',           imageUrl: '' },
-  // Extras
-  { id: 'e1', name: 'Salsa Valentina',      price: 5,   category: 'extras', available: true, description: 'Salsa Valentina extra',            imageUrl: '' },
-  { id: 'e2', name: 'Salsa Buffalo',         price: 10,  category: 'extras', available: true, description: 'Porción extra de salsa buffalo',    imageUrl: '' },
-  { id: 'e3', name: 'Limones (6)',           price: 0,   category: 'extras', available: true, description: '6 limones frescos',                imageUrl: '' },
-  { id: 'e4', name: 'Cebolla Curtida',       price: 10,  category: 'extras', available: true, description: 'Porción de cebolla curtida',       imageUrl: '' },
-  { id: 'e5', name: 'Zanahorias',            price: 10,  category: 'extras', available: true, description: 'Zanahorias con limón y chile',     imageUrl: '' },
-  { id: 'e6', name: 'Queso Extra',           price: 20,  category: 'extras', available: true, description: 'Porción extra de queso derretido', imageUrl: '' },
-  { id: 'e7', name: 'Refresco',              price: 25,  category: 'extras', available: true, description: 'Refresco de 600ml',                imageUrl: '' },
-  { id: 'e8', name: 'Salsa Habanero',        price: 10,  category: 'extras', available: true, description: 'Salsa habanero artesanal 🌶️',     imageUrl: '' },
-];
-
-const SEED_ORDERS: Order[] = [
-  {
-    id: 'ORD-001', status: 'pending',   total: 120,  createdAt: ts(12, 48), customerName: 'Carlos M.',    customerPhone: '555-1234',
-    items: [{ productId: 'p1', productName: 'Alitas BBQ',             quantity: 1, price: 120 }],
-  },
-  {
-    id: 'ORD-002', status: 'preparing', total: 300,  createdAt: ts(12, 20), customerName: 'María G.',     customerPhone: '555-5678',
-    items: [
-      { productId: 'p6', productName: 'Combo 911',         quantity: 1, price: 220 },
-      { productId: 'p5', productName: 'Papas Gajo Loaded', quantity: 1, price: 80  },
-    ],
-  },
-  {
-    id: 'ORD-003', status: 'ready',     total: 130,  createdAt: ts(11, 55), customerName: 'Juan R.',      notes: 'Sin jalapeños',
-    items: [{ productId: 'p3', productName: 'Boneless Mango Habanero', quantity: 1, price: 130 }],
-  },
-  {
-    id: 'ORD-004', status: 'delivered', total: 240,  createdAt: ts(11, 10), customerName: 'Ana P.',
-    items: [{ productId: 'p1', productName: 'Alitas BBQ', quantity: 2, price: 120 }],
-  },
-  {
-    id: 'ORD-005', status: 'delivered', total: 220,  createdAt: ts(10, 30), customerName: 'Luis T.',
-    items: [{ productId: 'p6', productName: 'Combo 911', quantity: 1, price: 220 }],
-  },
-];
-
-const seedDate = (daysAgo: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-};
-
-const SEED_SALES: SaleRecord[] = [
-  { date: seedDate(6), total: 1240, orderCount: 12 },
-  { date: seedDate(5), total: 980,  orderCount: 9  },
-  { date: seedDate(4), total: 1560, orderCount: 14 },
-  { date: seedDate(3), total: 2100, orderCount: 19 },
-  { date: seedDate(2), total: 1780, orderCount: 16 },
-  { date: seedDate(1), total: 1340, orderCount: 12 },
-  { date: today,       total: 710,  orderCount: 6  },
-];
-
-const SEED_SETTINGS: BusinessSettings = {
-  prepTime: 25,
-  acceptingOrders: true,
-  whatsappNumber: '5215551234567',
-  openHours: {
-    Lunes:    { open: true,  from: '13:00', to: '22:00' },
-    Martes:   { open: true,  from: '13:00', to: '22:00' },
-    Miércoles:{ open: true,  from: '13:00', to: '22:00' },
-    Jueves:   { open: true,  from: '13:00', to: '23:00' },
-    Viernes:  { open: true,  from: '12:00', to: '00:00' },
-    Sábado:   { open: true,  from: '12:00', to: '00:00' },
-    Domingo:  { open: false, from: '13:00', to: '21:00' },
-  },
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function read<T>(key: string, fallback: T): T {
+function lsRead<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
 
-function write<T>(key: string, value: T): void {
+function lsWrite<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(value));
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
 // ─── AdminStore ───────────────────────────────────────────────────────────────
 export const AdminStore = {
-  // ── Products ──────────────────────────────────────────────────────────────
-  getProducts(): AdminProduct[] {
-    const stored = read<AdminProduct[] | null>(K.PRODUCTS, null);
-    if (!stored) {
-      write(K.PRODUCTS, SEED_PRODUCTS);
-      return SEED_PRODUCTS;
+
+  // ── Products ────────────────────────────────────────────────────────────────
+  async getProducts(): Promise<AdminProduct[]> {
+    try {
+      const products = await dbGetProducts();
+      lsWrite(K.PRODUCTS, products); // update local cache
+      return products;
+    } catch (e) {
+      console.warn('[AdminStore] Supabase unavailable, using localStorage', e);
+      return lsRead<AdminProduct[]>(K.PRODUCTS, []);
     }
-    return stored;
   },
 
-  saveProduct(product: AdminProduct): void {
-    const all = this.getProducts();
-    const idx = all.findIndex(p => p.id === product.id);
-    if (idx >= 0) {
-      all[idx] = product;
-    } else {
-      all.push(product);
+  async saveProduct(product: AdminProduct): Promise<void> {
+    try {
+      await dbSaveProduct(product);
+      // update local cache
+      const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
+      const idx = all.findIndex(p => p.id === product.id);
+      if (idx >= 0) all[idx] = product; else all.push(product);
+      lsWrite(K.PRODUCTS, all);
+    } catch (e) {
+      console.warn('[AdminStore] saveProduct fallback', e);
+      const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
+      const idx = all.findIndex(p => p.id === product.id);
+      if (idx >= 0) all[idx] = product; else all.push(product);
+      lsWrite(K.PRODUCTS, all);
     }
-    write(K.PRODUCTS, all);
   },
 
-  deleteProduct(id: string): void {
-    const all = this.getProducts().filter(p => p.id !== id);
-    write(K.PRODUCTS, all);
+  async deleteProduct(id: string): Promise<void> {
+    try {
+      await dbDeleteProduct(id);
+    } catch (e) {
+      console.warn('[AdminStore] deleteProduct fallback', e);
+    }
+    const all = lsRead<AdminProduct[]>(K.PRODUCTS, []).filter(p => p.id !== id);
+    lsWrite(K.PRODUCTS, all);
   },
 
-  toggleProduct(id: string): void {
-    const all = this.getProducts();
+  async toggleProduct(id: string): Promise<void> {
+    try {
+      await dbToggleProduct(id);
+    } catch (e) {
+      console.warn('[AdminStore] toggleProduct fallback', e);
+    }
+    const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
     const prod = all.find(p => p.id === id);
-    if (prod) { prod.available = !prod.available; write(K.PRODUCTS, all); }
+    if (prod) { prod.available = !prod.available; lsWrite(K.PRODUCTS, all); }
   },
 
-  // ── Orders ────────────────────────────────────────────────────────────────
-  getOrders(): Order[] {
-    const stored = read<Order[] | null>(K.ORDERS, null);
-    if (!stored) {
-      write(K.ORDERS, SEED_ORDERS);
-      return SEED_ORDERS;
+  // ── Orders ──────────────────────────────────────────────────────────────────
+  async getOrders(): Promise<Order[]> {
+    try {
+      const orders = await dbGetOrders();
+      lsWrite(K.ORDERS, orders);
+      return orders;
+    } catch (e) {
+      console.warn('[AdminStore] getOrders fallback', e);
+      return lsRead<Order[]>(K.ORDERS, []);
     }
-    return stored;
   },
 
-  saveOrder(order: Order): void {
-    const all = this.getOrders();
+  async saveOrder(order: Order): Promise<void> {
+    try {
+      await dbSaveOrder(order);
+    } catch (e) {
+      console.warn('[AdminStore] saveOrder fallback', e);
+    }
+    const all = lsRead<Order[]>(K.ORDERS, []);
     const idx = all.findIndex(o => o.id === order.id);
-    if (idx >= 0) { all[idx] = order; } else { all.unshift(order); }
-    write(K.ORDERS, all);
+    if (idx >= 0) all[idx] = order; else all.unshift(order);
+    lsWrite(K.ORDERS, all);
   },
 
-  updateOrderStatus(id: string, status: OrderStatus): void {
-    const all = this.getOrders();
-    const order = all.find(o => o.id === id);
-    if (order) { order.status = status; write(K.ORDERS, all); }
-  },
-
-  // ── Settings ──────────────────────────────────────────────────────────────
-  getSettings(): BusinessSettings {
-    const stored = read<BusinessSettings | null>(K.SETTINGS, null);
-    if (!stored) { write(K.SETTINGS, SEED_SETTINGS); return SEED_SETTINGS; }
-    return stored;
-  },
-
-  saveSettings(settings: BusinessSettings): void {
-    write(K.SETTINGS, settings);
-  },
-
-  // ── Sales ─────────────────────────────────────────────────────────────────
-  getSales(): SaleRecord[] {
-    const stored = read<SaleRecord[] | null>(K.SALES, null);
-    if (!stored) { write(K.SALES, SEED_SALES); return SEED_SALES; }
-    return stored;
-  },
-
-  // ── Custom Categories ─────────────────────────────────────────────────────
-  getCustomCategories(): CustomCategory[] {
-    return read<CustomCategory[]>(K.CATEGORIES, []);
-  },
-
-  saveCustomCategory(cat: CustomCategory): void {
-    const all = this.getCustomCategories();
-    const idx = all.findIndex(c => c.id === cat.id);
-    if (idx >= 0) { all[idx] = cat; } else { all.push(cat); }
-    write(K.CATEGORIES, all);
-  },
-
-  deleteCustomCategory(id: string): void {
-    const all = this.getCustomCategories().filter(c => c.id !== id);
-    write(K.CATEGORIES, all);
-  },
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  login(user: string, pass: string): boolean {
-    const validUser = process.env.NEXT_PUBLIC_ADMIN_USER ?? 'admin';
-    const validPass = process.env.NEXT_PUBLIC_ADMIN_PASS ?? 'snacks911';
-    if (user === validUser && pass === validPass) {
-      localStorage.setItem('admin_token', 'local_auth_ok');
-      return true;
+  async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+    try {
+      await dbUpdateOrderStatus(id, status);
+    } catch (e) {
+      console.warn('[AdminStore] updateOrderStatus fallback', e);
     }
-    return false;
+    const all = lsRead<Order[]>(K.ORDERS, []);
+    const order = all.find(o => o.id === id);
+    if (order) { order.status = status; lsWrite(K.ORDERS, all); }
   },
 
-  logout(): void {
-    localStorage.removeItem('admin_token');
+  // ── Settings ────────────────────────────────────────────────────────────────
+  async getSettings(): Promise<BusinessSettings> {
+    try {
+      const settings = await dbGetSettings();
+      lsWrite(K.SETTINGS, settings);
+      return settings;
+    } catch (e) {
+      console.warn('[AdminStore] getSettings fallback', e);
+      return lsRead<BusinessSettings>(K.SETTINGS, {
+        prepTime: 25, acceptingOrders: true, whatsappNumber: '5215551234567',
+        openHours: {}, businessName: 'Snacks 911', address: '',
+        heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
+        heroStats: [
+          { value: '500+', label: 'Pedidos diarios' },
+          { value: '4.9★', label: 'Calificación' },
+          { value: '30min', label: 'Tiempo promedio' },
+        ],
+        deliveryApps: [
+          { name: 'Uber Eats', href: 'https://ubereats.com',  icon: '🟢', color: '#06C167', enabled: true },
+          { name: 'Rappi',     href: 'https://rappi.com',      icon: '🟠', color: '#FF441A', enabled: true },
+          { name: 'DiDi Food', href: 'https://didiglobal.com', icon: '🟡', color: '#FF6E20', enabled: true },
+        ],
+      });
+    }
   },
 
-  isAuthed(): boolean {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('admin_token') === 'local_auth_ok';
+  async saveSettings(settings: BusinessSettings): Promise<void> {
+    try {
+      await dbSaveSettings(settings);
+    } catch (e) {
+      console.warn('[AdminStore] saveSettings fallback', e);
+    }
+    lsWrite(K.SETTINGS, settings);
+  },
+
+  // ── Sales ────────────────────────────────────────────────────────────────────
+  async getSales(): Promise<SaleRecord[]> {
+    try {
+      return await dbGetSales();
+    } catch (e) {
+      console.warn('[AdminStore] getSales fallback', e);
+      return [];
+    }
+  },
+
+  // ── Custom Categories ────────────────────────────────────────────────────────
+  async getCustomCategories(): Promise<CustomCategory[]> {
+    try {
+      const cats = await dbGetCustomCategories();
+      lsWrite(K.CATEGORIES, cats);
+      return cats;
+    } catch (e) {
+      console.warn('[AdminStore] getCustomCategories fallback', e);
+      return lsRead<CustomCategory[]>(K.CATEGORIES, []);
+    }
+  },
+
+  async saveCustomCategory(cat: CustomCategory): Promise<void> {
+    try {
+      await dbSaveCustomCategory(cat);
+    } catch (e) {
+      console.warn('[AdminStore] saveCustomCategory fallback', e);
+    }
+    const all = lsRead<CustomCategory[]>(K.CATEGORIES, []);
+    const idx = all.findIndex(c => c.id === cat.id);
+    if (idx >= 0) all[idx] = cat; else all.push(cat);
+    lsWrite(K.CATEGORIES, all);
+  },
+
+  async deleteCustomCategory(id: string): Promise<void> {
+    try {
+      await dbDeleteCustomCategory(id);
+    } catch (e) {
+      console.warn('[AdminStore] deleteCustomCategory fallback', e);
+    }
+    const all = lsRead<CustomCategory[]>(K.CATEGORIES, []).filter(c => c.id !== id);
+    lsWrite(K.CATEGORIES, all);
   },
 };

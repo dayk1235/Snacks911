@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import gsap from 'gsap';
-import { AdminStore } from '@/lib/adminStore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,25 +10,44 @@ export default function LoginPage() {
   const [pass, setPass]   = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    // Redirect if already logged in
-    if (AdminStore.isAuthed()) { router.replace('/admin'); return; }
+    setReady(true);
 
     gsap.from(cardRef.current, { opacity: 0, y: 40, duration: 0.6, ease: 'power3.out' });
-  }, [router]);
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (!ready) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#080808',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,69,0,0.2)', borderTop: '3px solid #FF4500', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      const ok = AdminStore.login(user, pass);
-      if (ok) {
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, pass }),
+      });
+
+      if (response.ok) {
         gsap.to(cardRef.current, {
           scale: 1.03, opacity: 0, duration: 0.35, ease: 'power2.in',
           onComplete: () => router.push('/admin'),
@@ -39,8 +57,11 @@ export default function LoginPage() {
         gsap.fromTo(formRef.current, { x: -10 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
         gsap.fromTo(formRef.current, { x: 10  }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)', delay: 0.05 });
       }
+    } catch {
+      setError('No se pudo iniciar sesión. Intenta de nuevo.');
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -59,11 +80,7 @@ export default function LoginPage() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1.5rem',
     }}>
-      {/* Glow background */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 60%, rgba(255,69,0,0.08) 0%, transparent 65%)',
-      }} />
+
 
       <div ref={cardRef} style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
         {/* Logo */}
@@ -142,9 +159,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p style={{ marginTop: '1.25rem', fontSize: '0.75rem', color: '#333', textAlign: 'center' }}>
-            Demo: admin / snacks911
-          </p>
         </div>
       </div>
     </div>

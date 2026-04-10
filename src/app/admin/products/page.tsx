@@ -13,6 +13,7 @@ const CARD: React.CSSProperties = {
 const emptyForm = (): Omit<AdminProduct, 'id'> => ({
   name: '', price: 0, category: 'alitas',
   description: '', imageUrl: '', available: true,
+  applicableProductIds: [],
 });
 
 export default function ProductsPage() {
@@ -32,9 +33,9 @@ export default function ProductsPage() {
   const gridRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const reload = () => {
-    setProducts(AdminStore.getProducts());
-    setCustomCats(AdminStore.getCustomCategories());
+  const reload = async () => {
+    setProducts(await AdminStore.getProducts());
+    setCustomCats(await AdminStore.getCustomCategories());
   };
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function ProductsPage() {
     gsap.from(gridRef.current?.children ?? [], {
       opacity: 0, y: 20, stagger: 0.06, duration: 0.45, ease: 'power3.out',
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Build all categories
@@ -64,7 +66,7 @@ export default function ProductsPage() {
 
   const openEdit = (p: AdminProduct) => {
     setEditTarget(p);
-    setForm({ name: p.name, price: p.price, category: p.category, description: p.description, imageUrl: p.imageUrl, available: p.available });
+    setForm({ name: p.name, price: p.price, category: p.category, description: p.description, imageUrl: p.imageUrl, available: p.available, applicableProductIds: p.applicableProductIds ?? [] });
     setFormErrors({});
     setShowNewCat(false);
     setModalOpen(true);
@@ -80,28 +82,24 @@ export default function ProductsPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    const product: AdminProduct = {
-      id: editTarget?.id ?? `p${Date.now()}`,
-      ...form,
-    };
-    AdminStore.saveProduct(product);
-    reload();
+    const product: AdminProduct = { id: editTarget?.id ?? `p${Date.now()}`, ...form };
+    await AdminStore.saveProduct(product);
+    await reload();
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    AdminStore.deleteProduct(id);
-    reload();
+  const handleDelete = async (id: string) => {
+    await AdminStore.deleteProduct(id);
+    await reload();
     setDeleteId(null);
   };
 
-  const handleToggle = (id: string) => {
-    AdminStore.toggleProduct(id);
-    reload();
+  const handleToggle = async (id: string) => {
+    await AdminStore.toggleProduct(id);
+    await reload();
   };
 
   const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,16 +111,12 @@ export default function ProductsPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     const id = newCatName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    const cat: CustomCategory = {
-      id,
-      label: `${newCatEmoji} ${newCatName.trim()}`,
-      emoji: newCatEmoji,
-    };
-    AdminStore.saveCustomCategory(cat);
-    setCustomCats(AdminStore.getCustomCategories());
+    const cat: CustomCategory = { id, label: `${newCatEmoji} ${newCatName.trim()}`, emoji: newCatEmoji };
+    await AdminStore.saveCustomCategory(cat);
+    setCustomCats(await AdminStore.getCustomCategories());
     setForm(f => ({ ...f, category: id }));
     setShowNewCat(false);
     setNewCatName('');
@@ -448,6 +442,73 @@ export default function ProductsPage() {
                 <input type="checkbox" checked={form.available} onChange={e => setForm(f => ({ ...f, available: e.target.checked }))} />
                 <span style={{ color: '#ccc', fontSize: '0.9rem' }}>Disponible para pedidos</span>
               </label>
+
+              {/* Applicable products — only shown when category is extras */}
+              {form.category === 'extras' && (() => {
+                const nonExtras = products.filter(p => p.category !== 'extras');
+                if (nonExtras.length === 0) return null;
+                const applicable = form.applicableProductIds ?? [];
+                const toggleProduct = (id: string) => {
+                  setForm(f => {
+                    const cur = f.applicableProductIds ?? [];
+                    return {
+                      ...f,
+                      applicableProductIds: cur.includes(id)
+                        ? cur.filter(x => x !== id)
+                        : [...cur, id],
+                    };
+                  });
+                };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={labelStyle}>🎯 Aplica para estos productos</span>
+                      <span style={{ fontSize: '0.7rem', color: '#444' }}>
+                        {applicable.length === 0 ? 'Todos (sin restricción)' : `${applicable.length} seleccionado(s)`}
+                      </span>
+                    </div>
+                    <div style={{
+                      maxHeight: '180px', overflowY: 'auto',
+                      display: 'flex', flexDirection: 'column', gap: '0.35rem',
+                      padding: '0.5rem',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      borderRadius: '10px',
+                    }}>
+                      {nonExtras.map(p => {
+                        const isChecked = applicable.includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '0.6rem',
+                              padding: '0.4rem 0.5rem', borderRadius: '7px', cursor: 'pointer',
+                              background: isChecked ? 'rgba(255,69,0,0.08)' : 'transparent',
+                              transition: 'background 0.15s',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleProduct(p.id)}
+                              style={{ accentColor: '#FF4500' }}
+                            />
+                            <span style={{ fontSize: '0.82rem', color: isChecked ? '#fff' : '#888', fontWeight: isChecked ? 700 : 400 }}>
+                              {p.name}
+                            </span>
+                            <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#444' }}>
+                              {allCatLabels[p.category] || p.category}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p style={{ fontSize: '0.68rem', color: '#444', margin: 0 }}>
+                      Sin selección = el extra aparece para todos los productos.
+                    </p>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setModalOpen(false)} style={{ flex: 1, padding: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#666', cursor: 'pointer', fontWeight: 600 }}>

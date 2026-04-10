@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AdminStore } from '@/lib/adminStore';
+
+// ─── Inactivity timeout (30 minutes) ───────────────────────────────────────
+const INACTIVITY_MS = 30 * 60 * 1000;
 
 const NAV = [
   { href: '/admin',          icon: '📊', label: 'Dashboard'    },
@@ -15,12 +18,77 @@ const NAV = [
 
 const LS_SIDEBAR_KEY = 'snacks911_sidebar_collapsed';
 
+// ─── Inactivity warning modal ───────────────────────────────────────────────
+function InactivityWarning({ secondsLeft, onStay, onLeave }: {
+  secondsLeft: number;
+  onStay: () => void;
+  onLeave: () => void;
+}) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backdropFilter: 'blur(6px)',
+    }}>
+      <div style={{
+        background: '#111', borderRadius: '20px',
+        border: '1px solid rgba(255,69,0,0.25)',
+        padding: '2rem 2.5rem', maxWidth: '380px', width: '100%',
+        textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,69,0,0.06)',
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⏳</div>
+        <h2 style={{ margin: '0 0 0.5rem', color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>
+          ¿Sigues ahí?
+        </h2>
+        <p style={{ color: '#666', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>
+          Tu sesión se cerrará por inactividad en
+        </p>
+        <div style={{
+          fontSize: '2.5rem', fontWeight: 900, color: '#FF4500',
+          fontFamily: '"Bebas Neue", sans-serif', letterSpacing: '0.05em',
+          margin: '0.25rem 0 1.5rem',
+        }}>
+          {secondsLeft}s
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={onLeave}
+            style={{
+              flex: 1, padding: '0.75rem',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px', color: '#888',
+              fontSize: '0.875rem', cursor: 'pointer', fontWeight: 600,
+            }}
+          >
+            Cerrar sesión
+          </button>
+          <button
+            onClick={onStay}
+            style={{
+              flex: 1, padding: '0.75rem',
+              background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+              border: 'none', borderRadius: '10px', color: '#fff',
+              fontSize: '0.875rem', cursor: 'pointer', fontWeight: 700,
+              boxShadow: '0 0 20px rgba(255,69,0,0.3)',
+            }}
+          >
+            Continuar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar ────────────────────────────────────────────────────────────────
 function Sidebar({ pendingCount }: { pendingCount: number }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Load preference from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LS_SIDEBAR_KEY);
@@ -34,9 +102,10 @@ function Sidebar({ pendingCount }: { pendingCount: number }) {
     localStorage.setItem(LS_SIDEBAR_KEY, String(next));
   };
 
-  const handleLogout = () => {
-    AdminStore.logout();
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => null);
     router.push('/admin/login');
+    router.refresh();
   };
 
   const width = collapsed ? '68px' : '240px';
@@ -188,7 +257,11 @@ function Sidebar({ pendingCount }: { pendingCount: number }) {
           </div>
         )}
         <button
-          onClick={handleLogout}
+          onClick={async () => {
+            await fetch('/api/admin/logout', { method: 'POST' }).catch(() => null);
+            // Use window.location for hard redirect to avoid Next.js client state
+            window.location.href = '/admin/login';
+          }}
           title="Cerrar sesión"
           style={{
             width: '100%', padding: collapsed ? '0.6rem' : '0.5rem',
@@ -209,51 +282,150 @@ function Sidebar({ pendingCount }: { pendingCount: number }) {
   );
 }
 
+// ─── Main Layout ─────────────────────────────────────────────────────────────
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router   = useRouter();
   const pathname = usePathname();
-  const [checking, setChecking]     = useState(true);
-  const [authed, setAuthed]         = useState(false);
-  const [pendingCount, setPending]  = useState(0);
+  const router   = useRouter();
+  const [pendingCount, setPending] = useState(0);
+  const [authState, setAuthState]  = useState<'loading' | 'ok' | 'denied'>('loading');
+  const [showWarning, setShowWarning] = useState(false);
+  const [countdown, setCountdown]    = useState(30);
 
+  const inactivityTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
   const isLogin = pathname === '/admin/login';
 
-  useEffect(() => {
-    const ok = AdminStore.isAuthed();
-    if (!ok && !isLogin) {
-      router.replace('/admin/login');
-    } else {
-      setAuthed(true);
-    }
-    setChecking(false);
-  }, [isLogin, router]);
+  // ── Perform logout ──────────────────────────────────────────────────────
+  const doLogout = useCallback(async () => {
+    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => null);
+    window.location.href = '/admin/login';
+  }, []);
 
-  // Poll pending orders for sidebar badge
+  // ── Reset inactivity timer ──────────────────────────────────────────────
+  const resetInactivity = useCallback(() => {
+    if (isLogin || authState !== 'ok') return;
+
+    // Clear existing timers
+    if (inactivityTimer.current)  clearTimeout(inactivityTimer.current);
+    if (warningTimer.current)     clearInterval(warningTimer.current);
+
+    setShowWarning(false);
+    setCountdown(30);
+
+    // Start warning 30 seconds before logout
+    inactivityTimer.current = setTimeout(() => {
+      setShowWarning(true);
+      let secs = 30;
+      setCountdown(secs);
+
+      warningTimer.current = setInterval(() => {
+        secs -= 1;
+        setCountdown(secs);
+        if (secs <= 0) {
+          clearInterval(warningTimer.current!);
+          doLogout();
+        }
+      }, 1000);
+    }, INACTIVITY_MS - 30_000);
+  }, [isLogin, authState, doLogout]);
+
+  // ── Bind activity events ────────────────────────────────────────────────
   useEffect(() => {
-    if (!authed || isLogin) return;
-    const refresh = () => {
-      const count = AdminStore.getOrders().filter(o => o.status === 'pending').length;
+    if (isLogin || authState !== 'ok') return;
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    const handler = () => resetInactivity();
+
+    events.forEach(ev => window.addEventListener(ev, handler, { passive: true }));
+    resetInactivity(); // kick off
+
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, handler));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (warningTimer.current)    clearInterval(warningTimer.current);
+    };
+  }, [isLogin, authState, resetInactivity]);
+
+  // ── Verify session on mount (client-side double-check) ──────────────────
+  useEffect(() => {
+    if (isLogin) {
+      setAuthState('ok'); // login page doesn't need auth check
+      return;
+    }
+
+    fetch('/api/admin/me')
+      .then(res => {
+        if (res.ok) {
+          setAuthState('ok');
+        } else {
+          setAuthState('denied');
+          window.location.href = '/admin/login';
+        }
+      })
+      .catch(() => {
+        setAuthState('denied');
+        window.location.href = '/admin/login';
+      });
+  }, [isLogin]);
+
+  // ── Poll pending orders for sidebar badge ───────────────────────────────
+  useEffect(() => {
+    if (isLogin || authState !== 'ok') return;
+    const refresh = async () => {
+      const orders = await AdminStore.getOrders();
+      const count = orders.filter(o => o.status === 'pending').length;
       setPending(count);
     };
     refresh();
-    const id = setInterval(refresh, 5000);
+    const id = setInterval(refresh, 8000);
     return () => clearInterval(id);
-  }, [authed, isLogin]);
+  }, [isLogin, authState]);
 
-  // Loading splash
-  if (checking) {
+  // ── Login page: render children directly ────────────────────────────────
+  if (isLogin) {
+    return <div data-admin="true" style={{ display: 'contents' }}>{children}</div>;
+  }
+
+  // ── Loading while verifying session ─────────────────────────────────────
+  if (authState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#080808', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,69,0,0.2)', borderTop: '3px solid #FF4500', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{
+        minHeight: '100vh', background: '#080808',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: '1rem',
+      }}>
+        <div style={{
+          width: '44px', height: '44px',
+          border: '3px solid rgba(255,69,0,0.15)',
+          borderTop: '3px solid #FF4500',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <p style={{ color: '#444', fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Verificando sesión…
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  if (isLogin) return <>{children}</>;
-  if (!authed)  return null;
+  // ── Access denied (shouldn't render, redirect happens in useEffect) ─────
+  if (authState === 'denied') return null;
 
+  // ── Authenticated: render panel ──────────────────────────────────────────
   return (
     <div data-admin="true" style={{ display: 'flex', minHeight: '100vh', background: '#080808' }}>
+      {showWarning && (
+        <InactivityWarning
+          secondsLeft={countdown}
+          onStay={() => {
+            if (warningTimer.current) clearInterval(warningTimer.current);
+            setShowWarning(false);
+            resetInactivity();
+          }}
+          onLeave={doLogout}
+        />
+      )}
       <Sidebar pendingCount={pendingCount} />
       <main style={{ flex: 1, overflow: 'auto', minHeight: '100vh', transition: 'margin-left 0.25s ease' }}>
         {children}

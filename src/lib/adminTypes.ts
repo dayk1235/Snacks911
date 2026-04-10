@@ -19,6 +19,8 @@ export interface AdminProduct {
   imageUrl: string;
   available: boolean;
   description: string;
+  /** Only for extras: which product IDs this extra applies to. Empty = applies to all. */
+  applicableProductIds?: string[];
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered';
@@ -53,11 +55,31 @@ export interface DayHours {
   to: string;              // 'HH:mm'
 }
 
+export interface DeliveryApp {
+  name: string;
+  href: string;
+  icon: string;
+  color: string;
+  enabled: boolean;
+}
+
+export interface HeroStat {
+  value: string;
+  label: string;
+}
+
 export interface BusinessSettings {
   prepTime: number;        // minutes
   acceptingOrders: boolean;
   whatsappNumber: string;
   openHours: Record<string, DayHours>;
+  // Info del negocio
+  businessName: string;
+  address: string;
+  // Hero content
+  heroBadgeText: string;
+  heroStats: HeroStat[];
+  deliveryApps: DeliveryApp[];
 }
 
 export interface CustomCategory {

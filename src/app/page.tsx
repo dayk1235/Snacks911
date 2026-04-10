@@ -1,23 +1,178 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
-import Hero from '@/components/Hero';
-import MenuSection from '@/components/MenuSection';
-import ExtrasSection from '@/components/ExtrasSection';
-import ReviewSection from '@/components/ReviewSection';
+import Hero, { TickerBar } from '@/components/Hero';
 import Cart from '@/components/Cart';
-import CustomCursor from '@/components/CustomCursor';
-import ChatBot from '@/components/ChatBot';
-import { initGlobalButtonPop } from '@/lib/sound';
+import SiteFooter from './components/SiteFooter';
 import type { Product } from '@/data/products';
 import type { CartItem } from '@/types';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Link from 'next/link';
+import type { AdminProduct } from '@/lib/adminTypes';
+
+
+gsap.registerPlugin(ScrollTrigger);
+
+const ReviewSection = dynamic(() => import('@/components/ReviewSection'), {
+  loading: () => <div style={{ minHeight: '720px', background: '#080808' }} />,
+});
+
+
+
+
+const ContactSection = dynamic(() => import('./components/ContactSection'), {
+  loading: () => <div style={{ minHeight: '640px', background: '#0a0a0a' }} />,
+});
+
+const ChatBot = dynamic(() => import('@/components/ChatBot'), {
+  ssr: false,
+});
+
+const CustomCursor = dynamic(() => import('@/components/CustomCursor'), {
+  ssr: false,
+});
+
+// ─── Menu teaser panel shown on homepage ─────────────────────────────────────
+function MenuTeaser() {
+  return (
+    <section
+      id="menu"
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '5rem 1.5rem',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Ambient fire glow */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'radial-gradient(ellipse 80% 60% at 50% 60%, rgba(255,69,0,0.12) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '-80px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '700px',
+        height: '300px',
+        background: 'radial-gradient(ellipse at center bottom, rgba(255,69,0,0.18) 0%, transparent 65%)',
+        pointerEvents: 'none',
+        filter: 'blur(40px)',
+      }} />
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '640px' }}>
+        <span data-reveal="up" style={{
+          display: 'block',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.78rem',
+          color: '#FF4500',
+          fontWeight: 700,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          marginBottom: '1.25rem',
+        }}>🍗 Menú Completo</span>
+
+        <h2 data-reveal="up" style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(3rem, 8vw, 6rem)',
+          fontWeight: 400,
+          color: '#fff',
+          letterSpacing: '0.04em',
+          margin: '0 0 1rem',
+          lineHeight: 0.95,
+        }}>
+          ¿QUÉ SE TE<br />
+          <span style={{ color: '#FF4500' }}>ANTOJA?</span>
+        </h2>
+
+        <p data-reveal="up" style={{
+          fontFamily: 'var(--font-body)',
+          color: '#666',
+          fontSize: '1.05rem',
+          lineHeight: 1.6,
+          margin: '0 0 2.5rem',
+        }}>
+          Alitas, boneless, papas y más — todo en un solo lugar.
+          Escoge, personaliza y pide directo por WhatsApp.
+        </p>
+
+        {/* Category previews */}
+        <div data-reveal-group style={{
+          display: 'flex',
+          gap: '0.75rem',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '2.5rem',
+        }}>
+          {['🍗 Alitas', '🔥 Boneless', '🍟 Papas', '🚨 Combos'].map((cat) => (
+            <span key={cat} style={{
+              padding: '0.5rem 1.15rem',
+              borderRadius: '50px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#888',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+            }}>{cat}</span>
+          ))}
+        </div>
+
+        {/* CTA Button */}
+        <Link
+          href="/menu"
+          data-reveal="scale"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '1.1rem 2.75rem',
+            background: 'linear-gradient(135deg, #FF4500 0%, #FF6A00 100%)',
+            borderRadius: '100px',
+            color: '#fff',
+            textDecoration: 'none',
+            fontFamily: 'var(--font-display)',
+            fontSize: '1.55rem',
+            letterSpacing: '0.08em',
+            fontWeight: 400,
+            boxShadow: '0 0 40px rgba(255,69,0,0.4), 0 8px 32px rgba(255,69,0,0.25)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.transform = 'scale(1.05) translateY(-2px)';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 60px rgba(255,69,0,0.55), 0 12px 40px rgba(255,69,0,0.35)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.transform = 'scale(1) translateY(0)';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 40px rgba(255,69,0,0.4), 0 8px 32px rgba(255,69,0,0.25)';
+          }}
+        >
+          VER MENÚ COMPLETO
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 export default function Page() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
 
-  const addToCart = (product: Product) => {
+  const addToCart = useCallback((product: Product) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -27,278 +182,140 @@ export default function Page() {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = useCallback((id: number, delta: number) => {
     setCartItems((prev) =>
       prev
         .map((item) => (item.id === id ? { ...item, quantity: item.quantity + delta } : item))
         .filter((item) => item.quantity > 0)
     );
-  };
+  }, []);
+
+  const handleCartOpen = useCallback(() => {
+    setCartOpen(true);
+  }, []);
+
+  const handleCartClose = useCallback(() => {
+    setCartOpen(false);
+  }, []);
+
+  const handleClearCart = useCallback(() => {
+    setCartItems([]);
+  }, []);
+
+  const handleAddExtra = useCallback((extra: AdminProduct) => {
+    const asProduct = {
+      id: parseInt(extra.id.replace(/\D/g, '')) + 900,
+      name: extra.name,
+      description: extra.description,
+      price: extra.price,
+      category: 'extras' as const,
+      image: extra.imageUrl || '/images/combo.webp',
+    };
+    addToCart(asProduct);
+  }, [addToCart]);
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Always-on subtle button pop sound
+  // GSAP Layered Pinning (Panel Wipe)
   useEffect(() => {
-    const cleanup = initGlobalButtonPop();
-    return cleanup;
+    const timer = setTimeout(() => {
+      const ctx = gsap.context(() => {
+        const panels = gsap.utils.toArray<HTMLElement>('[data-pin-panel="true"]');
+        panels.forEach((panel, i) => {
+          if (i === panels.length - 1) return;
+          ScrollTrigger.create({
+            trigger: panel,
+            start: () => panel.offsetHeight <= window.innerHeight ? 'top top' : 'bottom bottom',
+            pin: true,
+            pinSpacing: true,
+          });
+        });
+      });
+      return () => ctx.revert();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ScrollTrigger reveal animations for elements inside each panel
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Reveal anything tagged with [data-reveal]
+      const revealEls = gsap.utils.toArray<HTMLElement>('[data-reveal]');
+      revealEls.forEach((el) => {
+        const dir = el.dataset.reveal || 'up';
+        const fromVars: gsap.TweenVars = { opacity: 0, duration: 0.7, ease: 'power3.out' };
+        if (dir === 'up')    { fromVars.y = 40; }
+        if (dir === 'left')  { fromVars.x = -40; }
+        if (dir === 'right') { fromVars.x = 40; }
+        if (dir === 'scale') { fromVars.scale = 0.88; fromVars.y = 20; }
+
+        gsap.from(el, {
+          ...fromVars,
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 88%',
+            toggleActions: 'play none none none',
+          },
+        });
+      });
+
+      // Staggered children reveal for [data-reveal-group]
+      const groups = gsap.utils.toArray<HTMLElement>('[data-reveal-group]');
+      groups.forEach((group) => {
+        gsap.from(group.children, {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          ease: 'power3.out',
+          stagger: 0.1,
+          scrollTrigger: {
+            trigger: group,
+            start: 'top 88%',
+            toggleActions: 'play none none none',
+          },
+        });
+      });
+    }, 400);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <main style={{ background: '#080808', minHeight: '100vh' }}>
+    <main style={{ background: '#080808', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
       <CustomCursor />
-      <Navbar cartCount={totalItems} onCartOpen={() => setCartOpen(true)} />
-      <Hero />
-      <MenuSection onAddToCart={addToCart} />
-      <ExtrasSection onAddToCart={addToCart} />
-      <ReviewSection />
-      <SiteFooter />
+      <TickerBar />
+      <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} />
+
+      <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 10, background: '#080808' }}>
+        <Hero />
+      </div>
+      <div className="gsap-panel" style={{ position: 'relative', zIndex: 11, background: '#080808', boxShadow: '0 -15px 30px rgba(0,0,0,0.8)' }}>
+        <ReviewSection />
+      </div>
+      <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 12, background: '#080808', boxShadow: '0 -15px 30px rgba(0,0,0,0.8)' }}>
+        <MenuTeaser />
+      </div>
+
+      <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 14, background: '#0a0a0a', boxShadow: '0 -15px 30px rgba(0,0,0,0.9)' }}>
+        <ContactSection />
+      </div>
+      <div style={{ position: 'relative', zIndex: 15, background: '#050505' }}>
+        <SiteFooter />
+      </div>
 
       <Cart
         isOpen={cartOpen}
-        onClose={() => setCartOpen(false)}
+        onClose={handleCartClose}
         items={cartItems}
         onUpdateQuantity={updateQuantity}
         total={totalPrice}
+        onClearCart={handleClearCart}
+        onAddExtra={handleAddExtra}
       />
 
       <ChatBot />
     </main>
-  );
-}
-
-/* ─────────────────────────── Footer ─────────────────────────────────────── */
-function SiteFooter() {
-  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('snacks911_admin_settings');
-        if (raw) {
-          const s = JSON.parse(raw);
-          if (s?.whatsappNumber) setWhatsappNumber(s.whatsappNumber);
-        }
-      } catch { /* ignore */ }
-    }
-  }, []);
-  const socialLinks = [
-    {
-      name: 'Instagram',
-      href: 'https://instagram.com/snacks911',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-        </svg>
-      ),
-      color: '#E1306C',
-    },
-    {
-      name: 'Facebook',
-      href: 'https://facebook.com/snacks911',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-        </svg>
-      ),
-      color: '#1877F2',
-    },
-    {
-      name: 'TikTok',
-      href: 'https://tiktok.com/@snacks911',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-        </svg>
-      ),
-      color: '#ee1d52',
-    },
-  ];
-
-  const deliveryApps = [
-    { name: 'Uber Eats', href: 'https://ubereats.com', emoji: '🟢', color: '#06C167', bg: 'rgba(6,193,103,0.08)' },
-    { name: 'Rappi',     href: 'https://rappi.com',    emoji: '🟠', color: '#FF441A', bg: 'rgba(255,68,26,0.08)'  },
-    { name: 'DiDi Food', href: 'https://didiglobal.com',emoji: '🟡',color: '#FF6E20', bg: 'rgba(255,110,32,0.08)' },
-  ];
-
-  const hours = [
-    { day: 'Lun–Mié', time: '1pm – 10pm' },
-    { day: 'Jue',     time: '1pm – 11pm' },
-    { day: 'Vie–Sáb', time: '12pm – 12am' },
-    { day: 'Dom',     time: 'Cerrado' },
-  ];
-
-  return (
-    <footer id="footer" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#050505' }}>
-      {/* Wave divider */}
-      <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent 0%, #FF4500 35%, #FFB800 50%, #FF4500 65%, transparent 100%)', opacity: 0.4 }} />
-
-      {/* Main grid */}
-      <div style={{
-        maxWidth: '1200px', margin: '0 auto',
-        padding: '4rem 2rem 2.5rem',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '3rem',
-      }}>
-
-        {/* Brand column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '2rem' }}>🚨</span>
-            <div>
-              <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: '1.8rem', letterSpacing: '0.06em', lineHeight: 1 }}>
-                <span style={{ color: '#fff' }}>SNACKS</span>
-                <span style={{ color: '#FF4500' }}> 911</span>
-              </div>
-            </div>
-          </div>
-          <p style={{ fontSize: '0.875rem', color: '#555', lineHeight: 1.7, maxWidth: '240px' }}>
-            Cuando el antojo no puede esperar. Alitas, boneless y papas que te van a romper el alma 🔥
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {socialLinks.map(s => (
-              <a
-                key={s.name}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={s.name}
-                style={{
-                  width: '40px', height: '40px', borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#666', textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.background = `${s.color}20`;
-                  (e.currentTarget as HTMLElement).style.borderColor = `${s.color}50`;
-                  (e.currentTarget as HTMLElement).style.color = s.color;
-                  (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)';
-                  (e.currentTarget as HTMLElement).style.color = '#666';
-                  (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-                }}
-              >
-                {s.icon}
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Horarios */}
-        <div>
-          <h4 style={{ fontSize: '0.72rem', color: '#FF4500', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
-            ⏰ Horarios
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {hours.map(h => (
-              <div key={h.day} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.855rem', color: '#555', fontWeight: 500 }}>{h.day}</span>
-                <span style={{
-                  fontSize: '0.855rem', fontWeight: 700,
-                  color: h.time === 'Cerrado' ? '#333' : '#ccc',
-                }}>{h.time}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{
-            marginTop: '1.25rem', padding: '0.75rem 1rem',
-            background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
-            borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem',
-          }}>
-            <span style={{ fontSize: '0.75rem' }}>🟢</span>
-            <span style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 600 }}>Aceptando pedidos ahora</span>
-          </div>
-        </div>
-
-        {/* Delivery Apps */}
-        <div>
-          <h4 style={{ fontSize: '0.72rem', color: '#FF4500', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
-            🛵 Pídenos en
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {deliveryApps.map(app => (
-              <a
-                key={app.name}
-                href={app.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem 1rem', borderRadius: '12px',
-                  background: app.bg, border: `1px solid ${app.color}25`,
-                  textDecoration: 'none', color: '#ccc',
-                  fontSize: '0.9rem', fontWeight: 600,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.transform = 'translateX(4px)';
-                  (e.currentTarget as HTMLElement).style.color = '#fff';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.transform = 'translateX(0)';
-                  (e.currentTarget as HTMLElement).style.color = '#ccc';
-                }}
-              >
-                <span style={{ fontSize: '1.2rem' }}>{app.emoji}</span>
-                <span>{app.name}</span>
-                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: app.color }}>↗</span>
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Contact */}
-        <div>
-          <h4 style={{ fontSize: '0.72rem', color: '#FF4500', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
-            📍 Contacto
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-            <a
-              href={`https://wa.me/${whatsappNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.6rem',
-                color: '#25D366', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
-              }}
-            >
-              <span style={{ fontSize: '1.1rem' }}>📱</span> WhatsApp
-            </a>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', color: '#555', fontSize: '0.875rem' }}>
-              <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>📍</span>
-              <span style={{ lineHeight: 1.6 }}>Tu Ciudad, México<br />Entrega a domicilio</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#555', fontSize: '0.875rem' }}>
-              <span style={{ fontSize: '1.1rem' }}>🚀</span>
-              <span>Entrega en ~30 min</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom bar */}
-      <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.04)',
-        padding: '1.25rem 2rem',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
-        gap: '0.75rem', maxWidth: '1200px', margin: '0 auto',
-      }}>
-        <p style={{ color: '#333', fontSize: '0.8rem', margin: 0 }}>
-          © {new Date().getFullYear()} Snacks 911. Todos los derechos reservados.
-        </p>
-        <p style={{ color: '#333', fontSize: '0.8rem', margin: 0 }}>
-          Hecho con 🔥 para los amantes del snack
-        </p>
-      </div>
-    </footer>
   );
 }

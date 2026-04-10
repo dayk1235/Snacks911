@@ -57,7 +57,9 @@ body {
 
 /* ─── Custom cursor on desktop ─────────────────────────────────────────────── */
 @media (pointer: fine) {
-  *, *::before, *::after {
+  body:not(:has([data-admin="true"])) *, 
+  body:not(:has([data-admin="true"])) *::before, 
+  body:not(:has([data-admin="true"])) *::after {
     cursor: none !important;
   }
 }

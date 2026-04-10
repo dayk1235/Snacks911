@@ -56,7 +56,9 @@ export default function FireCanvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const isLowEnd = window.innerWidth < 768;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const isLowEnd = prefersReducedMotion || isCoarsePointer || window.innerWidth < 768;
 
     /* ── Resize ─────────────────────────────────────────────────────────── */
     const resize = () => {
@@ -64,6 +66,16 @@ export default function FireCanvas() {
       canvas.height = canvas.offsetHeight;
     };
     resize();
+
+    if (prefersReducedMotion) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(255,69,0,0.04)');
+      gradient.addColorStop(0.55, 'rgba(255,120,0,0.08)');
+      gradient.addColorStop(1, 'rgba(255,69,0,0.14)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
 
     /* ── State ──────────────────────────────────────────────────────────── */
     const mouse = {
@@ -75,6 +87,8 @@ export default function FireCanvas() {
     };
     let scrollY  = 0;
     let time     = 0;
+    let isDocumentVisible = !document.hidden;
+    let isInView = true;
 
     /* ── Listeners ──────────────────────────────────────────────────────── */
     const onMove = (e: MouseEvent) => {
@@ -84,9 +98,18 @@ export default function FireCanvas() {
       mouse.active = true;
     };
     const onScroll = () => { scrollY = window.scrollY; };
+    const onVisibilityChange = () => {
+      isDocumentVisible = !document.hidden;
+      if (isDocumentVisible && isInView && !running) {
+        raf = requestAnimationFrame(draw);
+      }
+    };
 
-    window.addEventListener('mousemove', onMove);
+    if (!isCoarsePointer) {
+      window.addEventListener('mousemove', onMove);
+    }
     window.addEventListener('scroll',    onScroll, { passive: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     /* ── Glow orbs (GSAP animates plain objects) ────────────────────────── */
     const orbs: GlowOrb[] = [
@@ -109,7 +132,7 @@ export default function FireCanvas() {
     orbs.forEach(animateOrb);
 
     /* ── Ember factory ──────────────────────────────────────────────────── */
-    const TARGET_COUNT = isLowEnd ? 55 : 110;
+    const TARGET_COUNT = isLowEnd ? 28 : 72;
 
     const mkEmber = (
       spawnX?: number,
@@ -144,9 +167,16 @@ export default function FireCanvas() {
     /* ─────────────────────────────────────────────────────────────────────
        DRAW LOOP
     ───────────────────────────────────────────────────────────────────── */
-    let raf: number;
+    let raf = 0;
+    let running = false;
 
     const draw = () => {
+      if (!isDocumentVisible || !isInView) {
+        running = false;
+        return;
+      }
+
+      running = true;
       time++;
       const w = canvas.width;
       const h = canvas.height;
@@ -324,16 +354,36 @@ export default function FireCanvas() {
       raf = requestAnimationFrame(draw);
     };
 
-    draw();
-
-    const ro = new ResizeObserver(resize);
+    const ro = new ResizeObserver(() => {
+      resize();
+      if (!running && isDocumentVisible && isInView) {
+        raf = requestAnimationFrame(draw);
+      }
+    });
     ro.observe(canvas);
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isInView = entry.isIntersecting;
+        if (isInView && isDocumentVisible && !running) {
+          raf = requestAnimationFrame(draw);
+        }
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(canvas);
+
+    raf = requestAnimationFrame(draw);
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('mousemove', onMove);
+      if (!isCoarsePointer) {
+        window.removeEventListener('mousemove', onMove);
+      }
       window.removeEventListener('scroll',    onScroll);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       ro.disconnect();
+      io.disconnect();
       orbs.forEach(o => gsap.killTweensOf(o));
     };
   }, []);

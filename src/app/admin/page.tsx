@@ -18,13 +18,21 @@ export default function DashboardPage() {
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    const o = AdminStore.getOrders();
-    const p = AdminStore.getProducts();
-    setOrders(o);
-    setProducts(p);
+    const load = async () => {
+      const o = await AdminStore.getOrders();
+      const p = await AdminStore.getProducts();
+      setOrders(o);
+      setProducts(p);
 
-    const validCards = cardsRef.current.filter(Boolean);
-    gsap.from(validCards, { opacity: 0, y: 28, stagger: 0.09, duration: 0.5, ease: 'power3.out' });
+      const validCards = cardsRef.current.filter(Boolean);
+      gsap.set(validCards, { opacity: 1, y: 0 });
+      gsap.fromTo(
+        validCards,
+        { opacity: 0, y: 28 },
+        { opacity: 1, y: 0, stagger: 0.09, duration: 0.5, ease: 'power3.out' }
+      );
+    };
+    load();
   }, []);
 
   // KPI computations
@@ -180,12 +188,12 @@ export default function DashboardPage() {
 function StatusWidget() {
   const [accepting, setAccepting] = useState(true);
   useEffect(() => {
-    setAccepting(AdminStore.getSettings().acceptingOrders);
+    AdminStore.getSettings().then(s => setAccepting(s.acceptingOrders));
   }, []);
-  const toggle = () => {
-    const s = AdminStore.getSettings();
+  const toggle = async () => {
+    const s = await AdminStore.getSettings();
     s.acceptingOrders = !s.acceptingOrders;
-    AdminStore.saveSettings(s);
+    await AdminStore.saveSettings(s);
     setAccepting(s.acceptingOrders);
   };
   return (

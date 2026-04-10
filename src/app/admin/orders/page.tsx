@@ -147,22 +147,22 @@ export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [filter, setFilter]     = useState<OrderStatus | 'all'>('all');
 
-  const reload = useCallback(() => {
-    const o = AdminStore.getOrders()
+  const reload = useCallback(async () => {
+    const o = (await AdminStore.getOrders())
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setOrders(o);
   }, []);
 
   useEffect(() => {
     reload();
-    const id = setInterval(reload, 5000); // live refresh
+    const id = setInterval(reload, 8000); // live refresh every 8s
     return () => clearInterval(id);
   }, [reload]);
 
-  const advance = (id: string, currentStatus: OrderStatus) => {
+  const advance = async (id: string, currentStatus: OrderStatus) => {
     const next = STATUS_FLOW[currentStatus];
     if (!next) return;
-    AdminStore.updateOrderStatus(id, next);
+    await AdminStore.updateOrderStatus(id, next);
     reload();
   };
 

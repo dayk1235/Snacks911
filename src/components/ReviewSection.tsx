@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import gsap from 'gsap';
 
 interface Review {
   id: string;
@@ -22,10 +23,9 @@ const SEED_REVIEWS: Review[] = [
   { id: 'r6', name: 'Sofía L.',   emoji: '💪', rating: 5, text: 'Lo mejor que le ha pasado a mis noches de Netflix. Antojo resuelto en 30 min.', date: '2026-04-02', reaction: '🔥' },
 ];
 
-const EMOJIS   = ['😤', '🤩', '😮', '🥵', '😋', '💪', '🔥', '😱'];
+const EMOJIS    = ['😤', '🤩', '😮', '🥵', '😋', '💪', '🔥', '😱'];
 const REACTIONS = ['🔥', '❤️', '💯', '😍', '👏'];
-
-const LS_KEY = 'snacks911_reviews';
+const LS_KEY    = 'snacks911_reviews';
 
 function loadReviews(): Review[] {
   if (typeof window === 'undefined') return SEED_REVIEWS;
@@ -84,8 +84,7 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
         background: 'rgba(0,0,0,0.85)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 99990,
-        animation: 'fadeIn 0.25s ease',
+        zIndex: 99999,
       }}
     >
       <img
@@ -139,7 +138,6 @@ function ReviewCard({
         minWidth: '300px',
         maxWidth: '380px',
         flexShrink: 0,
-        height: 'auto',
         userSelect: 'none',
       }}
     >
@@ -168,21 +166,17 @@ function ReviewCard({
         <div
           onClick={() => onPhotoClick(review.photoUrl!)}
           style={{
-            borderRadius: '12px',
-            overflow: 'hidden',
+            borderRadius: '12px', overflow: 'hidden',
             border: '1px solid rgba(255,255,255,0.08)',
-            cursor: 'pointer',
-            position: 'relative',
+            cursor: 'pointer', position: 'relative',
           }}
         >
           <img
             src={review.photoUrl}
             alt={`Foto de ${review.name}`}
             style={{
-              width: '100%',
-              height: '160px',
-              objectFit: 'cover',
-              display: 'block',
+              width: '100%', height: '160px',
+              objectFit: 'cover', display: 'block',
               transition: 'transform 0.3s ease',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLImageElement).style.transform = 'scale(1.05)'; }}
@@ -199,11 +193,7 @@ function ReviewCard({
       )}
 
       {/* Text */}
-      <p style={{
-        fontSize: '0.9rem', color: '#bbb', lineHeight: 1.65,
-        margin: 0, flex: 1,
-        fontStyle: 'italic',
-      }}>
+      <p style={{ fontSize: '0.9rem', color: '#bbb', lineHeight: 1.65, margin: 0, fontStyle: 'italic' }}>
         &quot;{review.text}&quot;
       </p>
 
@@ -230,122 +220,196 @@ function ReviewCard({
   );
 }
 
-/* ── Infinite Carousel ────────────────────────────────────────────────────── */
-function InfiniteCarousel({
+/* ── Auto-scroll infinite carousel ─────────────────────────────────────── */
+function ReviewRail({
   reviews,
   onReact,
   onPhotoClick,
+  onCreateReview,
 }: {
   reviews: Review[];
   onReact: (id: string, r: string) => void;
   onPhotoClick: (src: string) => void;
+  onCreateReview: () => void;
 }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [paused, setPaused] = useState(false);
+  const trackRef    = useRef<HTMLDivElement>(null);
+  const tweenRef    = useRef<gsap.core.Tween | null>(null);
+  const [active, setActive] = useState<string | null>(null);
 
-  // We need to duplicate items for seamless loop
-  const items = reviews.length > 0 ? [...reviews, ...reviews] : [];
+  // Duplicate cards to create seamless loop
+  const doubled = [...reviews, ...reviews];
 
-  // Calculate animation duration based on number of cards
-  const cardWidth = 340; // avg card width + gap
-  const totalWidth = reviews.length * cardWidth;
-  const speed = 40; // px per second
-  const duration = totalWidth / speed;
+  const startScroll = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const totalW = track.scrollWidth / 2; // half = one full set
+    tweenRef.current = gsap.to(track, {
+      x: `-${totalW}px`,
+      duration: reviews.length * 5, // ~5s per card
+      ease: 'none',
+      repeat: -1,
+      modifiers: {
+        x: gsap.utils.unitize((x: string) => parseFloat(x) % totalW, 'px'),
+      },
+    });
+  }, [reviews.length]);
+
+  useEffect(() => {
+    // Small delay so DOM has rendered
+    const t = setTimeout(startScroll, 80);
+    return () => {
+      clearTimeout(t);
+      tweenRef.current?.kill();
+    };
+  }, [startScroll]);
+
+  const pause = () => tweenRef.current?.pause();
+  const play  = () => tweenRef.current?.play();
 
   return (
-    <div
-      style={{
-        overflow: 'hidden',
-        maskImage: 'linear-gradient(90deg, transparent 0%, black 5%, black 95%, transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, black 5%, black 95%, transparent 100%)',
-        width: '100%',
-        padding: '0.5rem 0',
-      }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <div
-        ref={trackRef}
-        style={{
-          display: 'flex',
-          gap: '1.25rem',
-          width: 'max-content',
-          animation: `scroll-carousel ${duration}s linear infinite`,
-          animationPlayState: paused ? 'paused' : 'running',
-        }}
-      >
-        {items.map((review, i) => (
-          <ReviewCard
-            key={`${review.id}-${i}`}
-            review={review}
-            onReact={onReact}
-            onPhotoClick={onPhotoClick}
-          />
-        ))}
+    <div>
+      {/* Controls row */}
+      <div style={{
+        maxWidth: '1240px', margin: '0 auto',
+        padding: '0 1.5rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',
+      }}>
+        <div>
+          <div style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Lo que dicen</div>
+          <div style={{ color: '#444', fontSize: '0.82rem' }}>Pasa el cursor sobre una reseña para leerla con calma.</div>
+        </div>
+        <button
+          onClick={onCreateReview}
+          onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.05, duration: 0.18 })}
+          onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.18 })}
+          style={{
+            padding: '0.6rem 1.4rem',
+            background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+            border: 'none', borderRadius: '50px',
+            color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+            cursor: 'pointer', boxShadow: '0 4px 18px rgba(255,69,0,0.3)',
+          }}
+        >
+          ✍️ Dejar mi reseña
+        </button>
       </div>
 
-      <style>{`
-        @keyframes scroll-carousel {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-${totalWidth}px); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
+      {/* Carousel viewport — masks overflow both sides */}
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Left + right gradient fades */}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '80px', zIndex: 2, pointerEvents: 'none', background: 'linear-gradient(to right, #080808 0%, transparent 100%)' }} />
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '80px', zIndex: 2, pointerEvents: 'none', background: 'linear-gradient(to left, #080808 0%, transparent 100%)' }} />
+
+        {/* Moving track */}
+        <div
+          ref={trackRef}
+          onMouseEnter={pause}
+          onMouseLeave={play}
+          style={{
+            display: 'flex', gap: '20px',
+            padding: '0.75rem 0 1.5rem',
+            willChange: 'transform',
+            cursor: 'grab',
+          }}
+        >
+          {doubled.map((review, idx) => {
+            const isActive = active === `${review.id}-${idx}`;
+            return (
+              <div
+                key={`${review.id}-${idx}`}
+                onMouseEnter={e => {
+                  setActive(`${review.id}-${idx}`);
+                  gsap.to(e.currentTarget, {
+                    scale: 1.03, y: -6,
+                    boxShadow: '0 24px 60px rgba(255,69,0,0.18), 0 0 0 1px rgba(255,69,0,0.25)',
+                    duration: 0.3, ease: 'back.out(1.4)',
+                  });
+                }}
+                onMouseLeave={e => {
+                  setActive(null);
+                  gsap.to(e.currentTarget, {
+                    scale: 1, y: 0,
+                    boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+                    duration: 0.3, ease: 'power2.inOut',
+                  });
+                }}
+                style={{
+                  background: isActive
+                    ? 'rgba(255,69,0,0.06)'
+                    : 'rgba(255,255,255,0.04)',
+                  backdropFilter: 'blur(24px)',
+                  border: isActive
+                    ? '1px solid rgba(255,69,0,0.25)'
+                    : '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: '20px',
+                  padding: '1.6rem',
+                  display: 'flex', flexDirection: 'column', gap: '0.9rem',
+                  boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+                  minWidth: '300px', maxWidth: '360px', flexShrink: 0,
+                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                  userSelect: 'none',
+                }}
+              >
+                <ReviewCard
+                  review={review}
+                  onReact={onReact}
+                  onPhotoClick={onPhotoClick}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ── Main ReviewSection ───────────────────────────────────────────────────── */
-export default function ReviewSection() {
-  const [reviews, setReviews]       = useState<Review[]>([]);
-  const [showForm, setShowForm]     = useState(false);
-  const [formName, setFormName]     = useState('');
-  const [formEmoji, setFormEmoji]   = useState('😤');
+/* ── Review Modal Form ───────────────────────────────────────────────────── */
+function ReviewModal({ onClose }: { onClose: () => void }) {
+  const [formName,   setFormName]   = useState('');
+  const [formEmoji,  setFormEmoji]  = useState('😤');
   const [formRating, setFormRating] = useState(5);
-  const [formText, setFormText]     = useState('');
-  const [formPhoto, setFormPhoto]   = useState<string | null>(null);
-  const [submitted, setSubmitted]   = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-
+  const [formText,   setFormText]   = useState('');
+  const [formPhoto,  setFormPhoto]  = useState<string | null>(null);
+  const [submitted,  setSubmitted]  = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cardRef      = useRef<HTMLDivElement>(null);
+  const overlayRef   = useRef<HTMLDivElement>(null);
 
+  /* ── Lock body scroll ── */
   useEffect(() => {
-    setReviews(loadReviews());
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const handleReact = (id: string, reaction: string) => {
-    const updated = reviews.map(r => r.id === id ? { ...r, reaction } : r);
-    setReviews(updated);
-    saveReviews(updated);
+  /* ── Entrance animation ── */
+  useEffect(() => {
+    gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+    gsap.fromTo(cardRef.current,
+      { opacity: 0, y: 50, scale: 0.93 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.5)' }
+    );
+  }, []);
+
+  const handleClose = () => {
+    gsap.to(cardRef.current, { opacity: 0, y: 30, scale: 0.95, duration: 0.22, ease: 'power2.in' });
+    gsap.to(overlayRef.current, { opacity: 0, duration: 0.22, delay: 0.08, onComplete: onClose });
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate it's an image
-    if (!file.type.startsWith('image/')) return;
-
-    // Max 2MB
-    if (file.size > 2 * 1024 * 1024) {
-      alert('La imagen debe ser menor a 2MB');
-      return;
-    }
-
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) { alert('La imagen debe ser menor a 2MB'); return; }
     const reader = new FileReader();
-    reader.onload = () => {
-      setFormPhoto(reader.result as string);
-    };
+    reader.onload = () => setFormPhoto(reader.result as string);
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formText.trim()) return;
-
     const newReview: Review = {
       id: `r${Date.now()}`,
       name: formName.trim(),
@@ -355,28 +419,268 @@ export default function ReviewSection() {
       date: new Date().toISOString().slice(0, 10),
       photoUrl: formPhoto || undefined,
     };
-
-    const updated = [newReview, ...reviews];
-    setReviews(updated);
-    saveReviews(updated);
+    saveReviews([newReview, ...loadReviews()]);
     setSubmitted(true);
-    setFormName(''); setFormText(''); setFormRating(5); setFormEmoji('😤');
-    setFormPhoto(null);
-
-    setTimeout(() => { setSubmitted(false); setShowForm(false); }, 2500);
+    setTimeout(() => handleClose(), 2800);
   };
 
   return (
-    <section
-      id="reviews"
-      style={{ padding: '5rem 0', scrollMarginTop: '70px', overflow: 'hidden' }}
+    <div
+      ref={overlayRef}
+      onClick={e => { if (e.target === overlayRef.current) handleClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99995,
+        background: 'rgba(0,0,0,0.88)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 'clamp(0.75rem, 3vw, 2rem)',
+      }}
     >
-      {/* Lightbox */}
-      {lightboxSrc && (
-        <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
-      )}
+      <div
+        ref={cardRef}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: '560px',
+          background: 'linear-gradient(160deg, #141414 0%, #0d0d0d 100%)',
+          border: '1px solid rgba(255,69,0,0.22)',
+          borderRadius: '28px',
+          boxShadow: '0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 60px rgba(255,69,0,0.04)',
+          maxHeight: '92vh', overflowY: 'auto',
+          scrollbarWidth: 'thin',
+        }}
+      >
+        {submitted ? (
+          /* ── Success state ── */
+          <div style={{
+            textAlign: 'center', padding: '4rem 2rem',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
+          }}>
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: 'rgba(255,69,0,0.12)', border: '1px solid rgba(255,69,0,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '2.2rem',
+            }}>🔥</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: '#fff', letterSpacing: '0.04em' }}>
+              ¡GRACIAS!
+            </div>
+            <div style={{ color: '#555', fontSize: '0.88rem', maxWidth: '260px' }}>
+              Tu reseña ya aparece en el carrusel. ¡Nos alegra que lo hayas disfrutado!
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* ── Header strip ── */}
+            <div style={{
+              padding: '1.75rem 1.75rem 0',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem',
+            }}>
+              <div>
+                <div style={{
+                  fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em',
+                  textTransform: 'uppercase', color: '#FF4500', marginBottom: '0.4rem',
+                }}>🌶️ Tu opinión importa</div>
+                <h3 style={{
+                  margin: 0, fontFamily: 'var(--font-display)',
+                  fontSize: 'clamp(1.5rem, 4vw, 2rem)', letterSpacing: '0.04em',
+                  color: '#fff', lineHeight: 1,
+                }}>
+                  DEJA TU<br /><span style={{ color: '#FF4500' }}>RESEÑA</span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                onMouseEnter={e => gsap.to(e.currentTarget, { rotate: 90, scale: 1.1, duration: 0.2 })}
+                onMouseLeave={e => gsap.to(e.currentTarget, { rotate: 0, scale: 1, duration: 0.2 })}
+                style={{
+                  width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#888', fontSize: '0.95rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >✕</button>
+            </div>
 
-      {/* Header */}
+            {/* ── Divider ── */}
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '1.25rem 0' }} />
+
+            {/* ── Form body ── */}
+            <form onSubmit={handleSubmit} style={{
+              padding: '0 1.75rem 1.75rem',
+              display: 'flex', flexDirection: 'column', gap: '1.4rem',
+            }}>
+
+              {/* Avatar emoji picker */}
+              <div>
+                <label style={labelStyle}>Elige tu avatar</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {EMOJIS.map(em => (
+                    <button
+                      key={em} type="button"
+                      onClick={() => setFormEmoji(em)}
+                      style={{
+                        fontSize: '1.5rem', width: '50px', height: '50px',
+                        borderRadius: '14px',
+                        background: formEmoji === em ? 'rgba(255,69,0,0.14)' : 'rgba(255,255,255,0.04)',
+                        border: formEmoji === em ? '2px solid rgba(255,69,0,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transform: formEmoji === em ? 'scale(1.1)' : 'scale(1)',
+                        boxShadow: formEmoji === em ? '0 4px 16px rgba(255,69,0,0.2)' : 'none',
+                      }}
+                    >{em}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label style={labelStyle}>Tu nombre</label>
+                <input
+                  required value={formName} onChange={e => setFormName(e.target.value)}
+                  placeholder="ej. Carlos M."
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Rating */}
+              <div>
+                <label style={labelStyle}>Calificación</label>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.85rem 1rem',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '14px',
+                }}>
+                  <FlameRating value={formRating} onChange={setFormRating} />
+                  <span style={{ color: '#444', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                    {['', 'Meh...', 'Estuvo bien', 'Rico 🤌', 'Muy rico', '¡10/10! 🔥'][formRating]}
+                  </span>
+                </div>
+              </div>
+
+              {/* Text */}
+              <div>
+                <label style={labelStyle}>¿Qué fue lo mejor?</label>
+                <textarea
+                  required value={formText} onChange={e => setFormText(e.target.value)}
+                  rows={4}
+                  placeholder="Cuéntanos — las alitas, la entrega, el sabor... 🍗"
+                  style={{ ...inputStyle, resize: 'none', lineHeight: 1.7 }}
+                />
+                <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#333', marginTop: '4px' }}>
+                  {formText.length}/300
+                </div>
+              </div>
+
+              {/* Photo upload */}
+              <div>
+                <label style={labelStyle}>📷 Foto (opcional)</label>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display: 'none' }} />
+                {formPhoto ? (
+                  <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(255,69,0,0.3)' }}>
+                    <img src={formPhoto} alt="Preview" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', display: 'block' }} />
+                    <button
+                      type="button" onClick={() => setFormPhoto(null)}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '50%', width: '30px', height: '30px',
+                        color: '#fff', fontSize: '0.8rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button" onClick={() => fileInputRef.current?.click()}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,69,0,0.4)';
+                      (e.currentTarget as HTMLElement).style.background   = 'rgba(255,69,0,0.05)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.1)';
+                      (e.currentTarget as HTMLElement).style.background   = 'rgba(255,255,255,0.02)';
+                    }}
+                    style={{
+                      width: '100%', padding: '1.5rem',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '2px dashed rgba(255,255,255,0.1)',
+                      borderRadius: '14px', color: '#555', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: '0.4rem',
+                      fontSize: '0.82rem', transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.6rem', opacity: 0.5 }}>📸</span>
+                    <span style={{ fontWeight: 600, color: '#aaa' }}>Toca para subir</span>
+                    <span style={{ fontSize: '0.7rem', color: '#333' }}>JPG, PNG — máx. 2MB</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.02, duration: 0.18 })}
+                onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.18 })}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'linear-gradient(135deg, #FF4500 0%, #FF6500 100%)',
+                  border: 'none', borderRadius: '16px',
+                  color: '#fff', fontFamily: 'var(--font-display)',
+                  fontSize: '1.1rem', letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 24px rgba(255,69,0,0.35)',
+                  transition: 'box-shadow 0.2s ease',
+                }}
+              >
+                PUBLICAR RESEÑA 🔥
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main ReviewSection ───────────────────────────────────────────────────── */
+export default function ReviewSection() {
+  const [reviews,    setReviews]    = useState<Review[]>([]);
+  const [showModal,  setShowModal]  = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReviews(loadReviews());
+    setReady(true);
+  }, []);
+
+  const handleReact = (id: string, reaction: string) => {
+    const updated = reviews.map(r => r.id === id ? { ...r, reaction } : r);
+    setReviews(updated);
+    saveReviews(updated);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    // Reload in case a new review was saved
+    setReviews(loadReviews());
+  };
+
+  return (
+    <section id="reviews" style={{ padding: '5rem 0 4rem', scrollMarginTop: '70px', overflow: 'hidden' }}>
+      {/* Lightbox */}
+      {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+
+      {/* Modal */}
+      {showModal && <ReviewModal onClose={handleModalClose} />}
+
       <div style={{ textAlign: 'center', marginBottom: '3rem', padding: '0 1.5rem' }}>
         <span style={{
           fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#FF4500',
@@ -393,236 +697,35 @@ export default function ReviewSection() {
           RESEÑAS REALES
         </h2>
         <p style={{ color: '#555', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto' }}>
-          Sin filtros, sin mentiras. Solo la verdad caliente directo de nuestros clientes 🌶️
+          Diseñadas para leerse con calma. Nada se pierde al pasar a la siguiente sección.
         </p>
       </div>
 
-      {/* Infinite scrolling carousel */}
-      <InfiniteCarousel
-        reviews={reviews}
-        onReact={handleReact}
-        onPhotoClick={(src) => setLightboxSrc(src)}
-      />
+      {ready && reviews.length > 0 && (
+        <ReviewRail
+          reviews={reviews}
+          onReact={handleReact}
+          onPhotoClick={src => setLightboxSrc(src)}
+          onCreateReview={() => setShowModal(true)}
+        />
+      )}
 
-      {/* CTA + Form */}
-      <div style={{ padding: '0 1.5rem', maxWidth: '1200px', margin: '2.5rem auto 0' }}>
-        {!showForm && (
-          <div style={{ textAlign: 'center' }}>
-            <button
-              onClick={() => setShowForm(true)}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)';
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(255,69,0,0.4)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 24px rgba(255,69,0,0.25)';
-              }}
-              style={{
-                background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                border: 'none', borderRadius: '14px',
-                padding: '0.85rem 2rem', color: '#fff',
-                fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer',
-                boxShadow: '0 4px 24px rgba(255,69,0,0.25)',
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              ✍️ Dejar mi reseña
-            </button>
-          </div>
-        )}
-
-        {/* Inline review form */}
-        {showForm && (
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderRadius: '24px', padding: '2rem',
-              maxWidth: '580px', margin: '0 auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)',
-              animation: 'slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            }}
-          >
-            {submitted ? (
-              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '0.75rem', animation: 'review-pop 0.6s ease forwards' }}>🔥</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>¡Gracias por tu reseña!</div>
-                <div style={{ color: '#555', fontSize: '0.85rem', marginTop: '0.4rem' }}>Ya aparece en el carrusel.</div>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>
-                    Tu experiencia 🌶️
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '1.1rem' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Emoji picker */}
-                <div>
-                  <label style={labelStyle}>Elige tu emoji</label>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {EMOJIS.map(e => (
-                      <button
-                        key={e} type="button"
-                        onClick={() => setFormEmoji(e)}
-                        style={{
-                          fontSize: '1.6rem', background: formEmoji === e ? 'rgba(255,69,0,0.15)' : 'rgba(255,255,255,0.04)',
-                          border: formEmoji === e ? '1px solid rgba(255,69,0,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                          borderRadius: '10px', padding: '0.3rem 0.45rem', cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Name */}
-                <div>
-                  <label style={labelStyle}>Tu nombre</label>
-                  <input
-                    required value={formName} onChange={e => setFormName(e.target.value)}
-                    placeholder="ej. Carlos M."
-                    style={inputStyle}
-                  />
-                </div>
-
-                {/* Rating */}
-                <div>
-                  <label style={labelStyle}>Calificación</label>
-                  <FlameRating value={formRating} onChange={setFormRating} />
-                </div>
-
-                {/* Text */}
-                <div>
-                  <label style={labelStyle}>¿Qué te pareció?</label>
-                  <textarea
-                    required value={formText} onChange={e => setFormText(e.target.value)}
-                    rows={3} placeholder="¡Cuéntanos tu experiencia con las alitas! 🍗"
-                    style={{ ...inputStyle, resize: 'vertical' as const, lineHeight: 1.6 }}
-                  />
-                </div>
-
-                {/* Photo Upload */}
-                <div>
-                  <label style={labelStyle}>📷 Agrega una foto (opcional)</label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoSelect}
-                    style={{ display: 'none' }}
-                  />
-
-                  {formPhoto ? (
-                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                      <img
-                        src={formPhoto}
-                        alt="Preview"
-                        style={{
-                          width: '100%', maxHeight: '200px',
-                          objectFit: 'cover', borderRadius: '12px',
-                          border: '1px solid rgba(255,69,0,0.3)',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormPhoto(null)}
-                        style={{
-                          position: 'absolute', top: '8px', right: '8px',
-                          background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: '50%', width: '28px', height: '28px',
-                          color: '#fff', fontSize: '0.8rem', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,69,0,0.4)';
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.06)';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '1.25rem',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '2px dashed rgba(255,255,255,0.12)',
-                        borderRadius: '14px',
-                        color: '#666',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontSize: '0.85rem',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <span style={{ fontSize: '1.8rem', opacity: 0.6 }}>📸</span>
-                      <span>Toca para subir una foto</span>
-                      <span style={{ fontSize: '0.72rem', color: '#444' }}>JPG, PNG — máx. 2MB</span>
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 30px rgba(255,69,0,0.45)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(255,69,0,0.3)';
-                  }}
-                  style={{
-                    background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                    border: 'none', borderRadius: '12px',
-                    padding: '0.85rem', color: '#fff',
-                    fontWeight: 800, fontSize: '1rem', cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(255,69,0,0.3)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  🔥 Publicar reseña
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-      </div>
 
       <style>{`
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(24px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
       `}</style>
     </section>
   );
 }
 
-/* ── Shared input styles ──────────────────────────────────────────────────── */
+/* ── Shared styles ─────────────────────────────────────────────────────────── */
 const labelStyle: React.CSSProperties = {
   fontSize: '0.75rem', color: '#555', fontWeight: 600,
   textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -635,4 +738,21 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid rgba(255,255,255,0.09)',
   borderRadius: '12px', color: '#fff', fontSize: '0.9rem',
   outline: 'none', fontFamily: 'inherit',
+  boxSizing: 'border-box',
+};
+
+const railButtonStyle: React.CSSProperties = {
+  width: '44px',
+  height: '44px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  fontSize: '1rem',
+  fontWeight: 700,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s ease',
 };

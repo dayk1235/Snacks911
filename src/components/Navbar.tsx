@@ -11,7 +11,7 @@ interface NavbarProps {
 export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
   const navRef      = useRef<HTMLElement>(null);
   const logoRef     = useRef<HTMLDivElement>(null);
-  const sirenRef    = useRef<HTMLSpanElement>(null);
+  const sirenRef    = useRef<SVGGElement>(null);
   const cartBtnRef  = useRef<HTMLButtonElement>(null);
   const badgeRef    = useRef<HTMLSpanElement>(null);
   const prevCount   = useRef(0);
@@ -37,6 +37,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
+        if (!navRef.current) { ticking = false; return; }
         const curr = window.scrollY;
         if (curr < THRESHOLD) {
           gsap.to(navRef.current, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', overwrite: 'auto' });
@@ -131,25 +132,71 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
         {/* Logo */}
         <div
           ref={logoRef}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'default' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'default' }}
           onMouseEnter={() => gsap.to(logoRef.current, { scale: 1.04, duration: 0.2, ease: 'power2.out' })}
           onMouseLeave={() => gsap.to(logoRef.current, { scale: 1,    duration: 0.2, ease: 'power2.out' })}
         >
-          <span ref={sirenRef} style={{ fontSize: '1.9rem', lineHeight: 1, display: 'block', willChange: 'filter' }}>
-            🚨
-          </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.18em' }}>
-            <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: '2rem', letterSpacing: '0.06em', color: '#ffffff', lineHeight: 1 }}>
+          <svg
+            width="248"
+            height="72"
+            viewBox="0 0 900 260"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-label="Snacks 911"
+            style={{ display: 'block', width: 'clamp(180px, 22vw, 248px)', height: 'auto', overflow: 'visible' }}
+          >
+            <g ref={sirenRef} style={{ willChange: 'filter', transformBox: 'fill-box', transformOrigin: 'center' }}>
+              <g transform="translate(430 28)">
+                <rect x="12" y="58" width="76" height="18" rx="9" fill="#2F2F2F"/>
+                <path d="M28 20C28 8.9543 36.9543 0 48 0H52C63.0457 0 72 8.95431 72 20V58H24L28 20Z" fill="#E53935"/>
+                <path d="M48 12C52 12 55 9 55 5" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+                <path d="M48 12V42" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+                <path d="M8 34L-10 24" stroke="white" strokeWidth="6" strokeLinecap="round"/>
+                <path d="M4 48L-18 48" stroke="white" strokeWidth="6" strokeLinecap="round"/>
+                <path d="M92 34L110 24" stroke="white" strokeWidth="6" strokeLinecap="round"/>
+                <path d="M96 48L118 48" stroke="white" strokeWidth="6" strokeLinecap="round"/>
+              </g>
+            </g>
+
+            <text
+              x="160"
+              y="170"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="92"
+              fontWeight="900"
+              fill="#F5F5F5"
+              letterSpacing="-2"
+            >
               SNACKS
-            </span>
-            <span style={{
-              fontFamily: '"Bebas Neue", sans-serif', fontSize: '2rem', letterSpacing: '0.04em', lineHeight: 1,
-              background: 'linear-gradient(90deg, #FF4500 0%, #FFB800 55%, #FF6A00 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            }}>
+            </text>
+
+            <text
+              x="535"
+              y="172"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="102"
+              fontWeight="900"
+              fill="#FFC400"
+            >
               911
-            </span>
-          </div>
+            </text>
+
+            <line x1="165" y1="210" x2="275" y2="210" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+            <line x1="625" y1="210" x2="735" y2="210" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+
+            <text
+              x="450"
+              y="220"
+              textAnchor="middle"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize="30"
+              fontWeight="700"
+              fill="white"
+              letterSpacing="2"
+            >
+              URGENCIA DE ANTOJO
+            </text>
+          </svg>
         </div>
 
         {/* ── Desktop nav ────────────────────────────────────────────────── */}
@@ -157,7 +204,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
           {navLinks.map((link) => (
             <a
               key={link}
-              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#footer'}
+              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#contact'}
               className="nav-link"
               style={{
                 fontFamily: 'var(--font-body)', color: '#666',
@@ -278,7 +325,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
           {navLinks.map((link) => (
             <a
               key={link}
-              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#footer'}
+              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#contact'}
               onClick={() => setMenuOpen(false)}
               style={{
                 display: 'block', padding: '0.75rem 0.5rem',

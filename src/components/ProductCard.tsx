@@ -1,18 +1,21 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import Image from 'next/image';
+import { memo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import type { Product } from '@/data/products';
 
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
+  /** If provided, clicking 'Agregar' fires this instead of onAddToCart directly */
+  onCustomize?: (product: Product) => void;
 }
 
-export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCardProps) {
   const [added, setAdded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const imgRef  = useRef<HTMLImageElement>(null);
+  const imgRef  = useRef<HTMLDivElement>(null);
   const btnRef  = useRef<HTMLButtonElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const shineRef = useRef<HTMLDivElement>(null);
@@ -46,6 +49,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
   const handleAdd = () => {
     if (added) return;
+    if (onCustomize) {
+      // Let parent open customizer modal
+      onCustomize(product);
+      return;
+    }
     onAddToCart(product);
     setAdded(true);
     gsap.fromTo(
@@ -117,12 +125,15 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
       {/* Image */}
       <div style={{ position: 'relative', height: '200px', background: '#1a1a1a', overflow: 'hidden' }}>
-        <img
-          ref={imgRef}
-          src={product.image}
-          alt={product.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        <div ref={imgRef} style={{ position: 'absolute', inset: 0 }}>
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            style={{ objectFit: 'cover', display: 'block' }}
+          />
+        </div>
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(to top, rgba(14,14,14,0.7) 0%, transparent 55%)',
@@ -178,3 +189,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     </div>
   );
 }
+
+const ProductCard = memo(ProductCardComponent);
+
+export default ProductCard;

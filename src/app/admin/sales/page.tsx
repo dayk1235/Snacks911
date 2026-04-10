@@ -67,7 +67,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
 
   useEffect(() => {
-    setSales(AdminStore.getSales());
+    AdminStore.getSales().then(setSales);
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
