@@ -275,7 +275,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
   const prevItemsLength = useRef(0);
   const initialized     = useRef(false);
 
-  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
+  const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
   const [showConfirm, setShowConfirm]       = useState(false);
   const [waUrl, setWaUrl]                   = useState('');
 
@@ -361,7 +361,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
     message += `\n💰 *Total: $${total}*\n\n¡Quiero hacer este pedido!`;
 
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    const cleanNum = (whatsappNumber || '525584507458').replace(/[^0-9]/g, '');
+    return `https://wa.me/${cleanNum}?text=${encodeURIComponent(message)}`;
   }, [items, total, whatsappNumber]);
 
   const handleWhatsApp = () => {

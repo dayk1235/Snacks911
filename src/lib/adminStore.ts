@@ -134,7 +134,7 @@ export const AdminStore = {
     } catch (e) {
       console.warn('[AdminStore] getSettings fallback', e);
       return lsRead<BusinessSettings>(K.SETTINGS, {
-        prepTime: 25, acceptingOrders: true, whatsappNumber: '5215551234567',
+        prepTime: 25, acceptingOrders: true, whatsappNumber: '525584507458',
         openHours: {}, businessName: 'Snacks 911', address: '',
         heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
         heroStats: [

@@ -10,7 +10,7 @@ import type { BusinessSettings } from '@/lib/adminTypes';
 gsap.registerPlugin(SplitText);
 
 const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
-  whatsappNumber: '5215551234567',
+  whatsappNumber: '525584507458',
   heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
   heroStats: [
     { value: '500+', label: 'Pedidos diarios' },
@@ -224,7 +224,7 @@ function HeroSection() {
             </a>
             <a
               id="hero-cta-whatsapp"
-              href={`https://wa.me/${siteSettings.whatsappNumber ?? '5215551234567'}`} target="_blank" rel="noopener noreferrer"
+              href={`https://wa.me/${(siteSettings.whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
               onMouseEnter={handleCtaEnter} onMouseLeave={handleCtaLeave}
               style={{
                 background: 'rgba(255,255,255,0.04)',

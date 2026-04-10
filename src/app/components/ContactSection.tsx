@@ -41,7 +41,7 @@ const socialLinks = [
 ];
 
 function ContactSectionComponent() {
-  const [whatsappNumber, setWhatsappNumber] = useState('5215551234567');
+  const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
   const sectionRef = useRef<HTMLElement>(null);
   const waRef      = useRef<HTMLAnchorElement>(null);
 
@@ -130,7 +130,7 @@ function ContactSectionComponent() {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'clamp(2.5rem, 4vh, 3.5rem)' }}>
           <a
             ref={waRef}
-            href={`https://wa.me/${whatsappNumber}`}
+            href={`https://wa.me/${(whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`}
             target="_blank"
             rel="noopener noreferrer"
             onMouseEnter={e => {

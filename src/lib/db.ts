@@ -30,7 +30,7 @@ const SEED_PRODUCTS: AdminProduct[] = [
 const DEFAULT_SETTINGS: BusinessSettings = {
   prepTime: 25,
   acceptingOrders: true,
-  whatsappNumber: '5215551234567',
+  whatsappNumber: '525584507458',
   openHours: {
     Lunes:    { open: true,  from: '13:00', to: '22:00' },
     Martes:   { open: true,  from: '13:00', to: '22:00' },
@@ -105,7 +105,7 @@ function rowToSettings(row: Record<string, unknown>): BusinessSettings {
   return {
     prepTime:        Number(row.prep_time ?? 25),
     acceptingOrders: Boolean(row.accepting_orders ?? true),
-    whatsappNumber:  String(row.whatsapp_number ?? '5215551234567'),
+    whatsappNumber:  String(row.whatsapp_number ?? '525584507458'),
     openHours:       (row.open_hours as BusinessSettings['openHours']) ?? DEFAULT_SETTINGS.openHours,
     businessName:    String(row.business_name ?? 'Snacks 911'),
     address:         String(row.address ?? ''),

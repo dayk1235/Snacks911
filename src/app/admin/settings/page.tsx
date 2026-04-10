@@ -173,7 +173,7 @@ export default function SettingsPage() {
               value={settings.whatsappNumber}
               onChange={e => update('whatsappNumber', e.target.value)}
               style={inputStyle}
-              placeholder="5215551234567"
+              placeholder="525584507458"
             />
           </label>
         </div>
