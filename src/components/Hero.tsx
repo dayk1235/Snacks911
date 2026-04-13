@@ -65,8 +65,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(8,8,8,0.45) 0%, rgba(8,8,8,0.6) 60%, #080808 100%)' }} />
 
       {/* Glow orbs — reduced intensity */}
-      <div style={{ position: 'absolute', top: '18%', left: '8%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,69,0,0.08) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(35px)', pointerEvents: 'none', animation: 'heroOrb1 5s ease-in-out infinite' }} />
-      <div style={{ position: 'absolute', bottom: '22%', right: '8%', width: '380px', height: '380px', background: 'radial-gradient(circle, rgba(255,184,0,0.06) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none', animation: 'heroOrb2 6s ease-in-out 1.5s infinite' }} />
+      <div className="hero-orb-1" />
+      <div className="hero-orb-2" />
 
       {/* ── Main content ──── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: 'clamp(96px, 14vh, 130px) 1.5rem 2rem' }}>
@@ -88,15 +88,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
               letterSpacing: '0.05em',
             }}
           >
-            <span style={{
-              display: 'inline-block',
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              background: '#FF4500',
-              flexShrink: 0,
-              animation: 'heroDotBlink 1.4s ease-in-out infinite',
-            }}></span>
+            <span className="hero-dot"></span>
             <span suppressHydrationWarning>
               {siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min'}
             </span>
@@ -359,7 +351,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
       {/* ── Bottom: only scroll arrow (ticker moved to fixed TickerBar) ── */}
       <div style={{ position: 'relative', zIndex: 20, flexShrink: 0, paddingBottom: '3.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '0.5rem' }}>
-          <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1rem', userSelect: 'none', animation: 'heroArrowBounce 1.8s ease-in-out infinite' }}>↓</div>
+          <div className="hero-arrow-bounce">↓</div>
         </div>
       </div>
     </section>
