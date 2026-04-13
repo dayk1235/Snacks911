@@ -1,6 +1,4 @@
-import { memo } from 'react';
-
-function SiteFooterComponent() {
+export default function SiteFooter() {
   return (
     <footer id="footer" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#050505' }}>
       <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent 0%, #FF4500 35%, #FFB800 50%, #FF4500 65%, transparent 100%)', opacity: 0.3 }} />
@@ -17,13 +15,9 @@ function SiteFooterComponent() {
           </span>
         </div>
         <p style={{ color: '#2a2a2a', fontSize: '0.78rem', margin: 0 }}>
-          © {new Date().getFullYear()} Snacks 911 — Hecho con 🔥
+          © {new Date().getFullYear()} Snacks 911 — Hecho con fuego
         </p>
       </div>
     </footer>
   );
 }
-
-const SiteFooter = memo(SiteFooterComponent);
-
-export default SiteFooter;

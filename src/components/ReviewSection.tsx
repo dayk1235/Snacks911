@@ -687,7 +687,7 @@ export default function ReviewSection() {
           fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase',
           display: 'block', marginBottom: '0.75rem',
         }}>
-          🔥 Lo que dicen nuestros clientes
+          Lo que dicen nuestros clientes
         </span>
         <h2 style={{
           fontFamily: 'var(--font-display)',

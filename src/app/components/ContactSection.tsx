@@ -1,7 +1,6 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
-import gsap from 'gsap';
+import { memo, useEffect, useState } from 'react';
 
 const hours = [
   { day: 'Lun – Mié', time: '1:00 pm – 10:00 pm', open: true },
@@ -42,10 +41,17 @@ const socialLinks = [
 
 function ContactSectionComponent() {
   const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
-  const sectionRef = useRef<HTMLElement>(null);
-  const waRef      = useRef<HTMLAnchorElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    // Compute open/closed only on client — avoids SSR/client mismatch
+    const now     = new Date();
+    const hour    = now.getHours();
+    const weekday = now.getDay(); // 0=Sun, 1=Mon…
+    setIsOpen(weekday !== 0 && hour >= 12 && hour < 24);
+
     try {
       const raw = localStorage.getItem('snacks911_admin_settings');
       if (!raw) return;
@@ -54,23 +60,8 @@ function ContactSectionComponent() {
     } catch { /* ignore */ }
   }, []);
 
-  // WhatsApp button pulse
-  useEffect(() => {
-    if (!waRef.current) return;
-    gsap.to(waRef.current, {
-      boxShadow: '0 0 40px rgba(37,211,102,0.5), 0 0 80px rgba(37,211,102,0.15)',
-      duration: 1.4, yoyo: true, repeat: -1, ease: 'sine.inOut',
-    });
-  }, []);
-
-  const now     = new Date();
-  const hour    = now.getHours();
-  const weekday = now.getDay(); // 0=Sun, 1=Mon...
-  const isOpen  = weekday !== 0 && hour >= 12 && hour < 24;
-
   return (
     <section
-      ref={sectionRef}
       id="contact"
       style={{
         minHeight: '100vh',
@@ -129,22 +120,16 @@ function ContactSectionComponent() {
         {/* ── Main CTA — WhatsApp hero button ── */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'clamp(2.5rem, 4vh, 3.5rem)' }}>
           <a
-            ref={waRef}
             href={`https://wa.me/${(whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`}
             target="_blank"
             rel="noopener noreferrer"
-            onMouseEnter={e => {
-              gsap.to(e.currentTarget, { scale: 1.04, duration: 0.2, ease: 'power2.out' });
-            }}
-            onMouseLeave={e => {
-              gsap.to(e.currentTarget, { scale: 1, duration: 0.2, ease: 'power2.out' });
-            }}
+            className="wa-btn"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '1rem',
               padding: 'clamp(0.9rem, 2vh, 1.2rem) clamp(1.5rem, 4vw, 3rem)',
               background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
               borderRadius: '20px', textDecoration: 'none',
-              boxShadow: '0 0 32px rgba(37,211,102,0.3), 0 8px 32px rgba(37,211,102,0.15)',
+              animation: 'waPulse 2.8s ease-in-out infinite',
               transition: 'transform 0.2s ease',
             }}
           >
@@ -209,15 +194,21 @@ function ContactSectionComponent() {
                 </div>
               ))}
             </div>
-            <div style={{
-              marginTop: '1rem', padding: '0.6rem 0.85rem',
-              background: isOpen ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}`,
-              borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem',
-            }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: isOpen ? '#22c55e' : '#555', display: 'inline-block' }} />
-              <span style={{ fontSize: '0.78rem', color: isOpen ? '#22c55e' : '#555', fontWeight: 600 }}>
-                {isOpen ? 'Abierto ahora · Acepta pedidos' : 'Cerrado en este momento'}
+            <div
+              suppressHydrationWarning
+              style={{
+                marginTop: '1rem', padding: '0.6rem 0.85rem',
+                background: mounted ? (isOpen ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.04)') : 'rgba(255,255,255,0.04)',
+                border: mounted ? `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}` : '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem',
+              }}
+            >
+              <span
+                suppressHydrationWarning
+                style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: mounted ? (isOpen ? '#22c55e' : '#555') : '#555', display: 'inline-block' }}
+              />
+              <span suppressHydrationWarning style={{ fontSize: '0.78rem', color: mounted ? (isOpen ? '#22c55e' : '#555') : '#555', fontWeight: 600 }}>
+                {mounted ? (isOpen ? 'Abierto ahora · Acepta pedidos' : 'Cerrado en este momento') : 'Disponible'}
               </span>
             </div>
           </div>

@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import { AdminStore } from '@/lib/adminStore';
 import { SaleRecord } from '@/lib/adminTypes';
 
@@ -63,12 +60,8 @@ function BarChart({ data }: { data: SaleRecord[] }) {
   );
 }
 
-export default function SalesPage() {
-  const [sales, setSales] = useState<SaleRecord[]>([]);
-
-  useEffect(() => {
-    AdminStore.getSales().then(setSales);
-  }, []);
+export default async function SalesPage() {
+  const sales = await AdminStore.getSales();
 
   const today = new Date().toISOString().slice(0, 10);
   const todayRec  = sales.find(s => s.date === today);

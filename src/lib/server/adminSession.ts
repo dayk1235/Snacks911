@@ -3,8 +3,20 @@ const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 12;
 export const ADMIN_SESSION_COOKIE = 'snacks911_admin_session';
 export const EMPLOYEE_SESSION_COOKIE = 'snacks911_employee_session';
 
-function getSessionSecret() {
-  return process.env.ADMIN_SESSION_SECRET || 'change-me-in-env';
+// ── Session secret — throw if not configured ──
+let _sessionSecret: string | null = null;
+
+function getSessionSecret(): string {
+  if (_sessionSecret) return _sessionSecret;
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'ADMIN_SESSION_SECRET is required (min 32 chars). ' +
+      'Generate one: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+    );
+  }
+  _sessionSecret = secret;
+  return secret;
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -87,11 +99,4 @@ export async function verifySessionToken(token: string | undefined | null) {
   } catch {
     return null;
   }
-}
-
-export function getAdminCredentials() {
-  return {
-    username: process.env.ADMIN_USER || 'admin',
-    password: process.env.ADMIN_PASS || 'snacks911',
-  };
 }

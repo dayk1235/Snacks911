@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 interface Ember {
@@ -32,6 +31,12 @@ interface GlowOrb {
   y: number;
   r: number;
   alpha: number;
+  // lerp targets
+  tx: number;
+  ty: number;
+  tr: number;
+  talpha: number;
+  speed: number; // lerp speed per frame 0–1
 }
 
 /* ─── Palette ─────────────────────────────────────────────────────────────── */
@@ -113,23 +118,24 @@ export default function FireCanvas() {
 
     /* ── Glow orbs (GSAP animates plain objects) ────────────────────────── */
     const orbs: GlowOrb[] = [
-      { x: canvas.width * 0.25, y: canvas.height * 0.75, r: canvas.width * 0.45, alpha: 0.10 },
-      { x: canvas.width * 0.75, y: canvas.height * 0.60, r: canvas.width * 0.38, alpha: 0.07 },
-      { x: canvas.width * 0.50, y: canvas.height * 0.90, r: canvas.width * 0.55, alpha: 0.12 },
+      { x: canvas.width * 0.25, y: canvas.height * 0.75, r: canvas.width * 0.45, alpha: 0.10, tx: 0, ty: 0, tr: 0, talpha: 0, speed: 0 },
+      { x: canvas.width * 0.75, y: canvas.height * 0.60, r: canvas.width * 0.38, alpha: 0.07, tx: 0, ty: 0, tr: 0, talpha: 0, speed: 0 },
+      { x: canvas.width * 0.50, y: canvas.height * 0.90, r: canvas.width * 0.55, alpha: 0.12, tx: 0, ty: 0, tr: 0, talpha: 0, speed: 0 },
     ];
 
-    const animateOrb = (orb: GlowOrb) => {
-      gsap.to(orb, {
-        x:        Math.random() * canvas.width,
-        y:        canvas.height * 0.4 + Math.random() * canvas.height * 0.55,
-        r:        canvas.width * (0.3 + Math.random() * 0.35),
-        alpha:    0.04 + Math.random() * 0.1,
-        duration: 5 + Math.random() * 6,
-        ease:     'sine.inOut',
-        onComplete: () => animateOrb(orb),
-      });
+    // assign initial random targets
+    const retargetOrb = (orb: GlowOrb) => {
+      orb.tx     = Math.random() * canvas.width;
+      orb.ty     = canvas.height * 0.4 + Math.random() * canvas.height * 0.55;
+      orb.tr     = canvas.width * (0.3 + Math.random() * 0.35);
+      orb.talpha = 0.04 + Math.random() * 0.1;
+      orb.speed  = 1 / ((5 + Math.random() * 6) * 60); // duration in seconds × 60fps
     };
-    orbs.forEach(animateOrb);
+    orbs.forEach(retargetOrb);
+
+    // progress trackers for each orb (0 → 1)
+    const orbProgress = orbs.map(() => 0);
+    const orbFrom = orbs.map(o => ({ x: o.x, y: o.y, r: o.r, alpha: o.alpha }));
 
     /* ── Ember factory ──────────────────────────────────────────────────── */
     const TARGET_COUNT = isLowEnd ? 28 : 72;
@@ -178,6 +184,27 @@ export default function FireCanvas() {
 
       running = true;
       time++;
+
+      // ── Advance orb lerp targets ─────────────────────────────────────
+      orbs.forEach((orb, i) => {
+        orbProgress[i] += orb.speed;
+        if (orbProgress[i] >= 1) {
+          // snap to target, set new target
+          orb.x = orb.tx; orb.y = orb.ty; orb.r = orb.tr; orb.alpha = orb.talpha;
+          orbFrom[i] = { x: orb.x, y: orb.y, r: orb.r, alpha: orb.alpha };
+          orbProgress[i] = 0;
+          retargetOrb(orb);
+        } else {
+          // smooth sine easing
+          const t = 0.5 - 0.5 * Math.cos(orbProgress[i] * Math.PI);
+          const fr = orbFrom[i];
+          orb.x     = fr.x     + (orb.tx     - fr.x)     * t;
+          orb.y     = fr.y     + (orb.ty     - fr.y)     * t;
+          orb.r     = fr.r     + (orb.tr     - fr.r)     * t;
+          orb.alpha = fr.alpha + (orb.talpha - fr.alpha) * t;
+        }
+      });
+
       const w = canvas.width;
       const h = canvas.height;
 
@@ -384,7 +411,7 @@ export default function FireCanvas() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       ro.disconnect();
       io.disconnect();
-      orbs.forEach(o => gsap.killTweensOf(o));
+      orbs.forEach(o => { o.speed = 0; }); // stop animation
     };
   }, []);
 

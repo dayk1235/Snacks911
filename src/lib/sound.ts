@@ -19,6 +19,10 @@ const state: AudioState = {
   popEnabled: true,
 };
 
+let ambientStopTimeout: ReturnType<typeof setTimeout> | null = null;
+let orderLoopAudio: HTMLAudioElement | null = null;
+let orderLoopActive = false;
+
 export const initAudio = (): void => {
   if (state.ctx) return;
   const Ctx =
@@ -172,16 +176,17 @@ const startAmbient = (): void => {
 const stopAmbient = (): void => {
   if (!state.ctx || !state.ambientGain) return;
   const ctx = state.ctx;
+
+  // Cancel any pending stop timeout to prevent stacking
+  if (ambientStopTimeout) clearTimeout(ambientStopTimeout);
+
   state.ambientGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
   const oscs = state.ambientOscs;
-  setTimeout(() => {
+  ambientStopTimeout = setTimeout(() => {
     oscs.forEach((o) => {
-      try {
-        o.stop();
-      } catch {
-        // already stopped
-      }
+      try { o.stop(); } catch { /* already stopped */ }
     });
+    ambientStopTimeout = null;
   }, 700);
   state.ambientGain = null;
   state.ambientOscs = [];
@@ -241,3 +246,82 @@ export const playOrderNotification = (): void => {
   osc3.start(now + 0.12);
   osc3.stop(now + 0.38);
 };
+
+/**
+ * Persistent order alert loop — plays continuously until stopped.
+ * Uses HTMLAudioElement with a base64-encoded short alert tone.
+ * Prevents overlap — only one loop can be active at a time.
+ */
+export const startOrderLoop = (): void => {
+  if (orderLoopActive) return; // prevent overlap
+  orderLoopActive = true;
+
+  // Ensure AudioContext is ready
+  ensureCtx();
+
+  // Create audio element with a built-in alert tone
+  // Using a short beep as data URI — no external file needed
+  orderLoopAudio = new Audio();
+  orderLoopAudio.loop = true;
+  orderLoopAudio.volume = 0.7;
+
+  // Generate a simple beep tone as WAV data URI (800Hz, 200ms)
+  orderLoopAudio.src = createBeepWav(880, 0.2);
+  orderLoopAudio.play().catch(() => {
+    // Autoplay blocked — will try on next user gesture
+  });
+};
+
+export const stopOrderLoop = (): void => {
+  if (!orderLoopActive) return;
+  orderLoopActive = false;
+  if (orderLoopAudio) {
+    orderLoopAudio.pause();
+    orderLoopAudio.src = '';
+    orderLoopAudio = null;
+  }
+};
+
+/**
+ * Generate a minimal WAV data URI for a beep tone.
+ * Frequency in Hz, duration in seconds.
+ */
+function createBeepWav(frequency: number, duration: number): string {
+  const sampleRate = 44100;
+  const numSamples = Math.floor(sampleRate * duration);
+  const buffer = new ArrayBuffer(44 + numSamples);
+  const view = new DataView(buffer);
+
+  // WAV header
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  writeString(36, 'data');
+  view.setUint32(40, numSamples, true);
+
+  // Generate sine wave
+  const amplitude = 128;
+  const offset = 44;
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const sample = Math.sin(2 * Math.PI * frequency * t);
+    view.setUint8(offset + i, Math.floor((sample + 1) * amplitude));
+  }
+
+  // Convert to base64 data URI
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return 'data:audio/wav;base64,' + btoa(binary);
+}

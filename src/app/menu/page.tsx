@@ -3,18 +3,20 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { products, categories } from '@/data/products';
 import type { Product } from '@/data/products';
 import type { CartItem } from '@/types';
 import type { AdminProduct } from '@/lib/adminTypes';
 import { track } from '@/lib/analytics';
+import { AdminStore } from '@/lib/adminStore';
+import { analyzeSales } from '@/lib/salesOptimizer';
 
 import ProductCard from '@/components/ProductCard';
 import ProductCustomizerModal from '@/components/ProductCustomizerModal';
 import Cart from '@/components/Cart';
 import UpsellModal from '@/components/UpsellModal';
 import CartUpsellBanner from '@/components/CartUpsellBanner';
-import gsap from 'gsap';
 
 const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false });
 const ChatBot      = dynamic(() => import('@/components/ChatBot'),       { ssr: false });
@@ -84,8 +86,8 @@ function UpsellPopup({
                 border: '1px solid rgba(255,255,255,0.06)',
               }}
             >
-              <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#222' }}>
-                <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#222', position: 'relative' }}>
+                <Image src={item.image} alt={item.name} fill sizes="48px" style={{ objectFit: 'cover' }} loading="lazy" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ddd' }}>{item.name}</div>
@@ -140,42 +142,119 @@ export default function MenuPage() {
   const [lastAdded, setLastAdded]     = useState<Product | null>(null);
   const [showProductUpsell, setShowProductUpsell] = useState<Product | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [dbProducts, setDbProducts] = useState<AdminProduct[]>([]);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const isFirst = useRef(true);
 
-  // Sectioned menu: combos first, then individual items
-  const combos = products.filter(p => p.category === 'combos');
-  const alaCarte = products.filter(p => p.category === 'alitas' || p.category === 'boneless' || p.category === 'papas');
+  const [showAllAlaCarte, setShowAllAlaCarte] = useState(false);
+
+  // Load orders for performance-based sorting
+  useEffect(() => {
+    Promise.all([
+      AdminStore.getOrders(),
+      AdminStore.getProducts(),
+    ]).then(([o, p]) => {
+      setOrders(o);
+      setDbProducts(p);
+    }).catch(() => {});
+  }, []);
+
+  // Performance-based sorting using sales data
+  const performanceRank = useMemo(() => {
+    if (orders.length === 0 || dbProducts.length === 0) {
+      // Fallback: use popular flag
+      const rank: Record<number, number> = {};
+      products.forEach((p, i) => {
+        rank[p.id] = p.popular ? 100 - i : 50 - i;
+      });
+      return rank;
+    }
+
+    const analysis = analyzeSales(orders, dbProducts);
+    const rank: Record<number, number> = {};
+
+    // Default rank for all products
+    products.forEach((p) => { rank[p.id] = 50; });
+
+    // Assign scores based on position in bestSellers/lowPerformers
+    analysis.bestSellers.forEach((item, i) => {
+      const productId = parseInt(item.productId.replace(/\D/g, ''));
+      if (productId) rank[productId] = 100 - i * 10;
+    });
+
+    analysis.lowPerformers.forEach((item, i) => {
+      const productId = parseInt(item.productId.replace(/\D/g, ''));
+      if (productId) rank[productId] = 10 - i * 5;
+    });
+
+    return rank;
+  }, [orders, dbProducts]);
+
+  // Sectioned menu: ordered by priority
+  const combos = useMemo(() =>
+    products.filter(p => p.category === 'combos')
+      .sort((a, b) => (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0)),
+    [performanceRank]
+  );
+
+  const alaCarteAll = useMemo(() =>
+    products.filter(p => ['alitas', 'boneless', 'papas', 'banderillas', 'postres'].includes(p.category))
+      .sort((a, b) => {
+        // Order: alitas > boneless > papas > banderillas > postres
+        const order = { alitas: 1, boneless: 2, papas: 3, banderillas: 4, postres: 5 };
+        const catDiff = (order[a.category as keyof typeof order] || 99) - (order[b.category as keyof typeof order] || 99);
+        if (catDiff !== 0) return catDiff;
+        return (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0);
+      }),
+    [performanceRank]
+  );
+
+  const topSellers = alaCarteAll.slice(0, 4);
+  const restItems = alaCarteAll.slice(4);
+  const alaCarte = showAllAlaCarte ? alaCarteAll : topSellers;
   const extras = products.filter(p => p.category === 'extras');
 
   // For category filter mode (when user taps a specific tab)
-  const filtered =
-    activeCategory === 'todos'
-      ? products.filter(p => p.category !== 'extras')
+  const filtered = useMemo(() => {
+    const base = activeCategory === 'todos'
+      ? products.filter(p => !['extras'].includes(p.category))
       : products.filter(p => p.category === activeCategory);
+    return base.sort((a, b) => (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0));
+  }, [activeCategory, performanceRank]);
 
   // ── Cart helpers ──────────────────────────────────────────────────────────
   const addToCart = useCallback((product: Product, extraNames?: string[]) => {
     track('add_to_cart', { product_name: product.name, price: product.price, category: product.category });
+    let shouldShowProductUpsell = false;
+
     setCartItems(prev => {
       const existing = prev.find(i => i.id === product.id);
-      if (existing) return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...product, quantity: 1, linkedExtras: extraNames }];
+      const next = existing
+        ? prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
+        : [...prev, { ...product, quantity: 1, linkedExtras: extraNames }];
+
+      // Product-level upsell for boneless/alitas (only if cart doesn't already have combos)
+      if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
+        const hasCombo = prev.some(i => i.category === 'combos');
+        if (!hasCombo) {
+          shouldShowProductUpsell = true;
+        }
+      }
+
+      return next;
     });
+
     setLastAdded(product);
 
-    // Product-level upsell for boneless/alitas (only if cart doesn't already have combos)
-    if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
-      const hasCombo = cartItems.some(i => i.category === 'combos');
-      if (!hasCombo) {
-        setShowProductUpsell(product);
-        return; // Wait for upsell decision
-      }
+    if (shouldShowProductUpsell) {
+      setShowProductUpsell(product);
+      return;
     }
 
     setShowUpsell(true);
-  }, [cartItems, showProductUpsell]);
+  }, [showProductUpsell]);
 
   // Upsell upgrade handler: replace pending product with combo
   const handleUpsellUpgrade = useCallback((comboProduct: Product) => {
@@ -252,16 +331,12 @@ export default function MenuPage() {
   // ── Grid animations ───────────────────────────────────────────────────────
   useEffect(() => {
     if (isFirst.current) { isFirst.current = false; return; }
-    const timer = setTimeout(() => {
-      if (gridRef.current) {
-        gsap.from(Array.from(gridRef.current.children), {
-          opacity: 0, scale: 0.88, y: 20, duration: 0.45,
-          stagger: 0.06, ease: 'back.out(1.4)',
-          clearProps: 'opacity,scale,y,transform',
-        });
-      }
-    }, 10);
-    return () => clearTimeout(timer);
+    // Trigger CSS re-animation by toggling a key class
+    if (gridRef.current) {
+      gridRef.current.classList.remove('grid-animate');
+      void gridRef.current.offsetWidth;
+      gridRef.current.classList.add('grid-animate');
+    }
   }, [activeCategory, combos.length, alaCarte.length]);
 
   const totalItems = cartItems.reduce((s, i) => s + i.quantity, 0);
@@ -378,7 +453,7 @@ export default function MenuPage() {
       {activeCategory === 'todos' && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem 7rem' }}>
 
-          {/* Section 1: 🔥 Lo más pedido (Combos) */}
+          {/* Section 1: 🔥 Combos */}
           <section style={{ marginBottom: '2.5rem' }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: '0.75rem',
@@ -389,7 +464,7 @@ export default function MenuPage() {
                 fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
                 whiteSpace: 'nowrap',
               }}>
-                🔥 Lo más pedido
+                🔥 Combos
               </h2>
               <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
             </div>
@@ -410,39 +485,219 @@ export default function MenuPage() {
             </div>
           </section>
 
-          {/* Section 2: 🍗 Arma tu orden */}
-          <section style={{ marginBottom: '2.5rem' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              marginBottom: '1rem', padding: '0 0.5rem',
-            }}>
-              <h2 style={{
-                fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                whiteSpace: 'nowrap',
-              }}>
-                🍗 Arma tu orden
-              </h2>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-              gap: '0.85rem',
-            }}>
-              {alaCarte.map(product => (
-                <div key={product.id}>
-                  <ProductCard
-                    product={product}
-                    onAddToCart={addToCart}
-                    onCustomize={handleCustomize}
-                  />
+          {/* Section 2: 🍗 Alitas */}
+          {(() => {
+            const sectionItems = alaCarteAll.filter(p => p.category === 'alitas');
+            if (sectionItems.length === 0) return null;
+            return (
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1rem', padding: '0 0.5rem',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🍗 Alitas
+                  </h2>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                 </div>
-              ))}
-            </div>
-          </section>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '0.85rem',
+                }}>
+                  {sectionItems.map(product => (
+                    <div key={product.id}>
+                      <ProductCard
+                        product={product}
+                        onAddToCart={addToCart}
+                        onCustomize={handleCustomize}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
 
-          {/* Section 3: ➕ Agrega más */}
+          {/* Section 3: 🍗 Boneless */}
+          {(() => {
+            const sectionItems = alaCarteAll.filter(p => p.category === 'boneless');
+            if (sectionItems.length === 0) return null;
+            return (
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1rem', padding: '0 0.5rem',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🍗 Boneless
+                  </h2>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '0.85rem',
+                }}>
+                  {sectionItems.map(product => (
+                    <div key={product.id}>
+                      <ProductCard
+                        product={product}
+                        onAddToCart={addToCart}
+                        onCustomize={handleCustomize}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Section 4: 🍟 Papas */}
+          {(() => {
+            const sectionItems = alaCarteAll.filter(p => p.category === 'papas');
+            if (sectionItems.length === 0) return null;
+            return (
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1rem', padding: '0 0.5rem',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🍟 Papas
+                  </h2>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '0.85rem',
+                }}>
+                  {sectionItems.map(product => (
+                    <div key={product.id}>
+                      <ProductCard
+                        product={product}
+                        onAddToCart={addToCart}
+                        onCustomize={handleCustomize}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Section 5: 🌭 Banderillas */}
+          {(() => {
+            const sectionItems = alaCarteAll.filter(p => p.category === 'banderillas');
+            if (sectionItems.length === 0) return null;
+            return (
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1rem', padding: '0 0.5rem',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🌭 Banderillas
+                  </h2>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '0.85rem',
+                }}>
+                  {sectionItems.map(product => (
+                    <div key={product.id}>
+                      <ProductCard
+                        product={product}
+                        onAddToCart={addToCart}
+                        onCustomize={handleCustomize}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Section 6: 🍫 Postres */}
+          {(() => {
+            const sectionItems = alaCarteAll.filter(p => p.category === 'postres');
+            if (sectionItems.length === 0) return null;
+            return (
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1rem', padding: '0 0.5rem',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🍫 Postres
+                  </h2>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '0.85rem',
+                }}>
+                  {sectionItems.map(product => (
+                    <div key={product.id}>
+                      <ProductCard
+                        product={product}
+                        onAddToCart={addToCart}
+                        onCustomize={handleCustomize}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Show more / less toggle */}
+          {alaCarteAll.length > 8 && (
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <button
+                onClick={() => setShowAllAlaCarte(!showAllAlaCarte)}
+                style={{
+                  padding: '0.6rem 1.5rem',
+                  background: showAllAlaCarte ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'none',
+                  border: `1px solid ${showAllAlaCarte ? 'transparent' : 'rgba(255,69,0,0.3)'}`,
+                  borderRadius: '50px',
+                  color: showAllAlaCarte ? '#fff' : '#FF4500',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {showAllAlaCarte ? '↑ Ver menos' : `↓ Ver todo (${alaCarteAll.length})`}
+              </button>
+            </div>
+          )}
+
+          {/* Section 7: ➕ Agrega más */}
           {extras.length > 0 && (
             <section>
               <div style={{

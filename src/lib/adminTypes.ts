@@ -1,14 +1,16 @@
 // ─── Admin Types ──────────────────────────────────────────────────────────────
 
-// Allow custom categories alongside built-in ones
-export type ProductCategory = string;
+// Known categories + allow custom ones
+export type ProductCategory = 'alitas' | 'boneless' | 'papas' | 'combos' | 'banderillas' | 'postres' | 'extras' | (string & {});
 
 export const DEFAULT_CATEGORIES: { id: string; label: string; emoji: string }[] = [
-  { id: 'alitas',   label: '🍗 Alitas',   emoji: '🍗' },
-  { id: 'boneless', label: '🔥 Boneless', emoji: '🔥' },
-  { id: 'papas',    label: '🍟 Papas',    emoji: '🍟' },
-  { id: 'combos',   label: '🚨 Combos',   emoji: '🚨' },
-  { id: 'extras',   label: '🍋 Extras',   emoji: '🍋' },
+  { id: 'alitas',   label: 'Alitas',   emoji: '🍗' },
+  { id: 'boneless', label: 'Boneless', emoji: '🍗' },
+  { id: 'papas',    label: 'Papas',    emoji: '🍟' },
+  { id: 'combos',   label: 'Combos',   emoji: '🔥' },
+  { id: 'banderillas', label: 'Banderillas', emoji: '🌭' },
+  { id: 'postres',  label: 'Postres',  emoji: '🍫' },
+  { id: 'extras',   label: 'Extras',   emoji: '➕' },
 ];
 
 export interface AdminProduct {
@@ -42,6 +44,7 @@ export interface Order {
   customerPhone?: string;
   notes?: string;
   handledBy?: string;      // employee name who handled this order
+  whatsappConfirmed?: boolean; // true if customer confirmed WhatsApp sent
 }
 
 export interface SaleRecord {
@@ -60,14 +63,16 @@ export interface Customer {
   createdAt: string;       // ISO date
 }
 
-export type UserRole = 'admin' | 'employee';
+export type UserRole = 'admin' | 'staff';
 
-export interface UserProfile {
-  id: string;              // Supabase Auth UID
-  email: string;
+export interface Employee {
+  id: string;
+  employeeId: string;     // Unique login identifier (e.g. "admin001")
   name: string;
   role: UserRole;
+  active: boolean;
   createdAt: string;
+  lastLoginAt?: string;
 }
 
 export interface DayHours {
@@ -125,9 +130,11 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   alitas:   '🍗 Alitas',
-  boneless: '🔥 Boneless',
+  boneless: '🍗 Boneless',
   papas:    '🍟 Papas',
   combos:   '🚨 Combos',
+  banderillas: '🌭 Banderillas',
+  postres:  '🍫 Postres',
   extras:   '🍋 Extras',
 };
 

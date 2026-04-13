@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { supabase } from '@/lib/supabase';
 import { playOrderNotification } from '@/lib/sound';
@@ -18,7 +17,7 @@ export default function DashboardPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [newOrderFlash, setNewOrderFlash] = useState<string | null>(null);
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const [cardsReady, setCardsReady] = useState(false);
   const audioInitialized = useRef(false);
 
   useEffect(() => {
@@ -27,14 +26,7 @@ export default function DashboardPage() {
       const p = await AdminStore.getProducts();
       setOrders(o);
       setProducts(p);
-
-      const validCards = cardsRef.current.filter(Boolean);
-      gsap.set(validCards, { opacity: 1, y: 0 });
-      gsap.fromTo(
-        validCards,
-        { opacity: 0, y: 28 },
-        { opacity: 1, y: 0, stagger: 0.09, duration: 0.5, ease: 'power3.out' }
-      );
+      setCardsReady(true);
     };
     load();
   }, []);
@@ -208,7 +200,12 @@ export default function DashboardPage() {
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {kpis.map((kpi, i) => (
-          <div key={kpi.label} ref={el => { cardsRef.current[i] = el; }} style={CARD}>
+          <div key={kpi.label} style={{
+            ...CARD,
+            opacity: cardsReady ? 1 : 0,
+            transform: cardsReady ? 'translateY(0)' : 'translateY(24px)',
+            transition: `opacity .5s ease ${i * 0.08}s, transform .5s ease ${i * 0.08}s`,
+          }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
               <p style={{ color: '#555', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: 0 }}>
                 {kpi.label}
@@ -240,7 +237,7 @@ export default function DashboardPage() {
       {/* Weekly revenue + Top products + Peak hour */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         {/* Weekly revenue chart */}
-        <div ref={el => { cardsRef.current[4] = el; }} style={CARD}>
+        <div style={CARD}>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
             Última semana — ${weekTotal.toLocaleString()}
           </p>
@@ -266,7 +263,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Top 3 products today */}
-        <div ref={el => { cardsRef.current[5] = el; }} style={CARD}>
+        <div style={CARD}>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
             🏆 Top 3 — hoy
           </p>
@@ -294,7 +291,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Peak hour + quick stats */}
-        <div ref={el => { cardsRef.current[6] = el; }} style={CARD}>
+        <div style={CARD}>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
             📊 Datos rápidos
           </p>
@@ -322,7 +319,7 @@ export default function DashboardPage() {
       {/* Two columns: recent orders + quick actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem' }}>
         {/* Recent orders */}
-        <div ref={el => { cardsRef.current[7] = el; }} style={CARD}>
+        <div style={CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Pedidos recientes</h2>
             <button
@@ -336,7 +333,9 @@ export default function DashboardPage() {
             {recentOrders.length === 0 && (
               <p style={{ color: '#444', textAlign: 'center', padding: '1rem 0' }}>Sin pedidos aún</p>
             )}
-            {recentOrders.map(order => (
+            {recentOrders.map(order => {
+              const waConfirmed = order.whatsappConfirmed ?? false;
+              return (
               <div key={order.id} style={{
                 display: 'flex', alignItems: 'center', gap: '1rem',
                 padding: '0.75rem 1rem', borderRadius: '10px',
@@ -348,6 +347,17 @@ export default function DashboardPage() {
                       {order.id}
                     </span>
                     <span style={{ fontSize: '0.68rem', color: '#555' }}>• {order.customerName}</span>
+                    {!waConfirmed && (
+                      <span style={{
+                        fontSize: '0.6rem', fontWeight: 700,
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: '4px',
+                        background: 'rgba(239,68,68,0.12)',
+                        color: '#ef4444',
+                      }}>
+                        ⚠️ WhatsApp
+                      </span>
+                    )}
                   </div>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#444' }}>
                     {order.items.map(i => i.productName).join(', ')}
@@ -368,19 +378,21 @@ export default function DashboardPage() {
                   {ORDER_STATUS_LABELS[order.status]}
                 </div>
               </div>
-            ))}
+            );
+              })}
           </div>
         </div>
 
         {/* Quick actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div ref={el => { cardsRef.current[8] = el; }} style={CARD}>
+          <div style={CARD}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Acciones rápidas</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {[
                 { label: '➕ Nuevo producto', href: '/admin/products' },
                 { label: '📦 Ver pedidos',    href: '/admin/orders'   },
                 { label: '💰 Ver ventas',     href: '/admin/sales'    },
+                { label: '🔥 Optimizar',      href: '/admin/optimize' },
                 { label: '⚙️  Configuración', href: '/admin/settings' },
               ].map(a => (
                 <button
@@ -403,7 +415,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Status over accepting orders */}
-          <div ref={el => { cardsRef.current[9] = el; }} style={{ ...CARD }}>
+          <div style={{ ...CARD }}>
             <p style={{ margin: '0 0 0.4rem', fontSize: '0.75rem', color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               Estado del negocio
             </p>

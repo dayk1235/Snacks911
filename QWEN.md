@@ -1,0 +1,2 @@
+## Qwen Added Memories
+- RULE: NO INLINE STYLES FOR ANIMATION IN SSR — Animations and complex styles MUST be defined in CSS classes, not inline styles. Use className instead of style. Keep SSR output identical between server and client. Avoid animation in inline styles, dynamic style objects in JSX, and mixing CSS shorthand inconsistently. This rule is CRITICAL and must be applied when detecting hydration issues or UI inconsistencies.

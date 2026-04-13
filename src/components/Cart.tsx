@@ -1,13 +1,14 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { track } from '@/lib/analytics';
 import type { CartItem } from '@/types';
 import type { AdminProduct } from '@/lib/adminTypes';
 import type { Product } from '@/data/products';
-import CartUpsellBanner from '@/components/CartUpsellBanner';
+import CartUpsell from '@/components/CartUpsell';
 
 interface CartProps {
   isOpen: boolean;
@@ -29,23 +30,24 @@ function CustomerCaptureModal({
   onSkip: () => void;
 }) {
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState(() => {
-    // Try to prefill from previous capture
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('snacks911_customer');
-        if (saved) return JSON.parse(saved).phone || '';
-      } catch {}
-    }
-    return '';
-  });
+  const [phone, setPhone] = useState('');
+
+  // Prefill phone from previous capture — after mount only (avoids SSR mismatch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('snacks911_customer');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.phone) setPhone(parsed.phone);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    const prev = document.body.style.cursor;
-    document.body.style.cssText += '; cursor: auto !important';
+    document.body.style.setProperty('cursor', 'auto', 'important');
     document.documentElement.setAttribute('data-cursor-restore', 'true');
     return () => {
-      document.body.style.cursor = prev;
+      document.body.style.removeProperty('cursor');
       document.documentElement.removeAttribute('data-cursor-restore');
     };
   }, []);
@@ -123,6 +125,7 @@ function CustomerCaptureModal({
           <input
             type="tel"
             placeholder="WhatsApp (55 1234 5678)"
+            aria-label="WhatsApp number"
             value={phone}
             onChange={e => setPhone(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -197,11 +200,10 @@ function OrderConfirmModal({
   onCancel: () => void;
 }) {
   useEffect(() => {
-    const prev = document.body.style.cursor;
-    document.body.style.cssText += '; cursor: auto !important';
+    document.body.style.setProperty('cursor', 'auto', 'important');
     document.documentElement.setAttribute('data-cursor-restore', 'true');
     return () => {
-      document.body.style.cursor = prev;
+      document.body.style.removeProperty('cursor');
       document.documentElement.removeAttribute('data-cursor-restore');
     };
   }, []);
@@ -232,7 +234,11 @@ function OrderConfirmModal({
           cursor: 'default',
         }}
       >
-        <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>📱</div>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FF4500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </div>
 
         <h3 style={{ margin: '0 0 0.6rem', fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
           ¿Se envió tu pedido?
@@ -263,7 +269,7 @@ function OrderConfirmModal({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
             }}
           >
-            ✅ Sí, pedido enviado — vaciar carrito
+            Si, pedido enviado — vaciar carrito
           </button>
 
           <button
@@ -288,7 +294,7 @@ function OrderConfirmModal({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
             }}
           >
-            🔄 No llegó — reintentar WhatsApp
+            No llego — reintentar WhatsApp
           </button>
 
           <button
@@ -331,9 +337,13 @@ function CartExtras({
   const [added, setAdded]         = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    let cancelled = false;
     AdminStore.getProducts().then(all => {
-      setAllExtras(all.filter(p => p.category === 'extras' && p.available));
+      if (!cancelled) {
+        setAllExtras(all.filter(p => p.category === 'extras' && p.available));
+      }
     });
+    return () => { cancelled = true; };
   }, []);
 
   // Filter: show extra if no restriction (empty applicableProductIds)
@@ -341,8 +351,8 @@ function CartExtras({
   const cartItemIds = items.map(i => i.id.toString());
   const extras = allExtras.filter(extra => {
     const ids = extra.applicableProductIds ?? [];
-    if (ids.length === 0) return true;           // no restriction → show always
-    return ids.some(id => cartItemIds.includes(id)); // show if cart has a matching product
+    if (ids.length === 0) return true;
+    return ids.some(id => cartItemIds.includes(id));
   });
 
   if (extras.length === 0) return null;
@@ -350,12 +360,13 @@ function CartExtras({
   const handleAdd = (extra: AdminProduct) => {
     onAddExtra(extra);
     setAdded(prev => new Set(prev).add(extra.id));
-    // Reset after 1.5s so they can add again
-    setTimeout(() => setAdded(prev => {
-      const next = new Set(prev);
-      next.delete(extra.id);
-      return next;
-    }), 1500);
+    setTimeout(() => {
+      setAdded(prev => {
+        const next = new Set(prev);
+        next.delete(extra.id);
+        return next;
+      });
+    }, 1500);
   };
 
   return (
@@ -439,6 +450,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
   const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
   const [showCapture, setShowCapture]       = useState(false);
   const [showConfirm, setShowConfirm]       = useState(false);
+  const [lastOrderId, setLastOrderId]       = useState<string>('');
   const [waUrl, setWaUrl]                   = useState('');
   const [customerName, setCustomerName]     = useState('');
   const [customerPhone, setCustomerPhone]   = useState('');
@@ -550,6 +562,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     track('whatsapp_click', { items: items.length, total });
     // Save order to Supabase with customer data
     const orderId = await AdminStore.submitOrder(items, total, whatsappNumber, customerName, customerPhone).catch(() => '');
+    setLastOrderId(orderId);
     track('order_placed', { value: total, currency: 'MXN', orderId, customerPhone: !!customerPhone });
 
     // Track customer stats for CRM
@@ -584,7 +597,14 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     setTimeout(() => setShowConfirm(true), 1200);
   };
 
-  const handleConfirm = () => { setShowConfirm(false); onClearCart(); onClose(); };
+  const handleConfirm = async () => {
+    if (lastOrderId) {
+      await AdminStore.updateOrderWhatsAppConfirmed(lastOrderId, true).catch(() => {});
+    }
+    setShowConfirm(false);
+    onClearCart();
+    onClose();
+  };
   const handleRetry   = () => {
     window.open(waUrl, '_blank');
     setShowConfirm(false);
@@ -637,6 +657,9 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
       {/* Drawer */}
       <div
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping cart"
         style={{
                   position: 'fixed', top: 0, right: 0, bottom: 0,
           width: 'min(420px, 100vw)',
@@ -654,11 +677,11 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
           padding: '1.5rem',
           borderBottom: '1px solid rgba(255,255,255,0.07)',
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>🛒 Tu Pedido</h2>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Tu Pedido</h2>
           <button
             onClick={onClose}
-            onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.12, rotate: 90, duration: 0.2 })}
-            onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, rotate: 0, duration: 0.2 })}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'scale(1.12) rotate(90deg)'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'scale(1) rotate(0deg)'; }}
             style={{
               background: 'rgba(255,255,255,0.07)', border: 'none',
               borderRadius: '8px', width: '36px', height: '36px',
@@ -674,7 +697,11 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {items.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#444', padding: '5rem 1.5rem' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍽️</div>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/>
+                </svg>
+              </div>
               <p style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>
                 Tu carrito está vacío.<br />¡Agrega algo rico!
               </p>
@@ -710,10 +737,13 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                         background: '#222',
                         border: isExtra ? '1px solid rgba(255,69,0,0.2)' : 'none',
                       }}>
-                        <img
+                        <Image
                           src={item.image}
                           alt={item.name}
+                          width={isExtra ? 40 : 52}
+                          height={isExtra ? 40 : 52}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          loading="lazy"
                         />
                       </div>
 
@@ -775,8 +805,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                       }}>
                         <button
                           onClick={() => onUpdateQuantity(item.id, -1)}
-                          onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })}
-                          onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.15)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                           style={{
                             width: '26px', height: '26px', borderRadius: '7px',
                             background: 'rgba(255,255,255,0.08)', border: 'none',
@@ -792,8 +822,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                         </span>
                         <button
                           onClick={() => onUpdateQuantity(item.id, 1)}
-                          onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.15, duration: 0.15 })}
-                          onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.15 })}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.15)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                           style={{
                             width: '26px', height: '26px', borderRadius: '7px',
                             background: '#FF4500', border: 'none',
@@ -816,8 +846,11 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         {/* Footer checkout */}
         {items.length > 0 && (
           <div style={{ padding: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-            {/* Upsell banner when below minimum */}
-            {onAddProduct && <CartUpsellBanner total={total} onAdd={onAddProduct} />}
+            {/* Contextual upsell based on cart */}
+            <CartUpsell
+              cartItems={items}
+              onAdd={onAddProduct ?? (() => {})}
+            />
 
             {total >= 150 && (
               <div style={{
@@ -838,8 +871,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
             <button
               id="checkout-whatsapp"
               onClick={handleWhatsApp}
-              onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.03, duration: 0.18, ease: 'power2.out' })}
-              onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.18, ease: 'power2.out' })}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.03)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
               style={{
                 width: '100%',
                 background: 'linear-gradient(135deg,#25D366,#128C7E)',
@@ -850,7 +883,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                 boxShadow: '0 4px 20px rgba(37,211,102,0.2)',
               }}
             >
-              📱 Pedir por WhatsApp
+              Pedir por WhatsApp
             </button>
           </div>
         )}

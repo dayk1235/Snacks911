@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { AdminProduct, DEFAULT_CATEGORIES, CATEGORY_LABELS, getAllCategoryLabels, CustomCategory } from '@/lib/adminTypes';
 
@@ -40,9 +39,6 @@ export default function ProductsPage() {
 
   useEffect(() => {
     reload();
-    gsap.from(gridRef.current?.children ?? [], {
-      opacity: 0, y: 20, stagger: 0.06, duration: 0.45, ease: 'power3.out',
-    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

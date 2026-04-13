@@ -20,14 +20,14 @@ export interface UpsellOffer {
 
 const OFFERS: Record<string, UpsellOffer> = {
   boneless: {
-    title: '🔥 Hazlo combo',
+    title: 'Hazlo combo',
     message: 'Agrega papas + aderezo y conviértelo en combo por solo +$30',
     upsellPrice: 30,
     upsellLabel: 'Combo 911',
     upsellProductId: 7,
   },
   alitas: {
-    title: '🍟 Agrégale papas',
+    title: 'Agregale papas',
     message: 'Completa tu orden con papas por solo +$20',
     upsellPrice: 20,
     upsellLabel: 'Papas Gajo',
@@ -79,7 +79,7 @@ export default function UpsellModal({
     onUpgrade({
       id: offer.upsellProductId,
       name: offer.upsellLabel,
-      description: 'Tu pedido convertido en combo 🔥',
+      description: 'Tu pedido convertido en combo',
       price: product.price + offer.upsellPrice,
       category: product.category === 'boneless' ? 'combos' : 'papas',
       image: offer.upsellProductId === 7 ? '/images/combo.webp' : '/images/papas.webp',

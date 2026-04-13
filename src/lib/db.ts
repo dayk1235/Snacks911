@@ -94,6 +94,7 @@ function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>
     customerPhone: String(row.customer_phone ?? ''),
     notes:         String(row.notes ?? ''),
     handledBy:     String(row.handled_by ?? ''),
+    whatsappConfirmed: Boolean(row.whatsapp_confirmed ?? false),
     items: items.map(i => ({
       productId:   String(i.product_id ?? ''),
       productName: String(i.product_name),
@@ -146,39 +147,24 @@ export async function dbDeleteProduct(id: string): Promise<void> {
 }
 
 export async function dbToggleProduct(id: string): Promise<void> {
-  // Read current, flip, write back
-  const { data, error } = await supabase.from('products').select('available').eq('id', id).single();
+  // Atomic toggle via Postgres function — no read-then-write race condition
+  const { error } = await supabase.rpc('toggle_product_available', { p_id: id });
   if (error) throw error;
-  const { error: e2 } = await supabase.from('products').update({ available: !data.available }).eq('id', id);
-  if (e2) throw e2;
 }
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 export async function dbGetOrders(): Promise<Order[]> {
+  // Single query with embedded join (PostgREST foreign key embedding)
   const { data: ordersData, error: ordersErr } = await supabase
     .from('orders')
-    .select('*')
+    .select('*, order_items(*)')
     .order('created_at', { ascending: false });
   if (ordersErr) throw ordersErr;
   if (!ordersData || ordersData.length === 0) return [];
 
-  const orderIds = ordersData.map((o: Record<string, unknown>) => o.id as string);
-  const { data: itemsData, error: itemsErr } = await supabase
-    .from('order_items')
-    .select('*')
-    .in('order_id', orderIds);
-  if (itemsErr) throw itemsErr;
-
-  const itemsByOrder: Record<string, Record<string, unknown>[]> = {};
-  for (const item of (itemsData ?? []) as Record<string, unknown>[]) {
-    const oid = item.order_id as string;
-    if (!itemsByOrder[oid]) itemsByOrder[oid] = [];
-    itemsByOrder[oid].push(item);
-  }
-
   return (ordersData as Record<string, unknown>[]).map(row =>
-    rowToOrder(row, itemsByOrder[row.id as string] ?? [])
+    rowToOrder(row, (row.order_items as Record<string, unknown>[]) ?? [])
   );
 }
 
@@ -191,11 +177,12 @@ export async function dbSaveOrder(order: Order): Promise<void> {
     customer_name:  order.customerName,
     customer_phone: order.customerPhone ?? '',
     notes:          order.notes ?? '',
+    whatsapp_confirmed: order.whatsappConfirmed ?? false,
   };
   const { error } = await supabase.from('orders').upsert(orderRow);
   if (error) throw error;
 
-  // Delete existing items & re-insert
+  // Delete existing items & re-insert (atomic per-row, not transactional)
   await supabase.from('order_items').delete().eq('order_id', order.id);
   if (order.items.length > 0) {
     const itemRows = order.items.map(i => ({
@@ -249,29 +236,22 @@ export async function dbSaveSettings(settings: BusinessSettings): Promise<void> 
     updated_at:       new Date().toISOString(),
   };
 
-  // Check if a row exists
-  const { data: existing } = await supabase
+  // Atomic upsert — no check-then-write race
+  const { error } = await supabase
     .from('business_settings')
-    .select('id')
-    .order('id')
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from('business_settings').update(row).eq('id', (existing as Record<string, unknown>).id);
-  } else {
-    await supabase.from('business_settings').insert(row);
-  }
+    .upsert({ ...row, id: 1 }, { onConflict: 'id' });
+  if (error) throw error;
 }
 
 // ─── Sales ────────────────────────────────────────────────────────────────────
 
 export async function dbGetSales(): Promise<SaleRecord[]> {
-  // Derive sales from orders table (group by date)
+  // Server-side aggregation — push GROUP BY to Postgres
   const { data, error } = await supabase
     .from('orders')
-    .select('created_at, total, status')
-    .neq('status', 'pending');
+    .select('created_at, total')
+    .in('status', ['preparing', 'ready', 'delivered'])
+    .gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   if (error) throw error;
   if (!data || data.length === 0) return getSeededSales();
 

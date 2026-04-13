@@ -39,14 +39,43 @@ function lsWrite<T>(key: string, value: T): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
+// ─── In-memory TTL cache ──────────────────────────────────────────────────────
+type CacheEntry = { data: unknown; expires: number };
+const _cache = new Map<string, CacheEntry>();
+
+function cacheGet<T>(key: string): T | null {
+  const entry = _cache.get(key);
+  if (entry && Date.now() < entry.expires) return entry.data as T;
+  _cache.delete(key);
+  return null;
+}
+
+function cacheSet<T>(key: string, data: T, ttlMs: number): void {
+  _cache.set(key, { data, expires: Date.now() + ttlMs });
+}
+
+function cacheDel(...keys: string[]): void {
+  keys.forEach(k => _cache.delete(k));
+}
+
+const TTL = {
+  SETTINGS:   5 * 60 * 1000, // 5 min
+  PRODUCTS:   2 * 60 * 1000, // 2 min
+  CATEGORIES: 5 * 60 * 1000, // 5 min
+} as const;
+
+
 // ─── AdminStore ───────────────────────────────────────────────────────────────
 export const AdminStore = {
 
   // ── Products ────────────────────────────────────────────────────────────────
   async getProducts(): Promise<AdminProduct[]> {
+    const hit = cacheGet<AdminProduct[]>('products');
+    if (hit) return hit;
     try {
       const products = await dbGetProducts();
-      lsWrite(K.PRODUCTS, products); // update local cache
+      lsWrite(K.PRODUCTS, products);
+      cacheSet('products', products, TTL.PRODUCTS);
       return products;
     } catch (e) {
       console.warn('[AdminStore] Supabase unavailable, using localStorage', e);
@@ -55,6 +84,7 @@ export const AdminStore = {
   },
 
   async saveProduct(product: AdminProduct): Promise<void> {
+    cacheDel('products');
     try {
       await dbSaveProduct(product);
       // update local cache
@@ -72,6 +102,7 @@ export const AdminStore = {
   },
 
   async deleteProduct(id: string): Promise<void> {
+    cacheDel('products');
     try {
       await dbDeleteProduct(id);
     } catch (e) {
@@ -128,6 +159,7 @@ export const AdminStore = {
     whatsappNumber?: string,
     customerName?: string,
     customerPhone?: string,
+    whatsappConfirmed?: boolean,
   ): Promise<string> {
     const id = `ord_${Date.now()}`;
     const order: Order = {
@@ -143,6 +175,7 @@ export const AdminStore = {
       createdAt: new Date().toISOString(),
       customerName: customerName || 'Web Order',
       customerPhone: customerPhone || '',
+      whatsappConfirmed: whatsappConfirmed ?? false,
     };
     await this.saveOrder(order);
     return id;
@@ -159,39 +192,72 @@ export const AdminStore = {
     if (order) { order.status = status; if (handledBy) order.handledBy = handledBy; lsWrite(K.ORDERS, all); }
   },
 
-  // ── Settings ────────────────────────────────────────────────────────────────
+  async updateOrderWhatsAppConfirmed(id: string, confirmed: boolean): Promise<void> {
+    try {
+      const { supabase } = await import('./supabase');
+      const { error } = await supabase.from('orders').update({ whatsapp_confirmed: confirmed }).eq('id', id);
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[AdminStore] updateOrderWhatsAppConfirmed fallback', e);
+    }
+    const all = lsRead<Order[]>(K.ORDERS, []);
+    const order = all.find(o => o.id === id);
+    if (order) { order.whatsappConfirmed = confirmed; lsWrite(K.ORDERS, all); }
+  },
+
+  // ── Settings — stale-while-revalidate ────────────────────────────────────────
   async getSettings(): Promise<BusinessSettings> {
+    // 1. In-memory cache hit
+    const memHit = cacheGet<BusinessSettings>('settings');
+    if (memHit) return memHit;
+
+    const DEFAULTS: BusinessSettings = {
+      prepTime: 25, acceptingOrders: true, whatsappNumber: '525584507458',
+      openHours: {}, businessName: 'Snacks 911', address: '',
+      heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
+      heroStats: [
+        { value: '500+', label: 'Pedidos diarios' },
+        { value: '4.9★', label: 'Calificación' },
+        { value: '30min', label: 'Tiempo promedio' },
+      ],
+      deliveryApps: [
+        { name: 'Uber Eats', href: 'https://ubereats.com',  icon: '🟢', color: '#06C167', enabled: true },
+        { name: 'Rappi',     href: 'https://rappi.com',      icon: '🟠', color: '#FF441A', enabled: true },
+        { name: 'DiDi Food', href: 'https://didiglobal.com', icon: '🟡', color: '#FF6E20', enabled: true },
+      ],
+    };
+
+    // 2. Stale-while-revalidate: return localStorage instantly, refresh in bg
+    const lsHit = lsRead<BusinessSettings | null>(K.SETTINGS, null);
+    if (lsHit) {
+      cacheSet('settings', lsHit, TTL.SETTINGS);
+      dbGetSettings()
+        .then(fresh => { lsWrite(K.SETTINGS, fresh); cacheDel('settings'); })
+        .catch(() => {});
+      return lsHit;
+    }
+
+    // 3. No cache — fetch and wait
     try {
       const settings = await dbGetSettings();
       lsWrite(K.SETTINGS, settings);
+      cacheSet('settings', settings, TTL.SETTINGS);
       return settings;
     } catch (e) {
       console.warn('[AdminStore] getSettings fallback', e);
-      return lsRead<BusinessSettings>(K.SETTINGS, {
-        prepTime: 25, acceptingOrders: true, whatsappNumber: '525584507458',
-        openHours: {}, businessName: 'Snacks 911', address: '',
-        heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
-        heroStats: [
-          { value: '500+', label: 'Pedidos diarios' },
-          { value: '4.9★', label: 'Calificación' },
-          { value: '30min', label: 'Tiempo promedio' },
-        ],
-        deliveryApps: [
-          { name: 'Uber Eats', href: 'https://ubereats.com',  icon: '🟢', color: '#06C167', enabled: true },
-          { name: 'Rappi',     href: 'https://rappi.com',      icon: '🟠', color: '#FF441A', enabled: true },
-          { name: 'DiDi Food', href: 'https://didiglobal.com', icon: '🟡', color: '#FF6E20', enabled: true },
-        ],
-      });
+      return DEFAULTS;
     }
   },
 
   async saveSettings(settings: BusinessSettings): Promise<void> {
+    cacheDel('settings');
     try {
       await dbSaveSettings(settings);
     } catch (e) {
       console.warn('[AdminStore] saveSettings fallback', e);
     }
     lsWrite(K.SETTINGS, settings);
+
   },
 
   // ── Sales ────────────────────────────────────────────────────────────────────
@@ -206,9 +272,12 @@ export const AdminStore = {
 
   // ── Custom Categories ────────────────────────────────────────────────────────
   async getCustomCategories(): Promise<CustomCategory[]> {
+    const hit = cacheGet<CustomCategory[]>('categories');
+    if (hit) return hit;
     try {
       const cats = await dbGetCustomCategories();
       lsWrite(K.CATEGORIES, cats);
+      cacheSet('categories', cats, TTL.CATEGORIES);
       return cats;
     } catch (e) {
       console.warn('[AdminStore] getCustomCategories fallback', e);
@@ -217,6 +286,7 @@ export const AdminStore = {
   },
 
   async saveCustomCategory(cat: CustomCategory): Promise<void> {
+    cacheDel('categories');
     try {
       await dbSaveCustomCategory(cat);
     } catch (e) {
@@ -229,6 +299,7 @@ export const AdminStore = {
   },
 
   async deleteCustomCategory(id: string): Promise<void> {
+    cacheDel('categories');
     try {
       await dbDeleteCustomCategory(id);
     } catch (e) {

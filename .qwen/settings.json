@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(node *)",
+      "Bash(test *)",
+      "Bash(rm *)",
+      "Bash(npm install *)",
+      "Bash(sleep *)",
+      "Bash(curl *)",
+      "Bash(kill *)",
+      "Bash(true)",
+      "Bash(pkill *)",
+      "Bash(npm uninstall *)",
+      "Bash(lsof *)",
+      "Bash(python3 *)",
+      "Bash(npx *)"
+    ]
+  },
+  "$version": 3
+}

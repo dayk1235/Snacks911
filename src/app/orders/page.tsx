@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminStore } from '@/lib/adminStore';
 import { supabase } from '@/lib/supabase';
 import { playOrderNotification } from '@/lib/sound';
 import type { Order, OrderStatus } from '@/lib/adminTypes';
+import OrderAlertModal, { type PendingOrder } from '@/components/OrderAlertModal';
 
 // ─── Operational constants ───────────────────────────────────────────────────
 const TARGET_PREP_MIN = 8;        // ideal time per order
@@ -87,6 +89,7 @@ function computeMetrics(allOrders: Order[], activeOrders: Order[]) {
 
 // ─── Main KDS Page ───────────────────────────────────────────────────────────
 export default function KitchenDisplay() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [employeeName] = useState(() => {
@@ -94,6 +97,7 @@ export default function KitchenDisplay() {
   });
   const [tick, setTick] = useState(0);
   const [rtConnected, setRtConnected] = useState(true);
+  const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Double-tap tracking: { orderId, timestamp }
@@ -123,10 +127,36 @@ export default function KitchenDisplay() {
   useEffect(() => {
     const ch = supabase
       .channel('kds-orders')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
-        playAlertWithCooldown();
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+        const newOrder = payload.new as Record<string, unknown>;
+        const orderId = String(newOrder.id);
+
+        // Fetch order with items immediately for the alert modal
+        const { data: fullOrder } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('id', orderId)
+          .single();
+
+        const items = (fullOrder?.order_items as Record<string, unknown>[] | []) ?? [];
+
+        setPendingOrder({
+          id: orderId,
+          customerName: String(newOrder.customer_name || ''),
+          customerPhone: String(newOrder.customer_phone || ''),
+          total: Number(newOrder.total || 0),
+          items: items.map(i => ({
+            productName: String(i.product_name),
+            quantity: Number(i.quantity),
+            price: Number(i.price),
+          })),
+          createdAt: String(newOrder.created_at || new Date().toISOString()),
+        });
+
+        // Refresh full order list in background
         loadOrders();
-        setNewIds(prev => new Set(prev));
+        setNewIds(prev => new Set([...prev, orderId]));
+        playAlertWithCooldown();
       })
       .subscribe((status) => {
         setRtConnected(status === 'SUBSCRIBED');
@@ -248,6 +278,28 @@ export default function KitchenDisplay() {
           {preparingCount > 0 && <span style={{ color: '#FF4500' }}>🔥 {preparingCount}</span>}
           {readyCount > 0 && <span style={{ color: '#22c55e' }}>✅ {readyCount}</span>}
         </div>
+        <button
+          onClick={async () => {
+            localStorage.removeItem('snacks911_employee_name');
+            await fetch('/api/admin/logout', { method: 'POST' }).catch(() => null);
+            router.push('/admin/login');
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.35rem',
+            padding: '0.35rem 0.75rem',
+            background: 'rgba(255,69,0,0.08)',
+            border: '1px solid rgba(255,69,0,0.15)',
+            borderRadius: '8px',
+            color: '#FF4500', fontSize: '0.72rem',
+            fontWeight: 600, cursor: 'pointer',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.18)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.08)'; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Salir
+        </button>
         {employeeName && showEmployee && (
           <span style={{ fontSize: '0.7rem', color: '#444' }}>👤 {employeeName}</span>
         )}
@@ -451,6 +503,14 @@ export default function KitchenDisplay() {
           );
         })}
       </div>
+
+      {/* Blocking order alert modal */}
+      {pendingOrder && (
+        <OrderAlertModal
+          order={pendingOrder}
+          onAccept={() => setPendingOrder(null)}
+        />
+      )}
 
       <style>{`
         @keyframes kdsFlash {

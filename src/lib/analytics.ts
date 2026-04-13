@@ -4,6 +4,13 @@
  * and logs to localStorage for fallback reporting.
  */
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
+  }
+}
+
 const EVENT_KEY = 'snacks911_events';
 
 function logLocal(event: string, params: Record<string, unknown>) {
@@ -20,12 +27,12 @@ function logLocal(event: string, params: Record<string, unknown>) {
 export function track(event: string, params?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
   // gtag / GA4
-  if ((window as any).gtag) {
-    (window as any).gtag('event', event, params);
+  if (window.gtag) {
+    window.gtag('event', event, params);
   }
   // Universal fallback
-  if ((window as any).dataLayer) {
-    (window as any).dataLayer.push({ event, ...params });
+  if (window.dataLayer) {
+    window.dataLayer.push({ event, ...params });
   }
   logLocal(event, params || {});
 }

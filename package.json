@@ -6,9 +6,18 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ai:fix-overflow": "node ai/cli.js fix-overflow",
+    "ai:fix-cursor": "node ai/cli.js fix-cursor",
+    "ai:add-logout": "node ai/cli.js add-logout",
+    "ai:toggle-password": "node ai/cli.js toggle-password",
+    "ai:order-alert": "node ai/cli.js order-alert",
+    "ai:order-sound": "node ai/cli.js order-sound",
+    "ai:manage-staff": "node ai/cli.js manage-staff",
+    "ai:auto": "node ai/cli.js auto"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "framer-motion": "^12.38.0",
     "gsap": "^3.14.2",
@@ -21,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",

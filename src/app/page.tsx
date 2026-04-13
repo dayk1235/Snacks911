@@ -3,14 +3,6 @@
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Navbar from '@/components/Navbar';
-import CombosSection from '@/components/CombosSection';
-const Hero = dynamic(() => import('@/components/Hero'), { ssr: false });
-const TickerBar = dynamic(() => import('@/components/Hero').then(m => ({ default: m.TickerBar })), { ssr: false });
-const Cart = dynamic(() => import('@/components/Cart'), { ssr: false });
-const UpsellModal = dynamic(() => import('@/components/UpsellModal'), { ssr: false });
-const PromoBanner = dynamic(() => import('@/components/PromoBanner'), { ssr: false });
-import SiteFooter from './components/SiteFooter';
 import type { Product } from '@/data/products';
 import { products } from '@/data/products';
 import type { CartItem } from '@/types';
@@ -18,16 +10,18 @@ import { track } from '@/lib/analytics';
 import Link from 'next/link';
 import type { AdminProduct } from '@/lib/adminTypes';
 
-const ReviewSection = dynamic(() => import('@/components/ReviewSection'), {
-  loading: () => <div style={{ minHeight: '720px', background: '#080808' }} />,
-});
+// All interactive/animated components use ssr:false to prevent hydration mismatches
+const Navbar        = dynamic(() => import('@/components/Navbar'),        { ssr: false });
+const CombosSection = dynamic(() => import('@/components/CombosSection'), { ssr: false });
+const SiteFooter    = dynamic(() => import('./components/SiteFooter'),    { ssr: false });
+const Hero          = dynamic(() => import('@/components/Hero'),          { ssr: false });
+const TickerBar     = dynamic(() => import('@/components/Hero').then(m => ({ default: m.TickerBar })), { ssr: false });
+const Cart          = dynamic(() => import('@/components/Cart'),          { ssr: false });
+const UpsellModal   = dynamic(() => import('@/components/UpsellModal'),   { ssr: false });
+const PromoBanner   = dynamic(() => import('@/components/PromoBanner'),   { ssr: false });
 
-
-
-
-const ContactSection = dynamic(() => import('./components/ContactSection'), {
-  loading: () => <div style={{ minHeight: '640px', background: '#0a0a0a' }} />,
-});
+const ReviewSection  = dynamic(() => import('@/components/ReviewSection'),      { ssr: false, loading: () => <div style={{ minHeight: '720px', background: '#080808' }} /> });
+const ContactSection = dynamic(() => import('./components/ContactSection'),      { ssr: false, loading: () => <div style={{ minHeight: '640px', background: '#0a0a0a' }} /> });
 
 const OrderBot = dynamic(() => import('@/components/OrderBot'), {
   ssr: false,

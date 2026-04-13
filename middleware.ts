@@ -8,6 +8,14 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = pathname.startsWith('/admin');
   const isOrdersRoute = pathname.startsWith('/orders');
   const isLoginRoute = pathname === '/login';
+  const isLegacyAdminLogin = pathname === '/admin/login';
+
+  // Legacy admin login → redirect to new login
+  if (isLegacyAdminLogin) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
 
   // Public routes
   if (!isAdminRoute && !isOrdersRoute) {
@@ -42,8 +50,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Employee accessing /orders → OK
-  // Admin accessing /admin → OK (also handled above)
   return NextResponse.next();
 }
 
