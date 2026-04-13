@@ -1,13 +1,21 @@
 'use client';
 
 import { memo, useRef, useEffect, useState } from 'react';
-import gsap from 'gsap';
-import { SplitText } from 'gsap/SplitText';
-import FireCanvas from './FireCanvas';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { AdminStore } from '@/lib/adminStore';
 import type { BusinessSettings } from '@/lib/adminTypes';
 
-gsap.registerPlugin(SplitText);
+const FireCanvas = dynamic(() => import('./FireCanvas'), { ssr: false });
+
+
+import type { Product } from '@/data/products';
+import { products } from '@/data/products';
+
+interface HeroProps {
+  featuredProduct?: Product;
+  onOrderFeatured?: () => void;
+}
 
 const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
   whatsappNumber: '525584507458',
@@ -24,20 +32,15 @@ const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
   ],
 };
 
-function HeroSection() {
+function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
-  const badgeRef     = useRef<HTMLDivElement>(null);
-  const dotRef       = useRef<HTMLSpanElement>(null);
-  const headlineRef  = useRef<HTMLHeadingElement>(null);
-  const line1Ref     = useRef<HTMLSpanElement>(null);
-  const line2Ref     = useRef<HTMLSpanElement>(null);
-  const subtitleRef  = useRef<HTMLParagraphElement>(null);
-  const ctasRef      = useRef<HTMLDivElement>(null);
-  const statsRef     = useRef<HTMLDivElement>(null);
-  const arrowRef     = useRef<HTMLDivElement>(null);
-  const orb1Ref      = useRef<HTMLDivElement>(null);
-  const orb2Ref      = useRef<HTMLDivElement>(null);
+
+  const combos = products.filter(p => p.category === 'combos');
+  const topCombo = combos.find(p => p.badges?.some(b => b.includes('Más pedido'))) ?? combos[0];
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     AdminStore.getSettings()
@@ -45,80 +48,6 @@ function HeroSection() {
       .catch(() => { /* ignore, fallback to defaults */ });
   }, []);
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      // Badge entrance
-      tl.from(badgeRef.current, { opacity: 0, y: 16, duration: 0.45 });
-
-      // SplitText on line 1: "TU ANTOJO" — char by char reveal
-      if (line1Ref.current) {
-        const split1 = new SplitText(line1Ref.current, { type: 'chars' });
-        tl.from(
-          split1.chars,
-          {
-            opacity: 0,
-            y: 40,
-            rotationX: -60,
-            stagger: 0.035,
-            duration: 0.6,
-            ease: 'back.out(1.5)',
-            transformOrigin: 'top center',
-          },
-          '-=0.1'
-        );
-      }
-
-      // Line 2: fire gradient block
-      tl.from(
-        line2Ref.current,
-        { opacity: 0, y: 30, duration: 0.6, ease: 'power4.out' },
-        '-=0.35'
-      );
-
-      // Subtitle, CTAs, Stats
-      tl.from(subtitleRef.current, { opacity: 0, y: 14, duration: 0.5 }, '-=0.3')
-        .from(
-          ctasRef.current ? Array.from(ctasRef.current.children) : [],
-          { opacity: 0, y: 14, duration: 0.4, stagger: 0.08 },
-          '-=0.25'
-        )
-        .from(
-          statsRef.current ? Array.from(statsRef.current.children) : [],
-          { opacity: 0, y: 8, duration: 0.35, stagger: 0.08 },
-          '-=0.15'
-        );
-
-      // Pulsing live dot
-      gsap.to(dotRef.current, {
-        opacity: 0.2, duration: 0.7, yoyo: true, repeat: -1, ease: 'sine.inOut',
-      });
-
-      // Orb breathe — subtle
-      gsap.to(orb1Ref.current, { scale: 1.15, opacity: 0.45, duration: 5, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      gsap.to(orb2Ref.current, { scale: 1.1,  opacity: 0.35, duration: 6, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1.5 });
-
-      // Scroll arrow
-      gsap.to(arrowRef.current, { y: 6, duration: 1.8, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  const handleCtaEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    gsap.to(e.currentTarget, { scale: 1.05, duration: 0.2, ease: 'power2.out' });
-    if (e.currentTarget.id === 'hero-cta-menu') {
-      gsap.to(e.currentTarget, { boxShadow: '0 0 24px rgba(255,69,0,0.6), 0 0 48px rgba(255,69,0,0.2)', duration: 0.25 });
-    }
-  };
-  const handleCtaLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    gsap.to(e.currentTarget, {
-      scale: 1,
-      boxShadow: e.currentTarget.id === 'hero-cta-menu' ? '0 0 16px rgba(255,69,0,0.25)' : 'none',
-      duration: 0.22, ease: 'power2.out',
-    });
-  };
 
   return (
     <section
@@ -139,15 +68,14 @@ function HeroSection() {
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(8,8,8,0.45) 0%, rgba(8,8,8,0.6) 60%, #080808 100%)' }} />
 
       {/* Glow orbs — reduced intensity */}
-      <div ref={orb1Ref} style={{ position: 'absolute', top: '18%', left: '8%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,69,0,0.08) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(35px)', pointerEvents: 'none' }} />
-      <div ref={orb2Ref} style={{ position: 'absolute', bottom: '22%', right: '8%', width: '380px', height: '380px', background: 'radial-gradient(circle, rgba(255,184,0,0.06) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '18%', left: '8%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,69,0,0.08) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(35px)', pointerEvents: 'none', animation: 'heroOrb1 5s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', bottom: '22%', right: '8%', width: '380px', height: '380px', background: 'radial-gradient(circle, rgba(255,184,0,0.06) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none', animation: 'heroOrb2 6s ease-in-out 1.5s infinite' }} />
 
       {/* ── Main content ──── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: 'clamp(96px, 14vh, 130px) 1.5rem 2rem' }}>
         <div style={{ textAlign: 'center', maxWidth: '860px', width: '100%' }}>
-          {/* Live pill */}
+          {/* Live pill — single stable element, dynamic props applied post-mount only */}
           <div
-            ref={badgeRef}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
               background: 'rgba(255,69,0,0.08)',
@@ -162,13 +90,24 @@ function HeroSection() {
               letterSpacing: '0.05em',
             }}
           >
-            <span ref={dotRef} style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#FF4500', flexShrink: 0 }} />
-            {siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min'}
+            <span style={{
+              display: 'inline-block',
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: '#FF4500',
+              flexShrink: 0,
+              animation: 'heroDotBlink 1.4s ease-in-out infinite',
+            }} />
+            <span suppressHydrationWarning>
+              {mounted
+                ? (siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min')
+                : 'Abierto ahora · Entrega en ~30 min'}
+            </span>
           </div>
 
           {/* Headline — Bebas Neue display font */}
           <h1
-            ref={headlineRef}
             style={{
               fontFamily: 'var(--font-display)',
               fontSize: 'clamp(3.5rem, 10vw, 8rem)',
@@ -179,15 +118,14 @@ function HeroSection() {
               perspective: '800px',
             }}
           >
-            <span ref={line1Ref} style={{ color: '#FFFFFF', display: 'block' }}>TU ANTOJO</span>
-            <span ref={line2Ref} className="fire-text" style={{ display: 'block' }}>
+            <span style={{ color: '#FFFFFF', display: 'block' }}>TU ANTOJO</span>
+            <span className="fire-text" style={{ display: 'block' }}>
               DE EMERGENCIA
             </span>
           </h1>
 
           {/* Subtitle — Inter body font */}
           <p
-            ref={subtitleRef}
             style={{
               fontFamily: 'var(--font-body)',
               fontSize: '1.1rem',
@@ -203,99 +141,211 @@ function HeroSection() {
             Solo cuando el antojo no puede esperar.
           </p>
 
-          {/* CTAs */}
-          <div ref={ctasRef} style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '4rem' }}>
-            <a
-              id="hero-cta-menu" href="#menu"
-              onMouseEnter={handleCtaEnter} onMouseLeave={handleCtaLeave}
-              className="glow-btn"
-              style={{
-                background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                color: '#fff', padding: '1rem 2.5rem',
-                borderRadius: '14px', fontWeight: 700,
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.95rem', textDecoration: 'none',
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                boxShadow: '0 0 16px rgba(255,69,0,0.25)',
-                letterSpacing: '0.02em',
-              }}
-            >
-              🍗 Ver Menú
-            </a>
-            <a
-              id="hero-cta-whatsapp"
-              href={`https://wa.me/${(siteSettings.whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
-              onMouseEnter={handleCtaEnter} onMouseLeave={handleCtaLeave}
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                color: 'rgba(255,255,255,0.7)', padding: '1rem 2.5rem',
-                borderRadius: '14px', fontWeight: 600,
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.95rem', textDecoration: 'none',
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              📱 WhatsApp
-            </a>
+          {/* Featured Combo Card */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            {featuredProduct && onOrderFeatured ? (
+              <div style={{
+                maxWidth: '380px', margin: '0 auto',
+                background: 'rgba(20,20,20,0.88)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                border: '1.5px solid rgba(255,69,0,0.25)',
+                borderRadius: '18px',
+                padding: '1.1rem',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255,69,0,0.08)',
+              }}>
+                <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', marginBottom: '0.85rem' }}>
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '12px',
+                    overflow: 'hidden', flexShrink: 0, background: '#1a1a1a',
+                  }}>
+                    <Image
+                      src={featuredProduct.image}
+                      alt={featuredProduct.name}
+                      width={72}
+                      height={72}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      priority
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{
+                      fontSize: '0.6rem', color: '#FF4500', fontWeight: 700,
+                      letterSpacing: '0.15em', textTransform: 'uppercase',
+                    }}>
+                      Mas pedido
+                    </span>
+                    <h3 style={{
+                      fontSize: '1.05rem', fontWeight: 800, color: '#FFB800',
+                      margin: '0.15rem 0 0', lineHeight: 1.2,
+                      fontFamily: 'var(--font-body)',
+                    }}>
+                      {featuredProduct.name}
+                    </h3>
+                    <p style={{
+                      fontSize: '0.7rem', color: '#666', margin: '0.15rem 0 0',
+                      lineHeight: 1.35,
+                    }}>
+                      {featuredProduct.description}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: '1.5rem', fontWeight: 900, color: '#FF4500',
+                      display: 'block', lineHeight: 1,
+                    }}>
+                      ${featuredProduct.price}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  id="hero-cta-order"
+                  onClick={onOrderFeatured}
+                  style={{
+                    width: '100%', padding: '0.8rem',
+                    background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+                    border: 'none', borderRadius: '12px',
+                    color: '#fff', fontWeight: 800, fontSize: '0.92rem',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    boxShadow: '0 4px 16px rgba(255,69,0,0.3)',
+                    letterSpacing: '0.02em',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                >
+                  Pedir Combo 🔥
+                </button>
+              </div>
+            ) : (
+              /* Fallback: original CTAs when no featured product */
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a
+                  id="hero-cta-menu" href="#menu"
+                  className="glow-btn"
+                  style={{
+                    background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+                    color: '#fff', padding: '1rem 2.5rem',
+                    borderRadius: '14px', fontWeight: 700,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.95rem', textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    boxShadow: '0 0 16px rgba(255,69,0,0.25)',
+                    letterSpacing: '0.02em',
+                    transition: 'transform 0.18s ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                >
+                  Ver Menu
+                </a>
+                <a
+                  id="hero-cta-whatsapp"
+                  href={`https://wa.me/${(siteSettings.whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    color: 'rgba(255,255,255,0.7)', padding: '1rem 2.5rem',
+                    borderRadius: '14px', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.95rem', textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    backdropFilter: 'blur(8px)',
+                    transition: 'transform 0.18s ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                >
+                  WhatsApp
+                </a>
+              </div>
+            )}
+
+            {/* Fast decision buttons */}
+            {combos.length > 0 && featuredProduct && (
+              <div style={{
+                maxWidth: '460px',
+                margin: '0 auto 1.5rem',
+                display: 'flex',
+                gap: '0.5rem',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              }}>
+                {combos.slice(0, 3).map(combo => {
+                  const isTop = combo.badges?.some(b => b.includes('Más pedido'));
+                  const badge = isTop ? '🔥 Más vendido' : combo.badges?.[0] ?? '⚡ Combo';
+                  return (
+                    <button
+                      key={combo.id}
+                      onClick={() => {
+                        // Add to cart and open it
+                        if (onOrderFeatured && combo === topCombo) {
+                          onOrderFeatured();
+                        }
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: isTop
+                          ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                          : 'rgba(255,255,255,0.06)',
+                        border: isTop ? 'none' : '1px solid rgba(255,69,0,0.2)',
+                        borderRadius: '50px',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                        transition: 'all 0.2s',
+                        boxShadow: isTop ? '0 0 16px rgba(255,69,0,0.25)' : 'none',
+                      }}
+                    >
+                      {badge}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Secondary link */}
+            {!featuredProduct && (
+              <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                <a
+                  href="/menu"
+                  style={{
+                    color: 'rgba(255,255,255,0.35)', textDecoration: 'none',
+                    fontSize: '0.82rem', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF4500'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
+                >
+                  O explora el menu completo →
+                </a>
+              </div>
+            )}
+            {featuredProduct && (
+              <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
+                <a
+                  href="/menu"
+                  style={{
+                    color: 'rgba(255,255,255,0.3)', textDecoration: 'none',
+                    fontSize: '0.78rem', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF4500'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
+                >
+                  Ver menu completo →
+                </a>
+              </div>
+            )}
           </div>
 
-          {/* Delivery apps strip */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '0.6rem', flexWrap: 'wrap',
-            marginBottom: '3rem',
-          }}>
-            <span style={{
-              fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)',
-              fontFamily: 'var(--font-body)', fontWeight: 500,
-              letterSpacing: '0.08em', textTransform: 'uppercase',
-              marginRight: '0.25rem',
-            }}>
-              También en
-            </span>
-            {(siteSettings.deliveryApps ?? DEFAULT_SETTINGS.deliveryApps ?? []).filter(a => a.enabled).map(app => (
-              <a
-                key={app.name}
-                href={app.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.background   = `${app.color}18`;
-                  el.style.borderColor  = `${app.color}55`;
-                  el.style.color        = '#fff';
-                  el.style.transform    = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.background   = 'rgba(255,255,255,0.04)';
-                  el.style.borderColor  = 'rgba(255,255,255,0.09)';
-                  el.style.color        = 'rgba(255,255,255,0.5)';
-                  el.style.transform    = 'translateY(0)';
-                }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                  padding: '0.4rem 1rem',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  borderRadius: '50px',
-                  textDecoration: 'none',
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.78rem', fontWeight: 600,
-                  fontFamily: 'var(--font-body)',
-                  transition: 'all 0.22s ease',
-                }}
-              >
-                <span style={{ fontSize: '0.9rem' }}>{app.icon}</span>
-                {app.name}
-              </a>
-            ))}
-          </div>
 
-
-          <div ref={statsRef} style={{ display: 'flex', gap: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             {(siteSettings.heroStats ?? DEFAULT_SETTINGS.heroStats ?? []).map((stat) => (
               <div key={stat.label} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.04em', color: '#FF4500' }}>
@@ -313,7 +363,7 @@ function HeroSection() {
       {/* ── Bottom: only scroll arrow (ticker moved to fixed TickerBar) ── */}
       <div style={{ position: 'relative', zIndex: 20, flexShrink: 0, paddingBottom: '3.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '0.5rem' }}>
-          <div ref={arrowRef} style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1rem', userSelect: 'none' }}>↓</div>
+          <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '1rem', userSelect: 'none', animation: 'heroArrowBounce 1.8s ease-in-out infinite' }}>↓</div>
         </div>
       </div>
     </section>
@@ -339,7 +389,7 @@ export const TickerBar = memo(function TickerBar() {
       <div className="ticker-track" style={{ display: 'flex', alignItems: 'center', width: 'max-content' }}>
         {[0, 1].map((copy) => (
           <div key={copy} aria-hidden={copy === 1} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, padding: '0.45rem 0' }}>
-            {['🍗 Alitas BBQ', '🔥 Boneless Picante', '🍟 Papas Loaded', '🚨 Combo 911', '⚡ Entrega Rápida', '🌶️ Sabor Extremo'].map((item) => (
+            {['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rapida', 'Sabor Extremo'].map((item) => (
               <span key={item} style={{
                 display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
                 fontFamily: 'var(--font-body)',
