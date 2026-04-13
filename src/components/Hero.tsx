@@ -34,13 +34,10 @@ const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
 
 function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
-  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
 
   const combos = products.filter(p => p.category === 'combos');
   const topCombo = combos.find(p => p.badges?.some(b => b.includes('Más pedido'))) ?? combos[0];
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     AdminStore.getSettings()
@@ -74,8 +71,9 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
       {/* ── Main content ──── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: 'clamp(96px, 14vh, 130px) 1.5rem 2rem' }}>
         <div style={{ textAlign: 'center', maxWidth: '860px', width: '100%' }}>
-          {/* Live pill — single stable element, dynamic props applied post-mount only */}
+          {/* Live pill — SSR-safe: suppressHydrationWarning on container, explicit span close */}
           <div
+            suppressHydrationWarning
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
               background: 'rgba(255,69,0,0.08)',
@@ -98,11 +96,9 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
               background: '#FF4500',
               flexShrink: 0,
               animation: 'heroDotBlink 1.4s ease-in-out infinite',
-            }} />
+            }}></span>
             <span suppressHydrationWarning>
-              {mounted
-                ? (siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min')
-                : 'Abierto ahora · Entrega en ~30 min'}
+              {siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min'}
             </span>
           </div>
 
