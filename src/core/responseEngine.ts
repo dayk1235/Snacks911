@@ -1,5 +1,8 @@
 /**
- * responseEngine.ts — GOD MODE Sales OS.
+ * core/responseEngine.ts — GOD MODE Sales OS.
+ *
+ * Pure TypeScript — no React, no DOM, no side effects.
+ * Input → Output only.
  *
  * Pipeline:
  *   1. detectIntent(text)
@@ -17,39 +20,17 @@
  *   - NEVER empty response
  */
 
-import { detectIntent, type Intent, type Stage } from './intents';
+import { detectIntent } from './intents';
+import type { Intent, Stage } from './types';
 import { applyLoopStrategy, getNextStrategy } from './antojo';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface PromptContext {
-  comboName: string; comboPrice: number;
-  papasName: string; papasPrice: number;
-  bebidaName: string; bebidaPrice: number;
-  postreName: string; postrePrice: number;
-  comboBonelessName: string; comboBonelessPrice: number; ahorroBoneless: number;
-  currentTotal: number;
-  hasPapas: boolean; hasBebida: boolean; hasPostre: boolean;
-}
-
-export interface ConversationState {
-  stage: Stage;
-  lastIntent: Intent;
-  lastResponse: string | null;
-  comboSelected: boolean;
-  upsellStep: 'none' | 'papas' | 'bebida' | 'postre' | 'done';
-  deliveryStep: 'none' | 'name' | 'address' | 'reference' | 'payment' | 'done';
-  customerName: string;
-  customerAddress: string;
-  customerReference: string;
-  customerPayment: string;
-  orderConfirmed: boolean;
-  retryCount: number;
-  cart: string[];
-  cartTotal: number;
-  whatsappUrl: string | null;
-  reset: boolean;
-}
+import type {
+  ConversationState,
+  QuickAction,
+  ResponseOutput,
+  PromptContext,
+  UpsellStep,
+  DeliveryStep,
+} from './types';
 
 export const INITIAL_STATE: ConversationState = {
   stage: 'inicio',
@@ -70,128 +51,12 @@ export const INITIAL_STATE: ConversationState = {
   reset: false,
 };
 
-export interface QuickAction { label: string; value: string; }
-
-export interface ResponseOutput {
-  text: string;
-  actions?: QuickAction[];
-  nextState: ConversationState;
-}
-
-// ─── Product refs (injected from ChatBot) ─────────────────────────────────────
-
-export interface ProductRefs {
-  comboName: string; comboPrice: number;
-  papasName: string; papasPrice: number;
-  bebidaName: string; bebidaPrice: number;
-  postreName: string; postrePrice: number;
-  comboBonelessName: string; comboBonelessPrice: number; ahorroBoneless: number;
-  currentTotal: number;
-  hasPapas: boolean; hasBebida: boolean; hasPostre: boolean;
-}
-
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function hasAny(text: string, terms: string[]): boolean {
-  return terms.some(term => text.includes(term));
-}
-
-function inferComboAction(textInput?: string): string | undefined {
-  const lower = normalizeText(textInput ?? '');
-  if (!lower) return undefined;
-
-  if (hasAny(lower, ['callejero'])) return 'accept_combo_callejero';
-  if (hasAny(lower, ['boneless', 'inferno', 'clasico'])) return 'accept_combo_boneless';
-  if (hasAny(lower, ['combo 911', '911'])) return 'accept_combo_911';
-  if (lower === 'combo' || lower.includes('combo')) return 'accept_combo_911';
-
-  return undefined;
-}
-
-function finalizeOrder(next: ConversationState) {
-  next.deliveryStep = 'done';
-  next.orderConfirmed = true;
-  next.stage = 'post_venta';
-
-  if (next.cart.length > 0 && next.customerName && next.customerAddress) {
-    const items = next.cart.map(i => `• ${i}`).join('\n');
-    const msg = `🔥 *Nuevo Pedido Snacks 911*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cartTotal}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || 'N/A'}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
-    next.whatsappUrl = `https://wa.me/525584507458?text=${encodeURIComponent(msg)}`;
-  }
-}
-
-function inferActionFromText(
-  state: ConversationState,
-  intent: Intent,
-  textInput?: string,
-): string | undefined {
-  const lower = normalizeText(textInput ?? '');
-
-  if (!lower) {
-    return undefined;
-  }
-
-  if (state.deliveryStep === 'payment') {
-    if (hasAny(lower, ['efectivo', 'cash', 'contado'])) return 'payment_cash';
-    if (hasAny(lower, ['qr', 'transferencia', 'transfer', 'tarjeta'])) return 'payment_qr';
-  }
-
-  if (!state.comboSelected && state.cart.length === 0) {
-    const comboAction = inferComboAction(lower);
-    if (comboAction) return comboAction;
-    if (intent === 'aceptacion' && state.stage !== 'ordenando') return 'accept_combo_911';
-  }
-
-  if (!state.comboSelected || state.deliveryStep !== 'none') {
-    return undefined;
-  }
-
-  if (state.upsellStep === 'none' || state.upsellStep === 'papas') {
-    if (hasAny(lower, ['papas', 'loaded', 'gajo'])) return 'add_papas';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_papas';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_papas';
-  }
-
-  if (state.upsellStep === 'bebida') {
-    if (hasAny(lower, ['refresco', 'bebida', 'coca', 'sprite', 'fanta', 'manzanita'])) return 'add_bebida';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_bebida';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_bebida';
-  }
-
-  if (state.upsellStep === 'postre') {
-    if (hasAny(lower, ['brownie', 'helado', 'postre', 'churro', 'dulce'])) return 'add_postre';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_postre';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_postre';
-  }
-
-  if (state.upsellStep === 'done') {
-    if (hasAny(lower, ['confirma', 'confirmar', 'envia', 'enviar', 'listo'])) return 'confirm_order';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'confirm_order';
-  }
-
-  if (intent === 'edicion') {
-    if (!state.cart.some(item => item.includes('Papas')) && hasAny(lower, ['papas', 'loaded', 'gajo'])) return 'add_papas';
-    if (!state.cart.some(item => item.includes('Refresco')) && hasAny(lower, ['refresco', 'bebida', 'coca', 'sprite', 'fanta', 'manzanita'])) return 'add_bebida';
-    if (!state.cart.some(item => item.includes('Brownie')) && hasAny(lower, ['brownie', 'helado', 'postre', 'churro', 'dulce'])) return 'add_postre';
-  }
-
-  return undefined;
-}
-
 // ─── Stage-aware prompt selector (GOD MODE copy) ──────────────────────────────
 
 function getPromptByStage(
   intent: Intent,
   stage: Stage,
-  upsellStep: 'none' | 'papas' | 'bebida' | 'postre' | 'done',
+  upsellStep: UpsellStep,
 ): { text: (ctx: PromptContext) => string; actions?: QuickAction[] } {
 
   // ── rechazo_fuerte: soft reset, zero pressure ────────────────────────────
@@ -411,11 +276,6 @@ function updateStage(intent: Intent, prevStage: Stage): Stage {
 
 // ─── Anti-loop: STRATEGY ROTATOR (not wording change) ─────────────────────────
 
-/**
- * When a loop is detected, applies a DIFFERENT SALES STRATEGY.
- * Cycles: ANTOJO → FOMO → SOCIAL PROOF → PRICE ANCHOR
- * The base message stays the same — the angle changes.
- */
 function applyAntiLoop(
   text: string,
   lastResponse: string | null,
@@ -450,65 +310,54 @@ function updateState(
   textInput?: string,
 ): ConversationState {
   const next = { ...state };
-  const resolvedAction = action ?? inferActionFromText(state, intent, textInput);
   next.lastIntent = intent;
   next.reset = false;
 
   next.stage = updateStage(intent, next.stage);
-  if (!resolvedAction && !action && intent === 'pedido' && !next.comboSelected && next.cart.length === 0) {
-    next.stage = 'decidiendo';
-  }
 
   // ── Button actions — ALL cart logic here ─────────────────────────────────
-  if (resolvedAction) {
+  if (action) {
     const comboMap: Record<string, { name: string; price: number }> = {
       accept_combo_911:      { name: '🔥 Combo 911', price: 119 },
       accept_combo_boneless: { name: '🍗 Combo Boneless', price: 99 },
       accept_combo_callejero:{ name: '🌮 Combo Callejero', price: 89 },
     };
 
-    if (comboMap[resolvedAction]) {
+    if (comboMap[action]) {
       next.comboSelected = true;
       next.upsellStep = 'papas';
-      next.cart = [comboMap[resolvedAction].name];
-      next.cartTotal = comboMap[resolvedAction].price;
+      next.cart = [comboMap[action].name];
+      next.cartTotal = comboMap[action].price;
       next.stage = 'ordenando';
     }
 
-    if (resolvedAction === 'add_papas')    { next.upsellStep = 'bebida';  next.cart = [...next.cart, 'Papas Loaded']; next.cartTotal += 69; }
-    if (resolvedAction === 'skip_papas')   { next.upsellStep = 'bebida'; }
-    if (resolvedAction === 'add_bebida')   { next.upsellStep = 'postre';  next.cart = [...next.cart, 'Refresco 600ml']; next.cartTotal += 25; }
-    if (resolvedAction === 'skip_bebida')  { next.upsellStep = 'postre'; }
-    if (resolvedAction === 'add_postre')   { next.upsellStep = 'done';    next.cart = [...next.cart, 'Brownie con Helado']; next.cartTotal += 59; }
-    if (resolvedAction === 'skip_postre')  { next.upsellStep = 'done'; }
+    if (action === 'add_papas')    { next.upsellStep = 'bebida';  next.cart = [...next.cart, 'Papas Loaded']; next.cartTotal += 69; }
+    if (action === 'skip_papas')   { next.upsellStep = 'bebida'; }
+    if (action === 'add_bebida')   { next.upsellStep = 'postre';  next.cart = [...next.cart, 'Refresco 600ml']; next.cartTotal += 25; }
+    if (action === 'skip_bebida')  { next.upsellStep = 'postre'; }
+    if (action === 'add_postre')   { next.upsellStep = 'done';    next.cart = [...next.cart, 'Brownie con Helado']; next.cartTotal += 59; }
+    if (action === 'skip_postre')  { next.upsellStep = 'done'; }
 
-    if (resolvedAction === 'confirm_order') {
+    if (action === 'confirm_order') {
       next.deliveryStep = 'name';
       next.stage = 'ordenando';
     }
-    if (resolvedAction === 'payment_qr' || resolvedAction === 'payment_transfer' || resolvedAction === 'payment_cash') {
-      next.customerPayment =
-        resolvedAction === 'payment_cash'
-          ? 'Efectivo'
-          : resolvedAction === 'payment_transfer'
-            ? 'Transferencia'
-            : 'QR / Transferencia';
-
+    if (action === 'payment_qr' || action === 'payment_transfer') {
+      next.customerPayment = action === 'payment_qr' ? 'QR' : 'Transferencia';
       if (!next.customerName)            next.deliveryStep = 'name';
       else if (!next.customerAddress)    next.deliveryStep = 'address';
-      else if (!next.customerReference)  next.deliveryStep = 'reference';
-      else finalizeOrder(next);
+      else next.deliveryStep = next.customerReference ? 'done' : 'reference';
     }
-    if (resolvedAction === 'order_again') {
+    if (action === 'order_again') {
       return { ...INITIAL_STATE, reset: true };
     }
-    if (resolvedAction === 'exploracion' || resolvedAction === 'show_alitas' || resolvedAction === 'show_boneless') {
+    if (action === 'exploracion' || action === 'show_alitas' || action === 'show_boneless') {
       next.stage = 'explorando';
     }
   }
 
   // ── Text-based acceptance without button (user types "sí", "va", etc.) ────
-  if (!resolvedAction && !action && intent === 'aceptacion' && !next.comboSelected && next.cart.length === 0) {
+  if (!action && (intent === 'aceptacion' || intent === 'pedido') && !next.comboSelected && next.cart.length === 0) {
     next.comboSelected = true;
     next.upsellStep = 'papas';
     next.cart = ['🔥 Combo 911'];
@@ -523,7 +372,14 @@ function updateState(
       case 'reference': next.customerReference = textInput; next.deliveryStep = 'payment';   break;
       case 'payment':
         next.customerPayment = textInput;
-        finalizeOrder(next);
+        next.deliveryStep = 'done';
+        next.orderConfirmed = true;
+        next.stage = 'post_venta';
+        if (next.cart.length > 0 && next.customerName && next.customerAddress) {
+          const items = next.cart.map(i => `• ${i}`).join('\n');
+          const msg = `🔥 *Nuevo Pedido Snacks 911*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cartTotal}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || 'N/A'}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
+          next.whatsappUrl = `https://wa.me/525584507458?text=${encodeURIComponent(msg)}`;
+        }
         break;
     }
   }
@@ -533,7 +389,7 @@ function updateState(
 
 // ─── Delivery prompts (short, direct) ─────────────────────────────────────────
 
-function getDeliveryPrompt(step: ConversationState['deliveryStep']): { text: string; actions?: QuickAction[] } | null {
+function getDeliveryPrompt(step: DeliveryStep): { text: string; actions?: QuickAction[] } | null {
   switch (step) {
     case 'name':      return { text: `📍 Tu **nombre** para el envío.` };
     case 'address':   return { text: `📍 ¿Tu **dirección** de entrega?` };
@@ -541,7 +397,7 @@ function getDeliveryPrompt(step: ConversationState['deliveryStep']): { text: str
     case 'payment':   return {
       text: `💰 ¿Cómo pagas?\n\n• Efectivo 💵\n• Transferencia/QR 📱`,
       actions: [
-        { label: '💵 Efectivo', value: 'payment_cash' },
+        { label: '💵 Efectivo', value: 'payment_cash_text' },
         { label: '📱 QR/Transferencia', value: 'payment_qr' },
       ],
     };
@@ -567,7 +423,7 @@ function getDeliveryPrompt(step: ConversationState['deliveryStep']): { text: str
 export function handleMessage(
   text: string,
   state: ConversationState,
-  products: ProductRefs,
+  products: PromptContext,
   action?: string,
 ): ResponseOutput {
   // 1. Detect intent
@@ -633,7 +489,7 @@ export function handleMessage(
   };
 }
 
-// ─── Exported helpers (used by ChatBot.tsx) ───────────────────────────────────
+// ─── Exported helpers (used by UI adapters) ───────────────────────────────────
 
 export function buildDeliveryPrompt(state: ConversationState): { text: string; actions?: QuickAction[] } {
   return getDeliveryPrompt(state.deliveryStep) ?? { text: '' };
@@ -641,7 +497,7 @@ export function buildDeliveryPrompt(state: ConversationState): { text: string; a
 
 export function buildOrderConfirmation(
   state: ConversationState,
-  products: ProductRefs,
+  products: PromptContext,
 ): { text: string; actions?: QuickAction[] } {
   const t = state.cartTotal || products.currentTotal;
   const items: string[] = [];

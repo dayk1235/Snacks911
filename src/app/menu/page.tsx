@@ -11,6 +11,7 @@ import type { AdminProduct } from '@/lib/adminTypes';
 import { track } from '@/lib/analytics';
 import { AdminStore } from '@/lib/adminStore';
 import { analyzeSales } from '@/lib/salesOptimizer';
+import { useCartStore } from '@/lib/cartStore';
 
 import ProductCard from '@/components/ProductCard';
 import ProductCustomizerModal from '@/components/ProductCustomizerModal';
@@ -19,7 +20,7 @@ import UpsellModal from '@/components/UpsellModal';
 import CartUpsellBanner from '@/components/CartUpsellBanner';
 
 const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false });
-const ChatBot      = dynamic(() => import('@/components/ChatBot'),       { ssr: false });
+const OrderBot     = dynamic(() => import('@/components/OrderBot'),      { ssr: false });
 
 // ─── Upsell Popup (same as homepage) ─────────────────────────────────────────
 function UpsellPopup({
@@ -127,15 +128,7 @@ function UpsellPopup({
 
 export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState('todos');
-  const [cartItems, setCartItems]     = useState<CartItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('snacks911_cart');
-        if (saved) return JSON.parse(saved) as CartItem[];
-      } catch {}
-    }
-    return [];
-  });
+  const { items: cartItems, totalItems, totalPrice, addToCart: storeAddToCart, updateQuantity, clearCart: handleClearCart, removeFromCart } = useCartStore();
   const [cartOpen, setCartOpen]       = useState(false);
   const [customizing, setCustomizing] = useState<Product | null>(null);
   const [showUpsell, setShowUpsell]   = useState(false);
@@ -229,22 +222,16 @@ export default function MenuPage() {
     track('add_to_cart', { product_name: product.name, price: product.price, category: product.category });
     let shouldShowProductUpsell = false;
 
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      const next = existing
-        ? prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...prev, { ...product, quantity: 1, linkedExtras: extraNames }];
-
-      // Product-level upsell for boneless/alitas (only if cart doesn't already have combos)
-      if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
-        const hasCombo = prev.some(i => i.category === 'combos');
-        if (!hasCombo) {
-          shouldShowProductUpsell = true;
-        }
+    // Product-level upsell for boneless/alitas (only if cart doesn't already have combos)
+    if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
+      const hasCombo = cartItems.some(i => i.category === 'combos');
+      if (!hasCombo) {
+        shouldShowProductUpsell = true;
       }
+    }
 
-      return next;
-    });
+    const payload = { ...product, linkedExtras: extraNames } as any;
+    storeAddToCart(payload);
 
     setLastAdded(product);
 
@@ -254,21 +241,21 @@ export default function MenuPage() {
     }
 
     setShowUpsell(true);
-  }, [showProductUpsell]);
+  }, [cartItems, showProductUpsell, storeAddToCart]);
 
   // Upsell upgrade handler: replace pending product with combo
   const handleUpsellUpgrade = useCallback((comboProduct: Product) => {
     // Remove the original item that triggered upsell
     if (showProductUpsell) {
-      setCartItems(prev => prev.filter(i => i.id !== showProductUpsell.id));
+      removeFromCart(showProductUpsell.id);
     }
     // Add the combo
-    setCartItems(prev => [...prev, { ...comboProduct, quantity: 1 }]);
+    storeAddToCart(comboProduct as any);
     setLastAdded(comboProduct);
     setShowProductUpsell(null);
     // Open cart to show the upgrade
     setCartOpen(true);
-  }, [showProductUpsell]);
+  }, [showProductUpsell, removeFromCart, storeAddToCart]);
 
   const handleUpsellSkip = useCallback(() => {
     setShowProductUpsell(null);
@@ -276,20 +263,7 @@ export default function MenuPage() {
     setShowUpsell(true);
   }, []);
 
-  // Persist cart to localStorage
-  useEffect(() => {
-    try {
-      if (cartItems.length > 0) localStorage.setItem('snacks911_cart', JSON.stringify(cartItems));
-      else localStorage.removeItem('snacks911_cart');
-    } catch {}
-  }, [cartItems]);
 
-  const updateQuantity = useCallback((id: number, delta: number) => {
-    setCartItems(prev =>
-      prev.map(i => i.id === id ? { ...i, quantity: i.quantity + delta } : i)
-          .filter(i => i.quantity > 0)
-    );
-  }, []);
 
   const handleAddExtra = useCallback((extra: AdminProduct, standalone = true) => {
     const asProduct = {
@@ -299,13 +273,10 @@ export default function MenuPage() {
       price: extra.price,
       category: 'extras' as const,
       image: extra.imageUrl || '/images/combo.webp',
+      isStandaloneExtra: standalone
     };
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === asProduct.id);
-      if (existing) return prev.map(i => i.id === asProduct.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...asProduct, quantity: 1, isStandaloneExtra: standalone }];
-    });
-  }, []);
+    storeAddToCart(asProduct as any);
+  }, [storeAddToCart]);
 
   // ── Customizer modal handlers ─────────────────────────────────────────────
   const handleCustomize = useCallback((product: Product) => {
@@ -339,8 +310,7 @@ export default function MenuPage() {
     }
   }, [activeCategory, combos.length, alaCarte.length]);
 
-  const totalItems = cartItems.reduce((s, i) => s + i.quantity, 0);
-  const totalPrice = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+
 
   return (
     <div style={{ minHeight: '100vh', background: '#080808', fontFamily: 'var(--font-body)' }}>
@@ -812,7 +782,7 @@ export default function MenuPage() {
         items={cartItems}
         onUpdateQuantity={updateQuantity}
         total={totalPrice}
-        onClearCart={() => setCartItems([])}
+        onClearCart={handleClearCart}
         onAddExtra={handleAddExtra}
         onAddProduct={(p) => addToCart(p)}
       />
@@ -835,7 +805,7 @@ export default function MenuPage() {
         />
       )}
 
-      <ChatBot />
+      <OrderBot />
     </div>
   );
 }

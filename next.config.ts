@@ -10,15 +10,14 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Long-lived cache headers for immutable static assets
+  // Custom cache headers only for app-owned public assets.
+  // Next already handles /_next/static with immutable caching.
   async headers() {
+    if (process.env.NODE_ENV !== 'production') {
+      return [];
+    }
+
     return [
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
       {
         source: '/images/:path*',
         headers: [

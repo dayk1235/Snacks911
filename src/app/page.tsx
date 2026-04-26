@@ -5,17 +5,16 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Product } from '@/data/products';
 import { products } from '@/data/products';
-import type { CartItem } from '@/types';
 import { track } from '@/lib/analytics';
 import Link from 'next/link';
 import type { AdminProduct } from '@/lib/adminTypes';
+import { useCartStore } from '@/lib/cartStore';
+import { TickerBar } from '@/components/Hero';
 
-// All interactive/animated components use ssr:false to prevent hydration mismatches
 const Navbar        = dynamic(() => import('@/components/Navbar'),        { ssr: false });
 const CombosSection = dynamic(() => import('@/components/CombosSection'), { ssr: false });
 const SiteFooter    = dynamic(() => import('./components/SiteFooter'),    { ssr: false });
 const Hero          = dynamic(() => import('@/components/Hero'),          { ssr: false });
-const TickerBar     = dynamic(() => import('@/components/Hero').then(m => ({ default: m.TickerBar })), { ssr: false });
 const Cart          = dynamic(() => import('@/components/Cart'),          { ssr: false });
 const UpsellModal   = dynamic(() => import('@/components/UpsellModal'),   { ssr: false });
 const PromoBanner   = dynamic(() => import('@/components/PromoBanner'),   { ssr: false });
@@ -374,9 +373,7 @@ function MenuCTASection() {
 }
 
 export default function Page() {
-  // Always start with empty array on SSR — localStorage rehydration happens in useEffect
-  // (typeof window branch in useState initializer causes hydration mismatch)
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const { items: cartItems, totalItems, totalPrice, addToCart: storeAddToCart, updateQuantity, clearCart: handleClearCart, removeFromCart } = useCartStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
@@ -387,25 +384,15 @@ export default function Page() {
     track('add_to_cart', { product_name: product.name, price: product.price, category: product.category });
     let shouldShowProductUpsell = false;
 
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      const next = existing
-        ? prev.map((item) =>
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-          )
-        : [...prev, { ...product, quantity: 1 }];
-
-      // Product-level upsell for boneless/alitas
-      if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
-        const hasCombo = prev.some(i => i.category === 'combos');
-        if (!hasCombo) {
-          shouldShowProductUpsell = true;
-        }
+    // Product-level upsell for boneless/alitas
+    if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
+      const hasCombo = cartItems.some(i => i.category === 'combos');
+      if (!hasCombo) {
+        shouldShowProductUpsell = true;
       }
+    }
 
-      return next;
-    });
-
+    storeAddToCart(product);
     setLastAddedProduct(product);
 
     if (shouldShowProductUpsell) {
@@ -415,50 +402,32 @@ export default function Page() {
 
     // Trigger upsell after adding
     setShowUpsell(true);
-  }, [showProductUpsell]);
+  }, [cartItems, showProductUpsell, storeAddToCart]);
 
   const handleUpsellUpgrade = useCallback((comboProduct: Product) => {
     if (showProductUpsell) {
-      setCartItems(prev => prev.filter(i => i.id !== showProductUpsell.id));
+      removeFromCart(showProductUpsell.id);
     }
-    setCartItems(prev => [...prev, { ...comboProduct, quantity: 1 }]);
+    storeAddToCart(comboProduct);
     setLastAddedProduct(comboProduct);
     setShowProductUpsell(null);
     setCartOpen(true);
-  }, [showProductUpsell]);
+  }, [showProductUpsell, removeFromCart, storeAddToCart]);
 
   const handleUpsellSkip = useCallback(() => {
     setShowProductUpsell(null);
     setShowUpsell(true);
   }, []);
 
-  // Rehydrate cart from localStorage after mount (avoids SSR mismatch)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('snacks911_cart');
-      if (saved) {
-        const parsed = JSON.parse(saved) as CartItem[];
-        if (parsed.length > 0) setCartItems(parsed);
-      }
-    } catch {}
-  }, []);
-
-  // Persist cart to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      if (cartItems.length > 0) {
-        localStorage.setItem('snacks911_cart', JSON.stringify(cartItems));
-      } else {
-        localStorage.removeItem('snacks911_cart');
-      }
-    } catch {}
-  }, [cartItems]);
-
   // Load last order for reorder
   useEffect(() => {
     try {
       const saved = localStorage.getItem('snacks911_last_order');
-      if (saved) setLastOrder(JSON.parse(saved));
+      if (saved) {
+        requestAnimationFrame(() => {
+          setLastOrder(JSON.parse(saved));
+        });
+      }
     } catch {}
   }, []);
 
@@ -472,13 +441,7 @@ export default function Page() {
     setCartOpen(true);
   }, [lastOrder, addToCart]);
 
-  const updateQuantity = useCallback((id: number, delta: number) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) => (item.id === id ? { ...item, quantity: item.quantity + delta } : item))
-        .filter((item) => item.quantity > 0)
-    );
-  }, []);
+
 
   const handleCartOpen = useCallback(() => {
     setCartOpen(true);
@@ -488,9 +451,7 @@ export default function Page() {
     setCartOpen(false);
   }, []);
 
-  const handleClearCart = useCallback(() => {
-    setCartItems([]);
-  }, []);
+
 
   const handleAddExtra = useCallback((extra: AdminProduct) => {
     const asProduct = {
@@ -503,9 +464,6 @@ export default function Page() {
     };
     addToCart(asProduct);
   }, [addToCart]);
-
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const featuredCombo = useMemo(() => products.find(p => p.id === 7) ?? products[6] ?? null, []);
 
@@ -704,7 +662,7 @@ export default function Page() {
 
       <WelcomeModal onClaim={() => {}} />
 
-      <OrderBot onAddToCart={addToCart} onCartOpen={handleCartOpen} />
+      <OrderBot />
     </main>
   );
 }

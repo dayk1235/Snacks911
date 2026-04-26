@@ -61,7 +61,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
     prevCount.current = cartCount;
   }, [cartCount]);
 
-  const navLinks = ['Menú', 'Combos', 'Contacto'];
+
 
   /* nav style based on phase */
   const navStyle: React.CSSProperties = navPhase === 'entering'
@@ -124,24 +124,68 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
         </div>
 
         {/* ── Desktop nav ── */}
-        <div className="hide-mobile" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-          {navLinks.map((link) => (
-            <a
-              key={link}
-              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#contact'}
-              className="nav-link"
-              style={{
-                fontFamily: 'var(--font-body)', color: '#666',
-                textDecoration: 'none', fontSize: '0.85rem',
-                fontWeight: 500, letterSpacing: '0.04em', position: 'relative',
-                transition: 'color 0.15s ease',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#666'; }}
-            >
-              {link}
-            </a>
-          ))}
+        <div className="hide-mobile" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+          {/* Menú */}
+          <a
+            href="#menu"
+            className="nav-link"
+            style={{
+              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
+              textDecoration: 'none', fontSize: '0.82rem',
+              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
+              transition: 'color 0.2s ease',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '10px',
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            Menú
+          </a>
+
+          {/* Combos */}
+          <a
+            href="/menu"
+            className="nav-link"
+            style={{
+              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
+              textDecoration: 'none', fontSize: '0.82rem',
+              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
+              transition: 'color 0.2s ease',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '10px',
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#FF7040'; e.currentTarget.style.background = 'rgba(255,69,0,0.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Combos
+          </a>
+
+          {/* Contacto */}
+          <a
+            href="#contact"
+            className="nav-link"
+            style={{
+              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
+              textDecoration: 'none', fontSize: '0.82rem',
+              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
+              transition: 'color 0.2s ease',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '10px',
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Contacto
+          </a>
+
+          <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 0.3rem' }} />
 
           {/* Cart button */}
           <button
@@ -151,7 +195,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
               fontFamily: 'var(--font-body)', position: 'relative',
               background: 'linear-gradient(135deg, #FF4500, #FF6500)',
               border: 'none', borderRadius: '12px', padding: '0.55rem 1.25rem',
-              color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+              color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               boxShadow: '0 0 16px rgba(255,69,0,0.2)', letterSpacing: '0.02em',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
@@ -159,6 +203,9 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.06)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(255,69,0,0.35)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(255,69,0,0.2)'; }}
           >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
             Carrito
             {mounted && cartCount > 0 && (
               <span
@@ -244,21 +291,21 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             animation: 'navSlideDown 0.28s cubic-bezier(0.22,1,0.36,1) forwards',
           }}
         >
-          {navLinks.map((link) => (
-            <a
-              key={link}
-              href={link === 'Menú' || link === 'Combos' ? '#menu' : '#contact'}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: 'block', padding: '0.75rem 0.5rem',
-                color: '#ccc', textDecoration: 'none',
-                fontWeight: 600, fontSize: '1.05rem',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
-              }}
-            >
-              {link}
-            </a>
-          ))}
+          <a href="#menu" onClick={() => setMenuOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#ccc', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            Menú
+          </a>
+          <a href="/menu" onClick={() => setMenuOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#FF7040', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Combos
+          </a>
+          <a href="#contact" onClick={() => setMenuOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#ccc', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Contacto
+          </a>
         </div>
       )}
     </nav>

@@ -364,6 +364,20 @@ export default Hero;
 
 /* ── Fixed Ticker Bar — lives above all gsap-panels ─────────────────────── */
 export const TickerBar = memo(function TickerBar() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setReady(true);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  if (!ready) {
+    return null;
+  }
+
   return (
     <div style={{
       position: 'fixed',
