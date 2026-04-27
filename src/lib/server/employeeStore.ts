@@ -60,7 +60,13 @@ function mapRow(d: Record<string, unknown>): Employee {
 }
 
 async function logAndThrow(context: string, error: unknown): Promise<never> {
-  const message = error instanceof Error ? error.message : String(error);
+  // Supabase errors are plain objects with .message — not instanceof Error
+  const message =
+    error instanceof Error
+      ? error.message
+      : (error as { message?: string })?.message ||
+        (error as { details?: string })?.details ||
+        JSON.stringify(error);
   console.error(`[EmployeeStore] ${context}:`, message);
   throw new Error(message);
 }
@@ -106,11 +112,11 @@ export async function createEmployee(input: {
   const { hash, salt } = hashPassword(input.password);
   const now = new Date().toISOString();
 
-  // Check for duplicate
-  const existing = await getEmployeeByLoginId(input.employeeId);
-  if (existing) {
+  // Check for duplicate BEFORE inserting to give a clear error
+  const alreadyExists = await getEmployeeByLoginId(input.employeeId);
+  if (alreadyExists) {
     console.log(`[EmployeeStore] Employee "${input.employeeId}" already exists, returning existing`);
-    return existing;
+    throw new Error(`El número de empleado "${input.employeeId}" ya existe`);
   }
 
   const employee: Employee = {

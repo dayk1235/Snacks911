@@ -118,7 +118,10 @@ export default function StaffPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Error al guardar');
+        const errMsg = typeof data.error === 'string'
+          ? data.error
+          : data.error?.message || JSON.stringify(data.error) || 'Error al guardar';
+        setError(errMsg);
         return;
       }
 
