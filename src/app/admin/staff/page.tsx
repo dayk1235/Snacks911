@@ -46,7 +46,7 @@ export default function StaffPage() {
   const [form, setForm] = useState({
     employeeId: '',
     name: '',
-    role: 'staff' as 'admin' | 'staff',
+    role: 'staff' as 'admin' | 'gerente' | 'staff',
     password: '',
   });
 
@@ -285,10 +285,11 @@ export default function StaffPage() {
                     </label>
                     <select
                       value={form.role}
-                      onChange={e => setForm(f => ({ ...f, role: e.target.value as 'admin' | 'staff' }))}
+                      onChange={e => setForm(f => ({ ...f, role: e.target.value as 'admin' | 'gerente' | 'staff' }))}
                       style={{ ...inputStyle, background: '#1a1a1a' }}
                     >
                       <option value="staff">👤 Staff (solo pedidos)</option>
+                      <option value="gerente">🏪 Gerente (gestión de tienda)</option>
                       <option value="admin">👑 Admin (acceso total)</option>
                     </select>
                   </div>
@@ -354,10 +355,18 @@ export default function StaffPage() {
                       <span style={{
                         fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em',
                         padding: '0.2rem 0.55rem', borderRadius: '6px',
-                        background: member.role === 'admin' ? 'rgba(255,69,0,0.12)' : 'rgba(255,255,255,0.04)',
-                        color: member.role === 'admin' ? '#FF4500' : '#777',
+                        background: member.role === 'admin'
+                          ? 'rgba(255,69,0,0.12)'
+                          : member.role === 'gerente'
+                          ? 'rgba(100,200,100,0.1)'
+                          : 'rgba(255,255,255,0.04)',
+                        color: member.role === 'admin'
+                          ? '#FF4500'
+                          : member.role === 'gerente'
+                          ? '#6BCB77'
+                          : '#777',
                         textTransform: 'uppercase',
-                      }}>{member.role}</span>
+                      }}>{member.role === 'gerente' ? '🏪 Gerente' : member.role}</span>
 
                       {/* Badge especial para admin maestro */}
                       {member.employeeId === 'admin001' && (

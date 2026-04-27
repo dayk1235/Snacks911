@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null) as {
     employeeId?: string;
     name?: string;
-    role?: 'admin' | 'staff';
+    role?: 'admin' | 'gerente' | 'staff';
     password?: string;
   } | null;
 
@@ -102,7 +102,7 @@ export async function PUT(req: Request) {
   const body = await req.json().catch(() => null) as {
     id?: string;
     name?: string;
-    role?: 'admin' | 'staff';
+    role?: 'admin' | 'gerente' | 'staff';
     password?: string;
     active?: boolean;
   } | null;

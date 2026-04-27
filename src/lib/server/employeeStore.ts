@@ -18,7 +18,7 @@ export interface Employee {
   passwordHash: string;
   passwordSalt: string;
   name: string;
-  role: 'admin' | 'staff';
+  role: 'admin' | 'gerente' | 'staff';
   active: boolean;
   createdAt: string;
   lastLoginAt?: string;
@@ -104,7 +104,7 @@ export async function createEmployee(input: {
   employeeId: string;
   password: string;
   name: string;
-  role: 'admin' | 'staff';
+  role: 'admin' | 'gerente' | 'staff';
 }): Promise<Employee> {
   const db = getDb();
   if (!db) throw new Error('No database connection');
@@ -115,52 +115,37 @@ export async function createEmployee(input: {
   // Check for duplicate BEFORE inserting to give a clear error
   const alreadyExists = await getEmployeeByLoginId(input.employeeId);
   if (alreadyExists) {
-    console.log(`[EmployeeStore] Employee "${input.employeeId}" already exists, returning existing`);
+    console.log(`[EmployeeStore] Employee "${input.employeeId}" already exists`);
     throw new Error(`El número de empleado "${input.employeeId}" ya existe`);
   }
 
-  const employee: Employee = {
-    id: `emp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    employeeId: input.employeeId,
-    passwordHash: hash,
-    passwordSalt: salt,
-    name: input.name,
-    role: input.role,
-    active: true,
-    createdAt: now,
-  };
-
   try {
-    const { error } = await db.from('employees').insert({
-      id: employee.id,
-      employee_id: employee.employeeId,
-      password_hash: employee.passwordHash,
-      password_salt: employee.passwordSalt,
-      name: employee.name,
-      role: employee.role,
-      active: employee.active,
-      created_at: employee.createdAt,
-    });
+    // Let Supabase auto-generate the UUID — do NOT pass id manually
+    const { data, error } = await db.from('employees').insert({
+      employee_id: input.employeeId,
+      password_hash: hash,
+      password_salt: salt,
+      name: input.name,
+      role: input.role,
+      active: true,
+      created_at: now,
+    }).select().maybeSingle();
 
     if (error) {
-      // Check if it's a duplicate key error (race condition)
       if (error.code === '23505') {
-        console.log(`[EmployeeStore] Duplicate employee_id "${input.employeeId}", fetching existing`);
-        const existing = await getEmployeeByLoginId(input.employeeId);
-        if (existing) return existing;
+        throw new Error(`El número de empleado "${input.employeeId}" ya existe`);
       }
       await logAndThrow(`Failed to create employee "${input.employeeId}"`, error);
     }
 
-    console.log(`[EmployeeStore] Created employee: ${employee.employeeId} (${employee.role})`);
-    return employee;
+    console.log(`[EmployeeStore] Created employee: ${input.employeeId} (${input.role})`);
+    return mapRow(data as Record<string, unknown>);
   } catch (err) {
-    // Re-check for existing (race condition safety)
-    const existing = await getEmployeeByLoginId(input.employeeId);
-    if (existing) return existing;
-    throw err;
+    if (err instanceof Error) throw err; // re-throw our custom errors
+    throw new Error('Error inesperado al crear empleado');
   }
 }
+
 
 export async function updateLastLogin(employeeId: string): Promise<void> {
   const db = getDb();
