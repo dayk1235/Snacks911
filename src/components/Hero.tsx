@@ -36,6 +36,10 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
   const containerRef = useRef<HTMLElement>(null);
 
+  // Store open/closed status
+  const [storeOpen, setStoreOpen]       = useState(true);
+  const [closedMessage, setClosedMessage] = useState('');
+
   const combos = products.filter(p => p.category === 'combos');
   const topCombo = combos.find(p => p.badges?.some(b => b.includes('Más pedido'))) ?? combos[0];
 
@@ -43,8 +47,13 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
     AdminStore.getSettings()
       .then(s => setSiteSettings(s))
       .catch(() => { /* ignore, fallback to defaults */ });
-  }, []);
 
+    // Check store open/closed
+    fetch('/api/store/status')
+      .then(r => r.json())
+      .then(d => { setStoreOpen(d.is_open); setClosedMessage(d.closed_message || ''); })
+      .catch(() => {});
+  }, []);
 
   return (
     <section
@@ -71,26 +80,33 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
       {/* ── Main content ──── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: 'clamp(96px, 14vh, 130px) 1.5rem 2rem' }}>
         <div style={{ textAlign: 'center', maxWidth: '860px', width: '100%' }}>
-          {/* Live pill — SSR-safe: suppressHydrationWarning on container, explicit span close */}
+          {/* Live pill — shows open/closed status from DB */}
           <div
             suppressHydrationWarning
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-              background: 'rgba(255,69,0,0.08)',
-              border: '1px solid rgba(255,69,0,0.22)',
+              background: storeOpen ? 'rgba(255,69,0,0.08)' : 'rgba(239,68,68,0.1)',
+              border: storeOpen ? '1px solid rgba(255,69,0,0.22)' : '1px solid rgba(239,68,68,0.35)',
               borderRadius: '50px',
               padding: '0.45rem 1.25rem',
               fontSize: '0.78rem',
               fontFamily: 'var(--font-body)',
-              color: '#FF7040',
+              color: storeOpen ? '#FF7040' : '#ef4444',
               fontWeight: 600,
               marginBottom: '2rem',
               letterSpacing: '0.05em',
             }}
           >
-            <span className="hero-dot"></span>
+            <span style={{
+              width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
+              background: storeOpen ? '#FF7040' : '#ef4444',
+              boxShadow: storeOpen ? '0 0 6px #FF7040' : '0 0 6px #ef4444',
+              animation: storeOpen ? 'heroPulse 2s ease-in-out infinite' : 'none',
+            }} />
             <span suppressHydrationWarning>
-              {siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min'}
+              {storeOpen
+                ? (siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min')
+                : '🔴 Cerrado por ahora'}
             </span>
           </div>
 
@@ -188,69 +204,88 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                 </div>
                 <button
                   id="hero-cta-order"
-                  onClick={onOrderFeatured}
+                  onClick={storeOpen ? onOrderFeatured : undefined}
+                  disabled={!storeOpen}
+                  title={storeOpen ? '' : closedMessage || 'Estamos cerrados'}
                   style={{
                     width: '100%', padding: '0.8rem',
-                    background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                    border: 'none', borderRadius: '12px',
-                    color: '#fff', fontWeight: 800, fontSize: '0.92rem',
-                    cursor: 'pointer',
+                    background: storeOpen
+                      ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                      : 'rgba(255,255,255,0.06)',
+                    border: storeOpen ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '12px',
+                    color: storeOpen ? '#fff' : '#555',
+                    fontWeight: 800, fontSize: '0.92rem',
+                    cursor: storeOpen ? 'pointer' : 'not-allowed',
                     fontFamily: 'var(--font-body)',
-                    boxShadow: '0 4px 16px rgba(255,69,0,0.3)',
+                    boxShadow: storeOpen ? '0 4px 16px rgba(255,69,0,0.3)' : 'none',
                     letterSpacing: '0.02em',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                    transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                 >
-                  Pedir Combo 🔥
+                  {storeOpen ? 'Pedir Combo 🔥' : '🔴 Cerrado por ahora'}
                 </button>
               </div>
             ) : (
-              /* Fallback: original CTAs when no featured product */
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <a
-                  id="hero-cta-menu" href="#menu"
-                  className="glow-btn"
-                  style={{
-                    background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                    color: '#fff', padding: '1rem 2.5rem',
-                    borderRadius: '14px', fontWeight: 700,
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.95rem', textDecoration: 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                    boxShadow: '0 0 16px rgba(255,69,0,0.25)',
-                    letterSpacing: '0.02em',
-                    transition: 'transform 0.18s ease',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                >
-                  Ver Menu
-                </a>
-                <a
-                  id="hero-cta-whatsapp"
-                  href={`https://wa.me/${(siteSettings.whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    color: 'rgba(255,255,255,0.7)', padding: '1rem 2.5rem',
-                    borderRadius: '14px', fontWeight: 600,
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.95rem', textDecoration: 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    backdropFilter: 'blur(8px)',
-                    transition: 'transform 0.18s ease',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                >
-                  WhatsApp
-                </a>
-              </div>
+              /* Fallback CTAs — closed state shows banner */
+              !storeOpen ? (
+                <div style={{
+                  maxWidth: '400px', margin: '0 auto',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: '16px', padding: '1.25rem 1.5rem',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔴</div>
+                  <p style={{ color: '#ef4444', fontWeight: 700, fontSize: '1rem', margin: '0 0 0.4rem' }}>Estamos cerrados</p>
+                  <p style={{ color: '#888', fontSize: '0.82rem', margin: 0 }}>{closedMessage || '¡Vuelve pronto!'}</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <a
+                    id="hero-cta-menu" href="#menu"
+                    className="glow-btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+                      color: '#fff', padding: '1rem 2.5rem',
+                      borderRadius: '14px', fontWeight: 700,
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.95rem', textDecoration: 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                      boxShadow: '0 0 16px rgba(255,69,0,0.25)',
+                      letterSpacing: '0.02em',
+                      transition: 'transform 0.18s ease',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                  >
+                    Ver Menu
+                  </a>
+                  <a
+                    id="hero-cta-whatsapp"
+                    href={`https://wa.me/${(siteSettings.whatsappNumber || '525584507458').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      color: 'rgba(255,255,255,0.7)', padding: '1rem 2.5rem',
+                      borderRadius: '14px', fontWeight: 600,
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.95rem', textDecoration: 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      backdropFilter: 'blur(8px)',
+                      transition: 'transform 0.18s ease',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                  >
+                    WhatsApp
+                  </a>
+                </div>
+              )
             )}
+          </div>
 
-            {/* Fast decision buttons */}
+          {/* Fast decision buttons */}
             {combos.length > 0 && featuredProduct && (
               <div style={{
                 maxWidth: '460px',

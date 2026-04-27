@@ -20,6 +20,42 @@ export default function DashboardPage() {
   const [cardsReady, setCardsReady] = useState(false);
   const audioInitialized = useRef(false);
 
+  // ── Store status state ─────────────────────────────────────────
+  const [storeOpen, setStoreOpen]       = useState(true);
+  const [closedMsg, setClosedMsg]       = useState('');
+  const [editingMsg, setEditingMsg]     = useState(false);
+  const [draftMsg, setDraftMsg]         = useState('');
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/store/status')
+      .then(r => r.json())
+      .then(d => { setStoreOpen(d.is_open); setClosedMsg(d.closed_message); setDraftMsg(d.closed_message); })
+      .catch(() => {});
+  }, []);
+
+  const toggleStore = async () => {
+    setStatusLoading(true);
+    try {
+      await fetch('/api/store/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_open: !storeOpen }),
+      });
+      setStoreOpen(prev => !prev);
+    } finally { setStatusLoading(false); }
+  };
+
+  const saveMessage = async () => {
+    await fetch('/api/store/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closed_message: draftMsg }),
+    });
+    setClosedMsg(draftMsg);
+    setEditingMsg(false);
+  };
+
   useEffect(() => {
     const load = async () => {
       const o = await AdminStore.getOrders();
@@ -196,8 +232,74 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      {/* ── Store Status Toggle ──────────────────────────────────────── */}
+      <div style={{
+        ...CARD,
+        marginBottom: '1.5rem',
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
+        border: storeOpen
+          ? '1px solid rgba(34,197,94,0.25)'
+          : '1px solid rgba(239,68,68,0.25)',
+        background: storeOpen ? 'rgba(34,197,94,0.04)' : 'rgba(239,68,68,0.04)',
+      }}>
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+            <span style={{
+              width: '10px', height: '10px', borderRadius: '50%',
+              background: storeOpen ? '#22c55e' : '#ef4444',
+              boxShadow: storeOpen ? '0 0 8px #22c55e' : '0 0 8px #ef4444',
+              flexShrink: 0,
+              animation: storeOpen ? 'pulse 2s infinite' : 'none',
+            }} />
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>
+              Tienda {storeOpen ? '🟢 Abierta' : '🔴 Cerrada'}
+            </span>
+          </div>
+          {!storeOpen && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
+              {editingMsg ? (
+                <>
+                  <input
+                    value={draftMsg}
+                    onChange={e => setDraftMsg(e.target.value)}
+                    style={{
+                      flex: 1, padding: '0.4rem 0.7rem',
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px', color: '#fff', fontSize: '0.82rem', outline: 'none',
+                    }}
+                    placeholder="Mensaje para el cliente..."
+                  />
+                  <button onClick={saveMessage} style={{ padding: '0.4rem 0.75rem', background: '#22c55e', border: 'none', borderRadius: '8px', color: '#000', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>Guardar</button>
+                  <button onClick={() => setEditingMsg(false)} style={{ padding: '0.4rem 0.75rem', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#666', fontSize: '0.78rem', cursor: 'pointer' }}>Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '0.78rem', color: '#888' }}>{closedMsg || 'Sin mensaje'}</span>
+                  <button onClick={() => setEditingMsg(true)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>Editar</button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={toggleStore}
+          disabled={statusLoading}
+          style={{
+            padding: '0.65rem 1.5rem',
+            background: storeOpen
+              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+              : 'linear-gradient(135deg, #22c55e, #16a34a)',
+            border: 'none', borderRadius: '12px', color: '#fff',
+            fontWeight: 800, fontSize: '0.9rem', cursor: statusLoading ? 'wait' : 'pointer',
+            opacity: statusLoading ? 0.7 : 1,
+            transition: 'all 0.2s',
+            boxShadow: storeOpen ? '0 4px 20px rgba(239,68,68,0.3)' : '0 4px 20px rgba(34,197,94,0.3)',
+          }}
+        >
+          {statusLoading ? '...' : storeOpen ? '🔴 Cerrar tienda' : '🟢 Abrir tienda'}
+        </button>
+      </div>
 
-      {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {kpis.map((kpi, i) => (
           <div key={kpi.label} style={{
