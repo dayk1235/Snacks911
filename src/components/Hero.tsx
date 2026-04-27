@@ -365,7 +365,6 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                 </a>
               </div>
             )}
-          </div>
 
 
           <div style={{ display: 'flex', gap: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
