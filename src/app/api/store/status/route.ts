@@ -51,7 +51,7 @@ export async function GET() {
 // ── POST — Cambiar estado (admin/gerente) ─────────────────────────────────────
 export async function POST(req: Request) {
   const session = await getSession(req);
-  if (!session || !['admin', 'gerente'].includes(session.role)) {
+  if (!session || !session.role || !['admin', 'gerente'].includes(session.role as string)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 

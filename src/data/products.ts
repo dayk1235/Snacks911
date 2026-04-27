@@ -3,7 +3,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: 'combos' | 'proteina' | 'papas' | 'banderillas' | 'bebidas' | 'extras';
+  category: 'combos' | 'proteina' | 'papas' | 'banderillas' | 'bebidas' | 'extras' | 'postres';
   image: string;
   spicy?: number;
   popular?: boolean;
@@ -11,6 +11,7 @@ export interface Product {
   badges?: string[];
   /** Para combos: suma de items individuales antes del descuento */
   originalPrice?: number;
+  available?: boolean;
 }
 
 export const products: Product[] = [

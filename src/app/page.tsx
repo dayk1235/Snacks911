@@ -48,7 +48,7 @@ function UpsellPopup({
   const suggestions = useMemo(() => {
     const ids: number[] = [];
     // If they added wings/boneless → suggest papas or drinks
-    if (product.category === 'alitas' || product.category === 'boneless') {
+    if (product.category === 'proteina') {
       ids.push(5, 6); // Papas Gajo + Papas Loaded
     } else if (product.category === 'papas') {
       ids.push(1, 3); // Alitas BBQ + Boneless Clásico
@@ -385,7 +385,7 @@ export default function Page() {
     let shouldShowProductUpsell = false;
 
     // Product-level upsell for boneless/alitas
-    if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
+    if (product.category === 'proteina' && !showProductUpsell) {
       const hasCombo = cartItems.some(i => i.category === 'combos');
       if (!hasCombo) {
         shouldShowProductUpsell = true;

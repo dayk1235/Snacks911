@@ -34,7 +34,7 @@ function UpsellPopup({
 }) {
   const suggestions = useMemo(() => {
     const ids: number[] = [];
-    if (product.category === 'alitas' || product.category === 'boneless') {
+    if (product.category === 'proteina') {
       ids.push(5, 6);
     } else if (product.category === 'papas') {
       ids.push(1, 3);
@@ -193,10 +193,10 @@ export default function MenuPage() {
   );
 
   const alaCarteAll = useMemo(() =>
-    products.filter(p => ['alitas', 'boneless', 'papas', 'banderillas', 'postres'].includes(p.category))
+    products.filter(p => ['proteina', 'papas', 'banderillas', 'postres'].includes(p.category))
       .sort((a, b) => {
-        // Order: alitas > boneless > papas > banderillas > postres
-        const order = { alitas: 1, boneless: 2, papas: 3, banderillas: 4, postres: 5 };
+        // Order: proteina > papas > banderillas > postres
+        const order = { proteina: 1, papas: 2, banderillas: 3, postres: 4 };
         const catDiff = (order[a.category as keyof typeof order] || 99) - (order[b.category as keyof typeof order] || 99);
         if (catDiff !== 0) return catDiff;
         return (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0);
@@ -223,7 +223,7 @@ export default function MenuPage() {
     let shouldShowProductUpsell = false;
 
     // Product-level upsell for boneless/alitas (only if cart doesn't already have combos)
-    if ((product.category === 'boneless' || product.category === 'alitas') && !showProductUpsell) {
+    if (product.category === 'proteina' && !showProductUpsell) {
       const hasCombo = cartItems.some(i => i.category === 'combos');
       if (!hasCombo) {
         shouldShowProductUpsell = true;
@@ -455,9 +455,9 @@ export default function MenuPage() {
             </div>
           </section>
 
-          {/* Section 2: 🍗 Alitas */}
+          {/* Section 2: 🍗 Alitas & Boneless */}
           {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'alitas');
+            const sectionItems = alaCarteAll.filter(p => p.category === 'proteina');
             if (sectionItems.length === 0) return null;
             return (
               <section style={{ marginBottom: '2.5rem' }}>
@@ -470,45 +470,7 @@ export default function MenuPage() {
                     fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
                     whiteSpace: 'nowrap',
                   }}>
-                    🍗 Alitas
-                  </h2>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '0.85rem',
-                }}>
-                  {sectionItems.map(product => (
-                    <div key={product.id}>
-                      <ProductCard
-                        product={product}
-                        onAddToCart={addToCart}
-                        onCustomize={handleCustomize}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-
-          {/* Section 3: 🍗 Boneless */}
-          {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'boneless');
-            if (sectionItems.length === 0) return null;
-            return (
-              <section style={{ marginBottom: '2.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  marginBottom: '1rem', padding: '0 0.5rem',
-                }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    🍗 Boneless
+                    🍗 Alitas & Boneless
                   </h2>
                   <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                 </div>

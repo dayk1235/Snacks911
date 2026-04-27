@@ -73,8 +73,7 @@ export function getCrossSell(
   allProducts: CoreProduct[],
 ): { product: CoreProduct; message: string } | null {
   const hasMain = cart.some(i =>
-    i.product.category === 'alitas' ||
-    i.product.category === 'boneless' ||
+    i.product.category === 'proteina' ||
     i.product.category === 'combos'
   );
   const hasSide = cart.some(i => i.product.category === 'papas');
@@ -117,7 +116,7 @@ export function suggestUpgrade(
   product: CoreProduct,
   allProducts: CoreProduct[],
 ): CoreProduct | null {
-  if (product.category === 'alitas' || product.category === 'boneless') {
+  if (product.category === 'proteina') {
     const combos = getTopCombos(allProducts, 1);
     return combos[0] || null;
   }

@@ -1,11 +1,10 @@
 // ─── Admin Types ──────────────────────────────────────────────────────────────
 
 // Known categories + allow custom ones
-export type ProductCategory = 'alitas' | 'boneless' | 'papas' | 'combos' | 'banderillas' | 'postres' | 'extras' | (string & {});
+export type ProductCategory = 'proteina' | 'papas' | 'combos' | 'banderillas' | 'postres' | 'extras' | (string & {});
 
 export const DEFAULT_CATEGORIES: { id: string; label: string; emoji: string }[] = [
-  { id: 'alitas',   label: 'Alitas',   emoji: '🍗' },
-  { id: 'boneless', label: 'Boneless', emoji: '🍗' },
+  { id: 'proteina', label: 'Proteína', emoji: '🍗' },
   { id: 'papas',    label: 'Papas',    emoji: '🍟' },
   { id: 'combos',   label: 'Combos',   emoji: '🔥' },
   { id: 'banderillas', label: 'Banderillas', emoji: '🌭' },
@@ -63,7 +62,7 @@ export interface Customer {
   createdAt: string;       // ISO date
 }
 
-export type UserRole = 'admin' | 'staff';
+export type UserRole = 'admin' | 'gerente' | 'staff';
 
 export interface Employee {
   id: string;
@@ -129,8 +128,7 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  alitas:   '🍗 Alitas',
-  boneless: '🍗 Boneless',
+  proteina: '🍗 Proteína',
   papas:    '🍟 Papas',
   combos:   '🚨 Combos',
   banderillas: '🌭 Banderillas',

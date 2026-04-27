@@ -7,7 +7,7 @@ interface StaffMember {
   id: string;
   employeeId: string;
   name: string;
-  role: 'admin' | 'staff';
+  role: 'admin' | 'gerente' | 'staff';
   active: boolean;
   createdAt: string;
   lastLoginAt?: string;

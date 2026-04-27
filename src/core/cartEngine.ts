@@ -140,7 +140,7 @@ export function getSuggestedUpsell(state: CartState, allProducts: CoreProduct[])
   const suggestedIds: number[] = [];
 
   // If wings/boneless in cart → suggest papas or drinks
-  if (categoriesInCart.has('alitas') || categoriesInCart.has('boneless')) {
+  if (categoriesInCart.has('proteina')) {
     suggestedIds.push(5, 6); // Papas Gajo + Papas Loaded
   } else if (categoriesInCart.has('papas')) {
     suggestedIds.push(1, 3); // Alitas BBQ + Boneless Clásico

@@ -13,8 +13,7 @@ interface ProductCardProps {
 
 // Emotion labels by category
 const EMOTION_LABELS: Record<string, string[]> = {
-  alitas: ['🔥 Se antojan', 'Crujientes por fuera', 'Jugosas por dentro'],
-  boneless: ['😋 Irresistibles', 'Suaves y dorados', 'No puedes parar'],
+  proteina: ['🔥 Se antojan', 'Crujientes por fuera', 'Jugosas por dentro'],
   papas: ['🍟 El acompañante perfecto', 'Crujientes', 'Para dipear'],
   combos: ['🚨 Para hoy', 'Todo incluido', 'Mejor precio'],
 };
@@ -31,8 +30,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
 
   // Upsell suggestion based on product
   const upsellProduct = (() => {
-    if (product.category === 'alitas') return products.find(p => p.name === 'Papas Loaded');
-    if (product.category === 'boneless') return products.find(p => p.badges?.some(b => b.includes('Más pedido')) && p.category === 'combos');
+    if (product.category === 'proteina') return products.find(p => p.name === 'Papas Loaded');
     if (product.category === 'papas') return products.find(p => p.name === 'Alitas BBQ');
     return null;
   })();
@@ -47,7 +45,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
     setAdded(true);
 
     // Show upsell after adding
-    if (upsellProduct && (product.category === 'alitas' || product.category === 'boneless')) {
+    if (upsellProduct && product.category === 'proteina') {
       setShowUpsell(true);
     }
 

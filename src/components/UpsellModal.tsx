@@ -47,7 +47,9 @@ export default function UpsellModal({
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  const offer = OFFERS[product.category];
+  const isBoneless = product.name.toLowerCase().includes('boneless');
+  const offerKey = isBoneless ? 'boneless' : (product.category === 'proteina' ? 'alitas' : '');
+  const offer = offerKey ? OFFERS[offerKey] : undefined;
 
   useEffect(() => {
     if (!offer) { setShow(false); return; }
@@ -81,7 +83,7 @@ export default function UpsellModal({
       name: offer.upsellLabel,
       description: 'Tu pedido convertido en combo',
       price: product.price + offer.upsellPrice,
-      category: product.category === 'boneless' ? 'combos' : 'papas',
+      category: isBoneless ? 'combos' : 'papas',
       image: offer.upsellProductId === 7 ? '/images/combo.webp' : '/images/papas.webp',
     });
     setShow(false);
@@ -120,7 +122,7 @@ export default function UpsellModal({
         }}
       >
         <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem', lineHeight: 1 }}>
-          {product.category === 'boneless' ? '🔥' : '🍗'}
+          {isBoneless ? '🔥' : '🍗'}
         </div>
 
         <h3 style={{
