@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePosStore, type PosCartItem } from '@/lib/posStore';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // ── Product type from Supabase ─────────────────────────────────────────────
 interface Product {
