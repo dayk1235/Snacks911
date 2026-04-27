@@ -9,13 +9,13 @@ import { AdminStore } from '@/lib/adminStore';
 const INACTIVITY_MS = 30 * 60 * 1000;
 
 const NAV = [
-  { href: '/admin',          icon: '📊', label: 'Dashboard'    },
-  { href: '/admin/products', icon: '🍗', label: 'Productos'    },
-  { href: '/admin/menu',     icon: '📄', label: 'Importar Menu'},
-  { href: '/admin/orders',   icon: '📦', label: 'Pedidos'      },
-  { href: '/admin/staff',    icon: '👥', label: 'Personal'     },
-  { href: '/admin/sales',    icon: '💰', label: 'Ventas'       },
-  { href: '/admin/settings', icon: '⚙️',  label: 'Configuración'},
+  { href: '/admin',          icon: '📊', label: 'Dashboard',     roles: ['admin', 'gerente'] },
+  { href: '/admin/products', icon: '🍗', label: 'Productos',     roles: ['admin', 'gerente'] },
+  { href: '/admin/menu',     icon: '📄', label: 'Importar Menú', roles: ['admin', 'gerente'] },
+  { href: '/admin/orders',   icon: '📦', label: 'Pedidos',       roles: ['admin', 'gerente', 'staff'] },
+  { href: '/admin/staff',    icon: '👥', label: 'Personal',      roles: ['admin'] },
+  { href: '/admin/sales',    icon: '💰', label: 'Ventas',        roles: ['admin', 'gerente'] },
+  { href: '/admin/settings', icon: '⚙️',  label: 'Configuración', roles: ['admin'] },
 ];
 
 const LS_SIDEBAR_KEY = 'snacks911_sidebar_collapsed';
@@ -85,11 +85,14 @@ function InactivityWarning({ secondsLeft, onStay, onLeave }: {
   );
 }
 
-// ─── Sidebar ────────────────────────────────────────────────────────────────
-function Sidebar({ pendingCount }: { pendingCount: number }) {
+// ─── Sidebar ────────────────────────────────────────────────────────────────────────────
+function Sidebar({ pendingCount, userRole, userName }: { pendingCount: number; userRole: string; userName: string }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Filter nav items based on role
+  const visibleNav = NAV.filter(item => item.roles.includes(userRole));
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -183,7 +186,7 @@ function Sidebar({ pendingCount }: { pendingCount: number }) {
 
       {/* Nav links */}
       <nav style={{ flex: 1, padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
-        {NAV.map(({ href, icon, label }) => {
+        {visibleNav.map(({ href, icon, label }) => {
           const active = pathname === href;
           return (
             <Link
@@ -246,15 +249,21 @@ function Sidebar({ pendingCount }: { pendingCount: number }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', padding: '0 0.5rem' }}>
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #FF4500, #FFB800)',
+              background: userRole === 'gerente'
+                ? 'linear-gradient(135deg, #6BCB77, #4CAF50)'
+                : 'linear-gradient(135deg, #FF4500, #FFB800)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.9rem', fontWeight: 700, flexShrink: 0,
             }}>
-              A
+              {userRole === 'gerente' ? '🏪' : 'A'}
             </div>
             <div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>Admin</div>
-              <div style={{ fontSize: '0.68rem', color: '#444' }}>Snacks 911</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>
+                {userName || (userRole === 'gerente' ? 'Gerente' : 'Admin')}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: '#444', textTransform: 'capitalize' }}>
+                {userRole} · Snacks 911
+              </div>
             </div>
           </div>
         )}
@@ -299,6 +308,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authState, setAuthState]  = useState<'loading' | 'ok' | 'denied'>('loading');
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown]    = useState(30);
+  const [userRole, setUserRole]      = useState('admin');
+  const [userName, setUserName]      = useState('');
 
   const inactivityTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -365,6 +376,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     fetch('/api/admin/me')
       .then(res => {
         if (res.ok) {
+          res.json().then(data => {
+            if (data?.role) setUserRole(data.role);
+            if (data?.name) setUserName(data.name);
+          }).catch(() => {});
           setAuthState('ok');
         } else {
           setAuthState('denied');
@@ -435,7 +450,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           onLeave={doLogout}
         />
       )}
-      <Sidebar pendingCount={pendingCount} />
+      <Sidebar pendingCount={pendingCount} userRole={userRole} userName={userName} />
       <main style={{ flex: 1, overflow: 'auto', minHeight: '100vh', transition: 'margin-left 0.25s ease' }}>
         {children}
       </main>

@@ -67,7 +67,7 @@ export default function LoginPage() {
           cardRef.current.style.transform = 'scale(1.03)';
           cardRef.current.style.opacity = '0';
         }
-        setTimeout(() => router.push(data.user.role === 'admin' ? '/admin' : '/orders'), 360);
+        setTimeout(() => router.push(data.user.role === 'admin' || data.user.role === 'gerente' ? '/admin' : '/orders'), 360);
       } else {
         setError(data.error || 'Credenciales invalidas');
         // CSS shake via class toggle
