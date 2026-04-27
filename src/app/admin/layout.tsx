@@ -9,12 +9,11 @@ import { AdminStore } from '@/lib/adminStore';
 const INACTIVITY_MS = 30 * 60 * 1000;
 
 const NAV = [
-  { href: '/admin',          icon: '📊', label: 'Dashboard',     roles: ['admin', 'gerente'] },
-  { href: '/admin/products', icon: '🍗', label: 'Productos',     roles: ['admin', 'gerente'] },
-  { href: '/admin/menu',     icon: '📄', label: 'Importar Menú', roles: ['admin', 'gerente'] },
-  { href: '/admin/orders',   icon: '📦', label: 'Pedidos',       roles: ['admin', 'gerente', 'staff'] },
-  { href: '/admin/staff',    icon: '👥', label: 'Personal',      roles: ['admin'] },
-  { href: '/admin/sales',    icon: '💰', label: 'Ventas',        roles: ['admin', 'gerente'] },
+  { href: '/admin',          icon: '📊', label: 'Dashboard',   roles: ['admin', 'gerente'] },
+  { href: '/admin/products', icon: '🍗', label: 'Productos',   roles: ['admin', 'gerente'] },
+  { href: '/admin/orders',   icon: '📦', label: 'Pedidos',     roles: ['admin', 'gerente', 'staff'] },
+  { href: '/admin/staff',    icon: '👥', label: 'Personal',    roles: ['admin'] },
+  { href: '/admin/sales',    icon: '💰', label: 'Ventas',      roles: ['admin', 'gerente'] },
   { href: '/admin/settings', icon: '⚙️',  label: 'Configuración', roles: ['admin'] },
 ];
 
