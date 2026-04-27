@@ -17,43 +17,41 @@ const RULE_INTENTS = new Set([
 
 // ─── Respuestas por reglas (80%) ────────────────────────────────────────────
 function getRuleResponse(intent: string, text: string): string | null {
-  const lower = text.toLowerCase();
-
   switch (intent) {
     case 'pedido':
     case 'aceptacion':
-      return '¡Va que va! 🔥 Te recomiendo el Combo 911 ($119) — lleva Boneless, Papas y Aderezo. Es el más pedido. ¿Te lo armo?';
+      return '¡Va que va! 🔥 Te recomiendo el Combo Mixto 911 ($249) — Boneless + Alitas + Papas + Bebida y ahorras $90. O si quieres algo más directo, el Boneless Power 911 ($155). ¿Cuál te late?';
 
     case 'hambre':
-      return '¡Eso se arregla rápido! 🤤 El Combo 911 ($119) es perfecto pa\' matar el antojo. Boneless + Papas + Aderezo. ¿Le entramos?';
+      return '¡Ese antojo se arregla rápido! 🤤 El Combo Mixto 911 ($249) es el más pedido — lleva de todo. ¿Le entramos?';
 
     case 'precio':
-      return 'Aquí los precios:\n\n🔥 Combo 911 — $119\n🍗 Combo Boneless — $99\n🌮 Combo Callejero — $89\n🍗 Alitas BBQ/Buffalo — $89\n🍟 Papas Loaded — $69\n🥤 Refresco — $25\n🍫 Brownie con Helado — $59\n\n¿Cuál se te antoja?';
+      return 'Aquí los precios:\n\n🔥 Combo Mixto 911 — $249 (ahorra $90)\n💪 Boneless Power 911 — $155\n🍗 Alitas Fuego 911 — $145 (12pz)\n🌭 Combo Callejero 911 — $175\n🧀 Banderilla Suprema — $149\n🔥 Papas 911 Loaded — $149\n🍗 Boneless 250g — $139\n🍟 Papas Clásicas — $45\n🥤 Refresco — $30\n\n¿Cuál se te antoja?';
 
     case 'exploracion':
     case 'browsing':
-      return 'Tenemos Combos, Alitas, Boneless, Papas Loaded y Postres 🔥 Lo más pedido es el Combo 911 ($119). ¿Quieres que te cuente de alguno?';
+      return 'Tenemos Combos, Proteína (alitas/boneless), Papas, Banderillas y más 🔥 Lo más pedido es el Combo Mixto 911 ($249 con todo incluido). ¿Te cuento de alguno?';
 
     case 'rechazo':
-      return 'Sin rollo 👊 ¿Te interesa algo más ligero? Las Papas Loaded ($69) están increíbles, o si prefieres, un Brownie con Helado ($59) pa\'l antojo dulce.';
+      return 'Sin rollo 👊 ¿Algo más accesible? Las Papas Clásicas están a $45, la Banderilla Coreana a $79, o los Dedos de Queso a $85.';
 
     case 'rechazo_fuerte':
       return 'Entendido, no hay presión 🙌 Aquí estaremos cuando se te antoje algo. ¡Que te vaya chido!';
 
     case 'pago_problema':
-      return 'Aceptamos efectivo y transferencia 💳 Si pagas con transferencia te mandamos los datos por WhatsApp al confirmar tu pedido. ¿Procedemos?';
+      return 'Aceptamos efectivo y transferencia 💳 Te mandamos los datos al confirmar por WhatsApp. ¿Procedemos?';
 
     case 'urgencia':
-      return '¡Entrega en ~30 min! ⚡ El Combo 911 sale volando. ¿Te lo mando?';
+      return '¡Entrega en ~30 min! ⚡ El Combo Mixto 911 sale volando. ¿Te lo mando?';
 
     case 'gratitud':
       return '¡A ti por elegirnos! 🔥 Si se te antoja algo más, aquí andamos.';
 
     case 'despedida':
-      return '¡Nos vemos! 👋 Cuando se te antoje algo, aquí estaremos. ¡Snacks 911 no cierra! 🔥';
+      return '¡Nos vemos! 👋 Cuando se te antoje, aquí estaremos. ¡Snacks 911 no falla! 🔥';
 
     case 'edicion':
-      return 'Claro, dime qué quieres agregar o quitar y lo ajustamos 🔥';
+      return 'Claro, dime qué quieres cambiar y lo ajustamos 🔥';
 
     default:
       return null;

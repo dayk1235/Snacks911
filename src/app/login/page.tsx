@@ -205,6 +205,21 @@ export default function LoginPage() {
             >
               {loading ? '...' : 'Entrar →'}
             </button>
+
+            {/* ── Forgot password ── */}
+            <div style={{ textAlign: 'center', marginTop: '0.25rem' }}>
+              <a
+                href="/reset-password"
+                style={{
+                  color: '#444', fontSize: '0.8rem',
+                  textDecoration: 'none', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF6040'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#444'; }}
+              >
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
           </form>
         </div>
       </div>
