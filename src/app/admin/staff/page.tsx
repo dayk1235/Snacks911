@@ -356,12 +356,24 @@ export default function StaffPage() {
                         textTransform: 'uppercase',
                       }}>{member.role}</span>
 
-                      {/* Toggle activo */}
-                      <button onClick={() => handleToggle(member)} style={{ width: '36px', height: '20px', borderRadius: '10px', background: member.active ? '#FF4500' : 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '2px', left: member.active ? '18px' : '2px', transition: 'left 0.2s' }} />
-                      </button>
+                      {/* Badge especial para admin maestro */}
+                      {member.employeeId === 'admin001' && (
+                        <span title="Admin maestro — protegido" style={{
+                          fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em',
+                          padding: '0.2rem 0.55rem', borderRadius: '6px',
+                          background: 'rgba(255,215,0,0.1)', color: '#FFD700',
+                          border: '1px solid rgba(255,215,0,0.2)',
+                        }}>👑 Maestro</span>
+                      )}
 
-                      {/* Edit */}
+                      {/* Toggle activo — oculto para admin maestro */}
+                      {member.employeeId !== 'admin001' && (
+                        <button onClick={() => handleToggle(member)} style={{ width: '36px', height: '20px', borderRadius: '10px', background: member.active ? '#FF4500' : 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '2px', left: member.active ? '18px' : '2px', transition: 'left 0.2s' }} />
+                        </button>
+                      )}
+
+                      {/* Edit — siempre visible (puede cambiar nombre/contraseña) */}
                       <button onClick={() => handleEdit(member)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '0.25rem', transition: 'color 0.15s' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4500'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#555'}
@@ -369,13 +381,15 @@ export default function StaffPage() {
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
 
-                      {/* Delete */}
-                      <button onClick={() => handleDelete(member)} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', padding: '0.25rem', transition: 'color 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4500'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#333'}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                      </button>
+                      {/* Delete — oculto para admin maestro */}
+                      {member.employeeId !== 'admin001' && (
+                        <button onClick={() => handleDelete(member)} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', padding: '0.25rem', transition: 'color 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4500'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#333'}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

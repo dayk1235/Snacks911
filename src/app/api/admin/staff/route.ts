@@ -35,7 +35,10 @@ async function requireAdmin(req: Request) {
   return session;
 }
 
-// ── GET — Listar empleados ────────────────────────────────────────────────────
+// Admin maestro — nunca se puede borrar ni desactivar
+const MASTER_ADMIN_ID = 'admin001';
+
+// ── GET — Listar empleados ──────────────────────────────────────────────────
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -109,6 +112,18 @@ export async function PUT(req: Request) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Sin conexión' }, { status: 503 });
 
+  // Protección: buscar el employeeId para verificar si es el admin maestro
+  const { data: target } = await db.from('employees').select('employee_id').eq('id', body.id).maybeSingle();
+  if (target?.employee_id === MASTER_ADMIN_ID) {
+    // Solo permitir cambiar nombre o contraseña — no rol ni estado
+    if (body.active === false) {
+      return NextResponse.json({ error: 'El admin maestro no puede desactivarse' }, { status: 403 });
+    }
+    if (body.role && body.role !== 'admin') {
+      return NextResponse.json({ error: 'El admin maestro no puede cambiar de rol' }, { status: 403 });
+    }
+  }
+
   const updates: Record<string, unknown> = {};
   if (body.name    !== undefined) updates.name   = body.name.trim();
   if (body.role    !== undefined) updates.role   = body.role;
@@ -125,7 +140,7 @@ export async function PUT(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// ── DELETE — Eliminar empleado ────────────────────────────────────────────────
+// ── DELETE — Eliminar empleado ──────────────────────────────────────────────
 export async function DELETE(req: Request) {
   const auth = await requireAdmin(req);
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -137,7 +152,13 @@ export async function DELETE(req: Request) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Sin conexión' }, { status: 503 });
 
-  // Soft delete: marcar inactive en lugar de borrar
+  // Protección: no se puede eliminar al admin maestro
+  const { data: target } = await db.from('employees').select('employee_id').eq('id', id).maybeSingle();
+  if (target?.employee_id === MASTER_ADMIN_ID) {
+    return NextResponse.json({ error: 'El admin maestro no puede eliminarse' }, { status: 403 });
+  }
+
+  // Soft delete: marcar inactive en lugar de borrar permanentemente
   const { error } = await db.from('employees').update({ active: false }).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
