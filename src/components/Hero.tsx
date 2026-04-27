@@ -5,6 +5,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { AdminStore } from '@/lib/adminStore';
 import type { BusinessSettings } from '@/lib/adminTypes';
+import { useStoreSettings } from '@/lib/storeSettingsStore';
 
 const FireCanvas = dynamic(() => import('./FireCanvas'), { ssr: false });
 
@@ -36,9 +37,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
   const containerRef = useRef<HTMLElement>(null);
 
-  // Store open/closed status
-  const [storeOpen, setStoreOpen]       = useState(true);
-  const [closedMessage, setClosedMessage] = useState('');
+  // Store settings from Zustand (fetched globally or on mount)
+  const { isOpen: storeOpen, closedMessage, heroTitle, heroSubtitle, fetchSettings } = useStoreSettings();
 
   const combos = products.filter(p => p.category === 'combos');
   const topCombo = combos.find(p => p.badges?.some(b => b.includes('Más pedido'))) ?? combos[0];
@@ -48,12 +48,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
       .then(s => setSiteSettings(s))
       .catch(() => { /* ignore, fallback to defaults */ });
 
-    // Check store open/closed
-    fetch('/api/store/status')
-      .then(r => r.json())
-      .then(d => { setStoreOpen(d.is_open); setClosedMessage(d.closed_message || ''); })
-      .catch(() => {});
-  }, []);
+    fetchSettings();
+  }, [fetchSettings]);
 
   return (
     <section
@@ -122,10 +118,16 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
               perspective: '800px',
             }}
           >
-            <span style={{ color: '#FFFFFF', display: 'block' }}>TU ANTOJO</span>
-            <span className="fire-text" style={{ display: 'block' }}>
-              DE EMERGENCIA
-            </span>
+            {heroTitle ? (
+              <span className="fire-text" style={{ display: 'block', whiteSpace: 'pre-line' }}>{heroTitle}</span>
+            ) : (
+              <>
+                <span style={{ color: '#FFFFFF', display: 'block' }}>TU ANTOJO</span>
+                <span className="fire-text" style={{ display: 'block' }}>
+                  DE EMERGENCIA
+                </span>
+              </>
+            )}
           </h1>
 
           {/* Subtitle — Inter body font */}
@@ -138,11 +140,10 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
               margin: '0 auto 2.5rem',
               lineHeight: 1.7,
               fontWeight: 400,
+              whiteSpace: 'pre-line'
             }}
           >
-            Alitas, Boneless y Papas que te van a dejar sin palabras.
-            <br />
-            Solo cuando el antojo no puede esperar.
+            {heroSubtitle || "Alitas, Boneless y Papas que te van a dejar sin palabras.\nSolo cuando el antojo no puede esperar."}
           </p>
 
           {/* Featured Combo Card */}

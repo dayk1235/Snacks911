@@ -101,7 +101,3 @@ description = "Verifies phase goal achievement through goal-backward analysis. C
 config_file = "/Users/theboy/Downloads/snacks911-web/.codex/agents/gsd-verifier.toml"
 
 
-# GSD Hooks
-[[hooks]]
-event = "SessionStart"
-command = "node /Users/theboy/Downloads/snacks911-web/.codex/hooks/gsd-check-update.js"

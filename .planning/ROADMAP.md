@@ -36,13 +36,13 @@
 **Goal:** Captura rápida de órdenes, métodos de pago, comprobantes y estados (abierto/preparado/entregado).
 **Dependencies:** 1.4
 **UI hint:** yes
-**Status:** ⏳ Not Started
+**Status:** ✅ Completed
 
 ### Phase 2.2: Cash Management + Daily Close
 **Goal:** Apertura de caja, entradas/salidas, corte diario (expected vs actual) y reporte de ventas.
 **Dependencies:** 2.1
 **UI hint:** yes
-**Status:** ⏳ Not Started
+**Status:** ✅ Completed
 
 ### Phase 2.3: Roles & Audit
 **Goal:** Permisos estrictos por rol (admin/gerente/staff), logs de cambios y export (CSV).
