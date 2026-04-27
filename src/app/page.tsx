@@ -552,7 +552,7 @@ export default function Page() {
 
       {/* Promo Banner */}
       <div style={{ position: 'relative', zIndex: 11, background: '#080808' }}>
-        <PromoBanner onAdd={(p) => { addToCart(p); setCartOpen(true); }} />
+        <PromoBanner />
       </div>
 
       {/* Combos Section */}
