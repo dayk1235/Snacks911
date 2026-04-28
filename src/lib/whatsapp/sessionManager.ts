@@ -35,58 +35,67 @@ export interface BotSession {
 
 // ── Get or create session ──────────────────────────────────────────────────
 export async function getSession(phone: string): Promise<BotSession> {
-  const client = db();
-  if (!client) throw new Error('No DB connection');
+  const fallbackSession: BotSession = {
+    phone_number: phone,
+    state: 'S0_IDLE',
+    cart_data: [],
+    unknown_count: 0,
+    last_interaction: new Date().toISOString(),
+  };
 
-  const { data, error } = await client
-    .from('wa_sessions')
-    .select('*')
-    .eq('phone_number', phone)
-    .single();
+  try {
+    const client = db();
+    if (!client) return fallbackSession;
 
-  if (error || !data) {
-    // Create new session
-    const newSession: Omit<BotSession, 'last_interaction'> = {
-      phone_number: phone,
-      state: 'S0_IDLE',
-      cart_data: [],
-      unknown_count: 0,
-    };
-    const { data: created } = await client
+    const { data, error } = await client
       .from('wa_sessions')
-      .upsert({ ...newSession, last_interaction: new Date().toISOString() })
-      .select()
+      .select('*')
+      .eq('phone_number', phone)
       .single();
-    return created as BotSession;
-  }
 
-  return data as BotSession;
+    if (error || !data) {
+      const { data: created } = await client
+        .from('wa_sessions')
+        .upsert(fallbackSession)
+        .select()
+        .single();
+      return (created as BotSession) ?? fallbackSession;
+    }
+
+    return (data as BotSession) ?? fallbackSession;
+  } catch (err) {
+    console.error('[sessionManager] getSession error:', err);
+    return fallbackSession;
+  }
 }
 
 // ── Update session state ───────────────────────────────────────────────────
 export async function updateState(phone: string, state: BotState): Promise<void> {
-  const client = db();
-  if (!client) return;
-  await client
-    .from('wa_sessions')
-    .upsert({ phone_number: phone, state, last_interaction: new Date().toISOString() });
+  try {
+    const client = db();
+    if (!client) return;
+    await client
+      .from('wa_sessions')
+      .upsert({ phone_number: phone, state, last_interaction: new Date().toISOString() });
+  } catch {}
 }
 
 // ── Update cart ────────────────────────────────────────────────────────────
 export async function updateCart(phone: string, cart: CartItem[]): Promise<void> {
-  const client = db();
-  if (!client) return;
-  await client
-    .from('wa_sessions')
-    .upsert({ phone_number: phone, cart_data: cart, last_interaction: new Date().toISOString() });
+  try {
+    const client = db();
+    if (!client) return;
+    await client
+      .from('wa_sessions')
+      .upsert({ phone_number: phone, cart_data: cart, last_interaction: new Date().toISOString() });
+  } catch {}
 }
 
 // ── Add item to cart ───────────────────────────────────────────────────────
 export async function addToCart(phone: string, item: CartItem): Promise<CartItem[]> {
   const session = await getSession(phone);
-  const cart = session.cart_data || [];
+  const cart = session?.cart_data ?? [];
 
-  // Check if same product already in cart
   const existingIndex = cart.findIndex(c => c.product === item.product);
   if (existingIndex >= 0) {
     cart[existingIndex].qty += item.qty;
@@ -101,7 +110,7 @@ export async function addToCart(phone: string, item: CartItem): Promise<CartItem
 // ── Remove item from cart ──────────────────────────────────────────────────
 export async function removeFromCart(phone: string, productName: string): Promise<CartItem[]> {
   const session = await getSession(phone);
-  const cart = session.cart_data.filter(c => !c.product.toLowerCase().includes(productName.toLowerCase()));
+  const cart = (session?.cart_data ?? []).filter(c => !c.product.toLowerCase().includes(productName.toLowerCase()));
   await updateCart(phone, cart);
   return cart;
 }
@@ -109,9 +118,8 @@ export async function removeFromCart(phone: string, productName: string): Promis
 // ── Set sauce on last item ─────────────────────────────────────────────────
 export async function setSauceOnLastItem(phone: string, sauce: string): Promise<CartItem[]> {
   const session = await getSession(phone);
-  const cart = [...session.cart_data];
+  const cart = [...(session?.cart_data ?? [])];
   if (cart.length > 0) {
-    // Apply to last item that requires sauce without one set
     const pending = [...cart].reverse().find(c => !c.sauce);
     if (pending) {
       const idx = cart.lastIndexOf(pending);
@@ -131,23 +139,27 @@ export async function clearCart(phone: string): Promise<void> {
 // ── Increment unknown count ────────────────────────────────────────────────
 export async function incrementUnknown(phone: string): Promise<number> {
   const session = await getSession(phone);
-  const count = (session.unknown_count || 0) + 1;
-  const client = db();
-  if (client) {
-    await client
-      .from('wa_sessions')
-      .upsert({ phone_number: phone, unknown_count: count, last_interaction: new Date().toISOString() });
-  }
+  const count = (session?.unknown_count ?? 0) + 1;
+  try {
+    const client = db();
+    if (client) {
+      await client
+        .from('wa_sessions')
+        .upsert({ phone_number: phone, unknown_count: count, last_interaction: new Date().toISOString() });
+    }
+  } catch {}
   return count;
 }
 
 // ── Reset unknown count ────────────────────────────────────────────────────
 export async function resetUnknown(phone: string): Promise<void> {
-  const client = db();
-  if (!client) return;
-  await client
-    .from('wa_sessions')
-    .upsert({ phone_number: phone, unknown_count: 0, last_interaction: new Date().toISOString() });
+  try {
+    const client = db();
+    if (!client) return;
+    await client
+      .from('wa_sessions')
+      .upsert({ phone_number: phone, unknown_count: 0, last_interaction: new Date().toISOString() });
+  } catch {}
 }
 
 // ── Format cart as readable text ───────────────────────────────────────────
@@ -170,9 +182,11 @@ export async function logEvent(
   event_type: string,
   payload: Record<string, any> = {}
 ): Promise<void> {
-  const client = db();
-  if (!client) return;
-  await client
-    .from('wa_events')
-    .insert({ phone_number: phone, event_type, payload });
+  try {
+    const client = db();
+    if (!client) return;
+    await client
+      .from('wa_events')
+      .insert({ phone_number: phone, event_type, payload });
+  } catch {}
 }
