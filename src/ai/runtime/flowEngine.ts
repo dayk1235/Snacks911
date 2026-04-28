@@ -8,6 +8,7 @@ export interface ChatState {
   lastMessage?: string | null;
   ambiguousCount?: number;
   pendingRecommendation: string | null;
+  rejectionCount?: number;
 }
 
 export interface FlowResponse {
@@ -45,13 +46,15 @@ export function handleMessage(
     paso: state.paso || 'inicio',
     lastMessage: state.lastMessage || null,
     ambiguousCount: state.ambiguousCount || 0,
-    pendingRecommendation: state.pendingRecommendation || null
+    pendingRecommendation: state.pendingRecommendation || null,
+    rejectionCount: state.rejectionCount || 0
   };
   let responseText = '';
 
-  // Resetear contador si el intent no es 'otro'
-  if (intent !== 'otro') {
+  // Resetear contadores si el usuario avanza o cambia de tema
+  if (intent !== 'otro' && intent !== 'rechazar') {
     nextState.ambiguousCount = 0;
+    nextState.rejectionCount = 0;
   }
 
   const createResponse = (msg: string): FlowResponse => {
@@ -204,6 +207,36 @@ export function handleMessage(
     case 'pedido':
       nextState.paso = 'cierre';
       responseText = '🔥 Va, cerramos tu pedido\n¿Te lo mando por WhatsApp?';
+      break;
+
+    case 'rechazar':
+      nextState.rejectionCount = (nextState.rejectionCount || 0) + 1;
+
+      // Caso 3: Rechazo múltiple -> FORZAR decisión
+      if (nextState.rejectionCount >= 2) {
+        nextState.rejectionCount = 0;
+        responseText = '🔥 Va, para no dar vueltas te dejo estas opciones rápidas:\n1️⃣ Ver menú completo\n2️⃣ Cerrar pedido actual\n3️⃣ Cancelar todo';
+        break;
+      }
+
+      // Caso 1: Rechazo en extras
+      if (nextState.paso === 'extras') {
+        nextState.paso = 'confirmacion';
+        responseText = '🔥 Va sin extras 👌\n¿Cerramos tu pedido así?';
+      } 
+      // Caso 2: Rechazo en selección (recomendación)
+      else if (nextState.paso === 'seleccion') {
+        nextState.pendingRecommendation = null;
+        nextState.producto = null;
+        nextState.paso = 'inicio';
+        responseText = '🔥 Sin bronca. ¿Prefieres ver los combos completos o algo más económico?';
+      }
+      else if (nextState.paso === 'confirmacion') {
+        responseText = '🔥 ¿Quieres cambiar algo del pedido o prefieres cancelar?';
+      }
+      else {
+        responseText = '🔥 No hay problema. ¿En qué más te puedo ayudar?';
+      }
       break;
 
     case 'test_ai':

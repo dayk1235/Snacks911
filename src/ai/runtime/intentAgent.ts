@@ -14,13 +14,15 @@ Tu única tarea es analizar el mensaje del usuario y devolver un JSON estricto.
 
 FORMATO OBLIGATORIO:
 {
-  "intent": "saludo" | "menu" | "combos" | "producto" | "recomendacion" | "upsell" | "confirmar" | "pedido" | "cancelar" | "test_ai" | "otro",
+  "intent": "saludo" | "menu" | "combos" | "producto" | "recomendacion" | "upsell" | "confirmar" | "pedido" | "cancelar" | "rechazar" | "test_ai" | "otro",
   "producto": "string" | null
 }
 
 REGLAS:
 - SOLO devuelve JSON. Nada de texto extra ni formato markdown (sin \`\`\`json).
 - "intent" debe ser una de las palabras clave de arriba.
+- "rechazar": Úsalo cuando el usuario dice "no", "nada", "así está bien", "no quiero", "paso" ante una oferta o pregunta.
+- "cancelar": Úsalo cuando el usuario quiere borrar todo su pedido o dejar de hablar.
 - "producto" debe ser el nombre del producto mencionado (ej: "boneless", "papas") o null si no se menciona ninguno.
 - Si el usuario escribe "test", "ai" o "prueba ai", devuelve SIEMPRE: { "intent": "test_ai", "producto": null }
 `.trim();
