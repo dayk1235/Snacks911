@@ -438,9 +438,9 @@ export async function processMessage(phone: string, rawText: string): Promise<vo
       case 'RECOMMEND': {
         const recs = getRecommendation({
           budget:    entities?.budget    as number | undefined,
-          hunger:    entities?.hunger    as string | undefined,
-          spice:     entities?.spice     as string | undefined,
-          objection: entities?.objection as string | undefined,
+          hunger:    entities?.hunger    as 'low' | 'normal' | 'high' | undefined,
+          spice:     entities?.spice     as 'low' | 'medium' | 'high' | undefined,
+          objection: entities?.objection as 'price' | undefined,
         });
         if (recs.length > 0 && !entities?.compare) {
           const lines = recs.map(r => `⭐ *${r?.product ?? '?'}* — $${r?.price ?? 0}\n   ${r?.reason ?? ''}`).join('\n\n');
