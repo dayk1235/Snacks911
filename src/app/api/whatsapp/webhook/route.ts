@@ -27,32 +27,53 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("[whatsapp webhook] INCOMING PAYLOAD:", JSON.stringify(body, null, 2));
+
     const entry = body?.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
     const messages = value?.messages;
 
-    if (messages?.length) {
+    if (messages && messages.length > 0) {
       const message = messages[0];
       const phone = message.from;
       
-      let text: string | null = null;
+      let text = "Mensaje no soportado";
       if (message.type === 'text') {
-        text = message.text?.body ?? null;
+        text = message.text?.body ?? "";
       } else if (message.type === 'interactive') {
-        text = message.interactive?.button_reply?.id
-            ?? message.interactive?.list_reply?.id
-            ?? null;
+        text = message.interactive?.button_reply?.id ?? message.interactive?.list_reply?.id ?? "";
       }
 
-      if (text && phone) {
+      if (phone) {
+        // Direct fetch reply (Requirement 3 & 4)
+        const phoneId = process.env.WHATSAPP_PHONE_ID || process.env.WHATSAPP_PHONE_NUMBER_ID;
+        const token = process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+        
+        if (phoneId && token) {
+          await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: phone,
+              text: { body: "¡Recibí tu mensaje en Vercel! Pasando al bot..." }
+            })
+          }).catch(err => console.error("[whatsapp webhook] Direct fetch error:", err));
+        }
+
+        // Pass to complex bot engine
         await processMessage(phone, text);
       }
     }
   } catch (err) {
-    console.error("[whatsapp webhook] POST error:", err);
+    console.error("[whatsapp webhook] POST handler error:", err);
   }
 
+  // Requirement 7: Always return 200 OK
   return new Response("OK", {
     status: 200,
     headers: { "Content-Type": "text/plain" },
