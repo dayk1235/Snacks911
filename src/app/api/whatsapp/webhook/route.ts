@@ -25,23 +25,17 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const response = new Response("OK", {
-    status: 200,
-    headers: { "Content-Type": "text/plain" },
-  });
+  try {
+    const body = await req.json();
+    const entry = body?.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const messages = value?.messages;
 
-  req
-    .json()
-    .then((body) => {
-      const entry = body?.entry?.[0];
-      const changes = entry?.changes?.[0];
-      const value = changes?.value;
-      const messages = value?.messages;
-      if (!messages?.length) return;
-
+    if (messages?.length) {
       const message = messages[0];
       const phone = message.from;
-
+      
       let text: string | null = null;
       if (message.type === 'text') {
         text = message.text?.body ?? null;
@@ -52,14 +46,15 @@ export async function POST(req: Request) {
       }
 
       if (text && phone) {
-        processMessage(phone, text).catch((err) => {
-          console.error("[whatsapp webhook] processMessage error:", err);
-        });
+        await processMessage(phone, text);
       }
-    })
-    .catch((err) => {
-      console.error("[whatsapp webhook] JSON parse error:", err);
-    });
+    }
+  } catch (err) {
+    console.error("[whatsapp webhook] POST error:", err);
+  }
 
-  return response;
+  return new Response("OK", {
+    status: 200,
+    headers: { "Content-Type": "text/plain" },
+  });
 }
