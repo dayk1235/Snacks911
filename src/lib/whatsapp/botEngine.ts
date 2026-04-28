@@ -306,7 +306,7 @@ export async function processMessage(phone: string, rawText: string): Promise<vo
             const newCart  = [...cart.slice(0, -1), { ...last, product: upgrade, unit_price: newPrice }];
             const client   = db();
             if (client) {
-              await client.from('wa_sessions').upsert({ phone_number: phone, cart_data: newCart }).catch(() => null);
+              try { await client.from('wa_sessions').upsert({ phone_number: phone, cart_data: newCart }); } catch {}
             }
             await logEvent(phone, 'upsell_accepted', { from: last?.product, to: upgrade }).catch(() => null);
             await updateState(phone, 'S2_BUILDING_CART').catch(() => null);
@@ -375,13 +375,15 @@ export async function processMessage(phone: string, rawText: string): Promise<vo
           const total  = cart.reduce((s, i) => s + ((i?.unit_price ?? 0) * (i?.qty ?? 1)), 0);
           const client = db();
           if (client) {
-            await client.from('orders').insert({
-              channel:        'WHATSAPP',
-              status:         'CONFIRMED',
-              customer_phone: phone,
-              payment_method,
-              total,
-            }).catch(() => null);
+            try {
+              await client.from('orders').insert({
+                channel:        'WHATSAPP',
+                status:         'CONFIRMED',
+                customer_phone: phone,
+                payment_method,
+                total,
+              });
+            } catch {}
           }
           await logEvent(phone, 'order_completed', { total, payment_method }).catch(() => null);
           await clearCart(phone).catch(() => null);
