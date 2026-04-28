@@ -129,6 +129,12 @@ export function detectIntent(rawText: string): DetectionResult {
     return { intent: 'HANDOFF_HUMAN', entities: { reason: 'user_request' }, confidence: 'HIGH' };
   }
 
+  // ── Greetings → show menu ─────────────────────────────────────────────────
+  const greetingTriggers = ['hola', 'buenos', 'buenas', 'buen dia', 'buen día', 'hey', 'hi', 'ola', 'saludos', 'que tal', 'qué tal', 'inicio', 'start', 'empezar', 'comenzar'];
+  if (greetingTriggers.some(t => n.includes(t))) {
+    return { intent: 'SHOW_MENU', entities: {}, confidence: 'HIGH' };
+  }
+
   // ── Menu browsing ─────────────────────────────────────────────────────────
   const menuTriggers = ['menu', 'carta', 'tienen', 'que hay', 'que venden', 'que tienen', 'ver todo'];
   if (menuTriggers.some(t => n.includes(t))) {
