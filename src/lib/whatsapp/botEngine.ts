@@ -221,15 +221,18 @@ export async function processMessage(phone: string, rawText: string): Promise<vo
           await sendText(phone, `No puedo consultar info ahora mismo. Escribe *menú* para ver opciones.`);
           break;
         }
-        const keyword    = product?.split(' ')?.[0] ?? product;
-        const { data }   = await client
-          .from('products')
-          .select('name, price, description_short')
-          .ilike('name', `%${keyword}%`)
-          .single()
-          .catch(() => ({ data: null }));
-        if (data) {
-          await sendText(phone, `*${data?.name ?? product}* — $${data?.price ?? 0}\n${data?.description_short ?? ''}\n\n¿Te lo agrego? 🔥`);
+        const keyword = product?.split(' ')?.[0] ?? product;
+        let productData: { name: string; price: number; description_short: string } | null = null;
+        try {
+          const { data } = await client
+            .from('products')
+            .select('name, price, description_short')
+            .ilike('name', `%${keyword}%`)
+            .single();
+          productData = data ?? null;
+        } catch { productData = null; }
+        if (productData) {
+          await sendText(phone, `*${productData?.name ?? product}* — $${productData?.price ?? 0}\n${productData?.description_short ?? ''}\n\n¿Te lo agrego? 🔥`);
         } else {
           await sendText(phone, `No encontré "${product}" en el menú. ¿Te muestro el menú completo?`);
         }
