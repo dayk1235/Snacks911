@@ -145,3 +145,32 @@ export function buildContextPayload(
     customer_message: message,
   };
 }
+
+// ── Embellish Static Messages ──────────────────────────────────────────────
+export async function rewriteMessage(rawMessage: string): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: MODEL });
+  const prompt = `
+Base message:
+"${rawMessage}"
+
+Task:
+Rewrite this message to sound more appetizing and persuasive.
+
+Rules:
+- Add emotion
+- Add food appeal
+- Add 1 upsell suggestion
+- Keep it short
+- Use emojis
+
+Do NOT change meaning, only improve it.
+  `.trim();
+
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (err) {
+    console.error('[aiService] rewriteMessage error:', err);
+    return rawMessage; // Safe fallback
+  }
+}
