@@ -7,6 +7,7 @@ export interface ChatState {
   paso: 'inicio' | 'seleccion' | 'extras' | 'confirmacion' | 'cierre';
   lastMessage?: string | null;
   ambiguousCount?: number;
+  pendingRecommendation: string | null;
 }
 
 export interface FlowResponse {
@@ -31,8 +32,8 @@ export function handleMessage(
   let { intent } = intentData;
   const { producto } = intentData;
 
-  // --- REGLA: Si ya hay producto y piden recomendaciones/menú, tratarlo como confirmar para avanzar
-  if (state.producto && (intent === 'recomendacion' || intent === 'menu' || intent === 'combos')) {
+  // --- REGLA: Si ya hay producto o recomendación pendiente y piden recomendaciones/menú, tratarlo como confirmar para avanzar
+  if ((state.producto || state.pendingRecommendation) && (intent === 'recomendacion' || intent === 'menu' || intent === 'combos')) {
     intent = 'confirmar';
   }
 
@@ -43,7 +44,8 @@ export function handleMessage(
     bebida: state.bebida || null,
     paso: state.paso || 'inicio',
     lastMessage: state.lastMessage || null,
-    ambiguousCount: state.ambiguousCount || 0
+    ambiguousCount: state.ambiguousCount || 0,
+    pendingRecommendation: state.pendingRecommendation || null
   };
   let responseText = '';
 
@@ -124,17 +126,17 @@ export function handleMessage(
     case 'menu':
     case 'combos':
     case 'recomendacion':
-      // --- REGLA 1: Si ya tiene producto -> NO permitir recomendaciones genéricas
-      if (nextState.producto) {
+      // --- REGLA 1: Si ya tiene producto o recomendación pendiente -> NO permitir recomendaciones genéricas
+      if (nextState.producto || nextState.pendingRecommendation) {
         if (nextState.paso === 'confirmacion') {
-          responseText = `🔥 Seguimos con tu ${nextState.producto}.\n¿Ya cerramos el pedido?`;
+          responseText = `🔥 Seguimos con tu ${nextState.producto || nextState.pendingRecommendation}.\n¿Ya cerramos el pedido?`;
         } else {
-          responseText = `🔥 Ya vi que quieres ${nextState.producto} 😏\n¿Qué le agregamos? ¿Papas, refresco?`;
+          responseText = `🔥 Ya vi que quieres ${nextState.producto || nextState.pendingRecommendation} 😏\n¿Qué le agregamos? ¿Papas, refresco?`;
           nextState.paso = 'extras';
         }
       } else {
         if (intent === 'recomendacion') {
-          nextState.producto = 'combo mixto';
+          nextState.pendingRecommendation = 'combo mixto';
           nextState.paso = 'seleccion';
           responseText = '🔥 Te recomiendo el Combo Mixto 911 😏\n¿Lo quieres con papas y bebida?';
         } else {
@@ -163,6 +165,15 @@ export function handleMessage(
       break;
 
     case 'confirmar':
+      // Si hay una recomendación pendiente, la convertimos en producto real
+      if (nextState.pendingRecommendation) {
+        nextState.producto = nextState.pendingRecommendation;
+        nextState.pendingRecommendation = null;
+        nextState.paso = 'seleccion';
+        responseText = '🔥 Va, lo armamos 😏\n¿Le agregamos papas?';
+        break;
+      }
+
       // --- REGLA 2: Si el usuario confirma -> avanzar paso (NO reiniciar)
       if (!nextState.producto && nextState.paso === 'inicio') {
         responseText = '🔥 Aún no elegimos nada 😏\n¿Quieres ver combos o armar algo?';

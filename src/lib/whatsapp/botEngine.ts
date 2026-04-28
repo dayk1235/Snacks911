@@ -474,7 +474,11 @@ export async function processMessage(phone: string, rawText: string): Promise<vo
         const [announcements, promos] = await Promise.all([fetchAnnouncements(), fetchActivePromos()]);
         const aiRes = await getAIResponse(
           buildContextPayload(menuItems, [], announcements, promos, cart, rawText)
-        ).catch(() => ({ message_to_user: '¿En qué te puedo ayudar? Escribe *menú* para ver opciones 🔥', intent_suggestion: 'ASK_MISSING_INFO' as const }));
+        ).catch(() => ({ 
+          intent: 'otro',
+          message_to_user: '¿En qué te puedo ayudar? Escribe *menú* para ver opciones 🔥', 
+          intent_suggestion: 'ASK_MISSING_INFO' as const 
+        }));
         if (aiRes?.intent === 'handoff' || aiRes?.intent_suggestion === 'HANDOFF') {
           await updateState(phone, 'S7_HANDOFF').catch(() => null);
           await logEvent(phone, 'handoff', { reason: 'ai_suggestion' }).catch(() => null);
