@@ -59,7 +59,7 @@ function getRuleResponse(intent: string, text: string): string | null {
 }
 
 // ─── AI (20%) — solo cuando las reglas no saben ─────────────────────────────
-async function callAI(message: string, history: HistoryItem[]): Promise<string> {
+async function callAI(message: string, history: HistoryItem[], state: any): Promise<{ text: string, state: any }> {
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
@@ -67,14 +67,18 @@ async function callAI(message: string, history: HistoryItem[]): Promise<string> 
       body: JSON.stringify({
         message,
         history: history.map(h => ({ role: h.role === 'model' ? 'assistant' : 'user', text: h.text })),
+        state
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error');
-    return data.text;
+    return { text: data.text, state: data.state };
   } catch {
     // Fallback ultra-seguro si la API falla
-    return 'Mmm no te entendí bien, pero te puedo ayudar con tu pedido. ¿Quieres ver el menú o armar un combo? 🔥';
+    return { 
+      text: 'Mmm no te entendí bien, pero te puedo ayudar con tu pedido. ¿Quieres ver el menú o armar un combo? 🔥',
+      state
+    };
   }
 }
 
@@ -89,6 +93,7 @@ export default function OrderBot() {
   const inputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(1);
   const historyRef = useRef<HistoryItem[]>([]);
+  const stateRef = useRef<any>({ producto: null, paso: 'inicio' });
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, thinking]);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 350); }, [open]);
@@ -102,7 +107,7 @@ export default function OrderBot() {
     }
   }, [open, msgs.length]);
 
-  // ── Hybrid 80/20 send ─────────────────────────────────────────────────────
+  // ── Hybrid send ─────────────────────────────────────────────────────
   const send = useCallback(async () => {
     const t = input.trim();
     if (!t || thinking) return;
@@ -127,9 +132,10 @@ export default function OrderBot() {
       setMsgs(p => [...p, { id: idRef.current++, text: ruleResponse, sender: 'bot' }]);
       historyRef.current.push({ role: 'model', text: ruleResponse });
     } else {
-      // ── 20%: Gemini para preguntas abiertas / conversación ──
+      // ── 20%: Backend FlowEngine / Gemini ──
       setThinking(true);
-      const reply = await callAI(t, historyRef.current);
+      const { text: reply, state: newState } = await callAI(t, historyRef.current, stateRef.current);
+      if (newState) stateRef.current = newState; // Guardar nuevo estado devuelto por el Flow Engine
       setThinking(false);
 
       setMsgs(p => [...p, { id: idRef.current++, text: reply, sender: 'bot' }]);
@@ -138,6 +144,9 @@ export default function OrderBot() {
 
     // Keep history manageable
     if (historyRef.current.length > 20) historyRef.current = historyRef.current.slice(-14);
+    
+    // Refocus input automatically so user doesn't have to click
+    setTimeout(() => inputRef.current?.focus(), 10);
   }, [input, thinking]);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -230,7 +239,6 @@ export default function OrderBot() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send()}
             placeholder="Escribe tu mensaje..."
-            disabled={thinking}
             style={{
               flex: 1, padding: '0.6rem 0.85rem',
               background: 'rgba(255,255,255,0.04)',

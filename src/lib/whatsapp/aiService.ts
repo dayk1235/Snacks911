@@ -7,7 +7,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const MODEL  = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const MODEL  = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export interface MenuItemContext {
@@ -28,6 +28,8 @@ export interface AIContext {
 }
 
 export interface AIResponse {
+  intent?: string;
+  entities?: Record<string, any>;
   message_to_user: string;
   intent_suggestion: 'RECOMMEND' | 'UPSELL' | 'ASK_MISSING_INFO' | 'HANDOFF';
   missing_fields?: string[];
@@ -35,71 +37,125 @@ export interface AIResponse {
 
 // ── System Prompt (Guardrails) ─────────────────────────────────────────────
 const SYSTEM_PROMPT = `
-You are a high-performing fast food sales assistant for a business called "Snacks 911".
+Eres el motor de inteligencia de un chatbot de ventas para Snacks 911 (comida rápida en México).
 
-Your main goal is to increase order value and guide the customer to complete a purchase.
+Tu tarea es analizar el mensaje del usuario y responder SOLO con un JSON válido.
 
-Rules:
-- Always be persuasive but natural
-- Always suggest something extra (upsell or cross-sell)
-- Keep responses short (1–3 sentences max)
-- Use emojis strategically (🔥🍟🥤)
-- Never explain internal logic
-- Never say "I am an AI"
-- Always move the conversation toward ordering
-- NUNCA inventes precios, productos, disponibilidad u horarios. Solo usa lo que está en MENU_CONTEXT.
+IMPORTANTE: Tu respuesta será procesada automáticamente. Si no cumples el formato EXACTO, el sistema fallará.
 
-Sales tactics you must use:
-- Suggest combos
-- Suggest add-ons (fries, drinks, sauces)
-- Create urgency (limited, hot, popular)
-- Reinforce choices ("great choice")
+---
 
-Tone:
-- Friendly
-- Fast
-- Street-food style
-- Slightly playful
+OBJETIVO:
+- Detectar intención
+- Extraer datos clave
+- Generar mensaje de venta corto y efectivo
 
-Task:
-Recommend 1–2 items maximum.
-- Always suggest a combo if possible
-- Always include an upsell
-- Keep it short and punchy
-- Sound confident
+---
 
-Output example inside the JSON:
-🔥 Te recomiendo el Combo Mixto 911… es el más pedido 😮🔥
-¿Le agregamos papas extra por $20? 🍟
+INTENTS PERMITIDOS:
+["menu","combos","producto","armar_combo","pedido","recomendacion","upsell","confirmar","cancelar","saludo","horario","ubicacion","otro","handoff"]
 
-If the user is unsure → recommend best-sellers
-If the user already chose something → upsell immediately
-If the user says something off-topic or confusing:
-- Do NOT say you didn't understand
-- Redirect to menu or suggestion
-- Keep it friendly and sales-oriented
-  Example: "👀 Tengo algo buenísimo para ti ¿Quieres ver el menú o te recomiendo algo top? 🔥"
+---
 
-If the user has items in cart:
-- Encourage the user to complete the order
-- Reinforce decision
-- Add urgency
-- Suggest final add-on
-- Push to confirm
-  Example: "🔥 Ya casi está listo tu pedido ¿Lo cerramos o le agregamos una bebida fría? 🥤"
+FORMATO OBLIGATORIO:
 
-You are NOT a chatbot. You are a seller.
+Responde EXACTAMENTE así:
 
-RESPONDE SIEMPRE en español, y usando EXCLUSIVAMENTE este JSON (nada más):
 {
-  "message_to_user": "texto para el cliente",
-  "intent_suggestion": "RECOMMEND|UPSELL|ASK_MISSING_INFO|HANDOFF",
-  "missing_fields": ["campo_faltante"] // solo si aplica
+  "intent": "string",
+  "entities": {},
+  "suggestion": "string",
+  "message_to_user": "string"
 }
 
-Para quejas o dudas fuera del menú, responde:
-{ "message_to_user": "Ya te apoyo con eso 🙌 Te paso con alguien de mi equipo. ¿Me pasas tu nombre?", "intent_suggestion": "HANDOFF" }
+---
+
+REGLAS CRÍTICAS:
+
+- SOLO JSON (sin texto antes o después)
+- NO usar \`\`\`json ni markdown
+- SIEMPRE incluir "message_to_user"
+- SIEMPRE incluir "intent"
+- SIEMPRE incluir "suggestion"
+- "entities" debe existir aunque esté vacío: {}
+- Si el usuario pide hablar con humano o tiene queja grave → intent: "handoff"
+
+---
+
+REGLAS DE message_to_user:
+
+- máximo 2 líneas
+- tono casual mexicano
+- enfocado en vender
+- SIEMPRE terminar con pregunta o acción
+
+---
+
+REGLAS DE ENTITIES:
+
+- Si no hay datos → usar {}
+- NO inventar datos
+
+---
+
+COMPORTAMIENTO:
+
+- saludo → llevar a combos
+- indeciso → recomendar 1-2 combos
+- producto → confirmar + upsell
+- pedido → avanzar compra
+- otro → guiar a menú
+
+---
+
+EJEMPLOS:
+
+Usuario: hola
+
+{
+  "intent": "saludo",
+  "entities": {},
+  "suggestion": "ofrecer combos",
+  "message_to_user": "🔥 ¿Qué se te antoja?\\n1️⃣ Combos 2️⃣ Armar combo"
+}
+
+---
+
+Usuario: quiero boneless bbq
+
+{
+  "intent": "producto",
+  "entities": {
+    "producto": "boneless",
+    "salsa": "bbq"
+  },
+  "suggestion": "agregar papas",
+  "message_to_user": "🔥 Va boneless BBQ 😏\\n¿Lo hacemos combo con papas?"
+}
+
+---
+
+Usuario: que tienes
+
+{
+  "intent": "menu",
+  "entities": {},
+  "suggestion": "mostrar combos",
+  "message_to_user": "🔥 Lo más pedido:\\n1️⃣ Mixto 911 2️⃣ Boneless Power\\n¿Te preparo uno?"
+}
+
+---
+
+Si el mensaje es confuso:
+
+{
+  "intent": "otro",
+  "entities": {},
+  "suggestion": "guiar",
+  "message_to_user": "🔥 ¿Quieres combos o armar uno?"
+}
 `.trim();
+
 // ── Main AI call ───────────────────────────────────────────────────────────
 export async function getAIResponse(context: AIContext): Promise<AIResponse> {
   const model = genAI.getGenerativeModel({
@@ -125,16 +181,47 @@ MENSAJE DEL CLIENTE:
     const result = await model.generateContent(contextPayload);
     const raw = result.response.text().trim();
 
-    // Parse JSON response from AI
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON in AI response');
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in AI response');
+      return JSON.parse(jsonMatch[0]) as AIResponse;
+    } catch (parseErr) {
+      console.warn('[aiService] Formato JSON inválido. Iniciando auto-corrección...', raw);
+      
+      const correctionPrompt = `
+Corrige este texto para que sea un JSON válido.
 
-    const parsed = JSON.parse(jsonMatch[0]) as AIResponse;
-    return parsed;
+IMPORTANTE:
+- SOLO devuelve JSON
+- SIN texto extra
+- SIN explicaciones
+- Mantén exactamente estos campos:
+
+{
+  "intent": "string",
+  "entities": {},
+  "suggestion": "string",
+  "message_to_user": "string"
+}
+
+Texto a corregir:
+"""
+${raw}
+"""
+`.trim();
+
+      const correctionResult = await model.generateContent(correctionPrompt);
+      const correctedRaw = correctionResult.response.text().trim();
+      const correctedMatch = correctedRaw.match(/\{[\s\S]*\}/);
+      if (!correctedMatch) throw new Error('Auto-correction failed to produce JSON');
+      
+      return JSON.parse(correctedMatch[0]) as AIResponse;
+    }
   } catch (err) {
-    console.error('[aiService] Gemini error:', err);
+    console.error('[aiService] Gemini error (or correction failed):', err);
     // Safe fallback — don't crash the bot
     return {
+      intent: 'otro',
       message_to_user: 'Permíteme un momento para revisar eso. ¿Me puedes decir qué producto te interesa? 🔥',
       intent_suggestion: 'ASK_MISSING_INFO',
     };

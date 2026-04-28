@@ -27,6 +27,12 @@
 **UI hint:** no
 **Status:** ⏳ Not Started
 
+### Phase 1.5: Conversational Flow Engine
+**Goal:** Mover la lógica del chatbot del modelo de IA al sistema para controlar completamente el flujo de ventas. (Incluye intentAgent, flowEngine, control de estados y eliminación de dependencia en respuestas completas de IA).
+**Dependencies:** 1.4
+**UI hint:** no
+**Status:** ✅ Completed
+
 ---
 
 ## Phase 2 — Ops Engine (POS + Control Total)
@@ -55,6 +61,8 @@
 **Dependencies:** 2.3
 **UI hint:** yes
 **Status:** ⏳ Not Started
+
+
 
 ---
 

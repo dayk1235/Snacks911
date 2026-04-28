@@ -12,3 +12,8 @@
 
 ## Context
 - The user has an existing API for AI that is 80% free (deterministic) and 20% AI. We need to integrate this for the WhatsApp bot instead of making an expensive fully-LLM bot.
+
+## Accumulated Context
+
+### Roadmap Evolution
+- Phase 1.5 added: Conversational Flow Engine (movida desde Phase 4)
