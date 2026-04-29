@@ -5,22 +5,10 @@
  * Goal: Increment ticket value by suggesting the most relevant complementary product.
  */
 
-import { CartItem } from './types';
+import { CartItem, CustomerProfile } from './types';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
 import { supabase } from '@/lib/supabase';
-
-/**
- * Customer Profile structure as per Roadmap 3.1
- */
-export interface CustomerProfile {
-  phone: string;
-  name?: string;
-  totalOrders: number;
-  totalSpent: number;
-  favoriteItems: Array<{ itemId: string; orderCount: number }>;
-  preferredUpsellType: 'value' | 'premium' | 'bundle' | null;
-}
 
 /**
  * Upsell Option return structure

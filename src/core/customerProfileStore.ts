@@ -7,13 +7,7 @@
 
 import { supabase } from '@/lib/supabase';
 
-export interface CustomerProfile {
-  phone: string;
-  totalOrders: number;
-  totalSpent: number;
-  lastOrderAt: Date | null;
-  createdAt: Date;
-}
+import { CustomerProfile } from './types';
 
 /**
  * Fetches the customer profile from Supabase by phone number.

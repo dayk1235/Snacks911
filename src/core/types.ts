@@ -129,6 +129,17 @@ export interface OrderSummary {
   whatsappUrl: string;
 }
 
+export interface CustomerProfile {
+  phone: string;
+  name?: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt: Date | null;
+  createdAt: Date;
+  favoriteItems?: Array<{ itemId: string; orderCount: number }>;
+  preferredUpsellType?: 'value' | 'premium' | 'bundle' | null;
+}
+
 export interface UserPrefs {
   pastOrders: Array<{ items: string[]; total: number; date: string }>;
   favorites: Record<string, number>;
