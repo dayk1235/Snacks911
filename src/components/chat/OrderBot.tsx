@@ -155,10 +155,10 @@ export default function OrderBot() {
               display: 'flex', justifyContent: 'space-between',
               fontSize: '0.65rem', color: '#555', marginBottom: '0.5rem',
             }}>
-              <span style={{ opacity: state.cart.includes(state.comboName ?? 'Combo 911') ? 1 : 0.4 }}>Combo</span>
-              <span style={{ opacity: state.hasPapas ? 1 : 0.4 }}>Papas</span>
-              <span style={{ opacity: state.hasBebida ? 1 : 0.4 }}>Bebida</span>
-              <span style={{ opacity: state.hasPostre ? 1 : 0.4 }}>Postre</span>
+              <span style={{ opacity: state.cart.includes(productRefs.comboName ?? 'Combo 911') ? 1 : 0.4 }}>Combo</span>
+              <span style={{ opacity: productRefs.hasPapas ? 1 : 0.4 }}>Papas</span>
+              <span style={{ opacity: productRefs.hasBebida ? 1 : 0.4 }}>Bebida</span>
+              <span style={{ opacity: productRefs.hasPostre ? 1 : 0.4 }}>Postre</span>
             </div>
             <div style={{
               height: '4px', borderRadius: '2px',
@@ -167,7 +167,7 @@ export default function OrderBot() {
             }}>
               <div style={{
                 height: '100%',
-                width: `${(([state.comboSelected, state.hasPapas, state.hasBebida, state.hasPostre].filter(Boolean).length / 4) * 100)}%`,
+                width: `${(([state.comboSelected, productRefs.hasPapas, productRefs.hasBebida, productRefs.hasPostre].filter(Boolean).length / 4) * 100)}%`,
                 background: 'linear-gradient(90deg, var(--accent), var(--accent-gold))',
                 borderRadius: '2px',
                 transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
