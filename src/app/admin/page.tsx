@@ -44,16 +44,16 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#000', color: '#fff', fontFamily: 'system-ui, sans-serif', padding: '1.5rem' }}>
-      
+
       {/* 🚀 HEADER & STATUS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>ADMIN DASHBOARD</h1>
           <div style={{ fontSize: '0.8rem', color: '#666' }}>Resumen ejecutivo en tiempo real</div>
         </div>
-        <button 
+        <button
           onClick={toggleStore}
-          style={{ 
+          style={{
             padding: '0.75rem 1.5rem', borderRadius: '50px', border: 'none',
             background: storeOpen ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
             color: storeOpen ? '#22c55e' : '#ef4444',
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 💰 MAIN REVENUE CARD */}
-      <div style={{ 
+      <div style={{
         background: 'linear-gradient(180deg, #111 0%, #000 100%)',
         border: '1px solid #222', borderRadius: '24px', padding: '2.5rem',
         textAlign: 'center', marginBottom: '1.5rem'
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
       {alerts.length > 0 && (
         <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {alerts.map((alert, i) => (
-            <div key={i} style={{ 
+            <div key={i} style={{
               background: alert.severity === 'critical' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
               border: `1px solid ${alert.severity === 'critical' ? '#ef4444' : '#f59e0b'}44`,
               padding: '1rem 1.5rem', borderRadius: '14px', color: alert.severity === 'critical' ? '#ef4444' : '#f59e0b',
@@ -110,34 +110,34 @@ export default function AdminDashboard() {
       {/* 🎯 PRIMARY ACTIONS (THE 3 BIG BUTTONS) */}
       <h3 style={{ fontSize: '0.8rem', color: '#333', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.1em' }}>ACCIONES PRINCIPALES</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <button 
+        <button
           onClick={() => router.push('/admin/pos')}
-          style={{ 
+          style={{
             padding: '2.5rem', borderRadius: '20px', border: 'none',
             background: 'linear-gradient(135deg, #111, #080808)',
-            border: '1px solid #222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
+            borderColor: '#222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
             cursor: 'pointer', textAlign: 'left'
           }}
         >
           🖥️ PUNTO DE VENTA
         </button>
-        <button 
+        <button
           onClick={() => router.push('/admin/cash')}
-          style={{ 
+          style={{
             padding: '2.5rem', borderRadius: '20px', border: 'none',
             background: 'linear-gradient(135deg, #111, #080808)',
-            border: '1px solid #222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
+            borderColor: '#222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
             cursor: 'pointer', textAlign: 'left'
           }}
         >
           💵 CONTROL DE CAJA
         </button>
-        <button 
+        <button
           onClick={() => router.push('/admin/orders')}
-          style={{ 
+          style={{
             padding: '2.5rem', borderRadius: '20px', border: 'none',
             background: 'linear-gradient(135deg, #111, #080808)',
-            border: '1px solid #222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
+            borderColor: '#222', color: '#fff', fontWeight: 900, fontSize: '1.2rem',
             cursor: 'pointer', textAlign: 'left'
           }}
         >
