@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/server/supabaseServer';
 import { products } from '@/data/products';
+import { requireApiRole } from '@/lib/server/apiAuth';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireApiRole(req, ['admin']);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: 'Supabase Admin is not configured.' }, { status: 500 });
   }
@@ -30,7 +34,8 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ success: true, count: formattedProducts.length });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error al sembrar productos';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -4,14 +4,15 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { products, categories } from '@/data/products';
+import { products as staticProducts, categories, getProductImage } from '@/data/products';
 import type { Product } from '@/data/products';
 import type { CartItem } from '@/types';
-import type { AdminProduct } from '@/lib/adminTypes';
+import type { AdminProduct, Order } from '@/lib/adminTypes';
 import { track } from '@/lib/analytics';
 import { AdminStore } from '@/lib/adminStore';
 import { analyzeSales } from '@/lib/salesOptimizer';
 import { useCartStore } from '@/lib/cartStore';
+import { Button } from '@/components/ui/Button';
 
 import ProductCard from '@/components/ProductCard';
 import ProductCustomizerModal from '@/components/ProductCustomizerModal';
@@ -21,6 +22,27 @@ import CartUpsellBanner from '@/components/CartUpsellBanner';
 
 const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false });
 const OrderBot     = dynamic(() => import('@/components/OrderBot'),      { ssr: false });
+
+function categoryFromDb(category: string): Product['category'] {
+  const normalized = category.trim().toLowerCase();
+  if (normalized === 'alitas' || normalized === 'boneless' || normalized === 'proteina') return 'proteina';
+  if (normalized === 'papas') return 'papas';
+  if (normalized === 'combos') return 'combos';
+  if (normalized === 'banderillas') return 'banderillas';
+  if (normalized === 'postres') return 'postres';
+  if (normalized === 'bebidas') return 'bebidas';
+  return 'extras';
+}
+
+function numericIdFromString(id: string) {
+  const onlyDigits = id.replace(/\D/g, '');
+  if (onlyDigits.length > 0) return Number(onlyDigits.slice(0, 9));
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return 100000 + (hash % 900000);
+}
 
 // ─── Upsell Popup (same as homepage) ─────────────────────────────────────────
 function UpsellPopup({
@@ -41,7 +63,7 @@ function UpsellPopup({
     } else if (product.category === 'combos') {
       ids.push(6);
     }
-    return products.filter(p => ids.includes(p.id));
+    return staticProducts.filter(p => ids.includes(p.id));
   }, [product]);
 
   if (suggestions.length === 0) return null;
@@ -88,38 +110,31 @@ function UpsellPopup({
               }}
             >
               <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#222', position: 'relative' }}>
-                <Image src={item.image} alt={item.name} fill sizes="48px" style={{ objectFit: 'cover' }} loading="lazy" />
+                <Image src={getProductImage(item)} alt={item.name} fill sizes="48px" style={{ objectFit: 'cover' }} loading="lazy" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ddd' }}>{item.name}</div>
                 <div style={{ fontSize: '0.78rem', color: '#FF4500', fontWeight: 800, marginTop: '0.1rem' }}>${item.price}</div>
               </div>
-              <button
-                onClick={() => { onAdd(item); onClose(); }}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                  background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                  border: 'none', color: '#fff', fontSize: '1.1rem',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                +
-              </button>
+               <Button
+                 onClick={() => { onAdd(item); onClose(); }}
+                 variant="primary"
+                 style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px' }}
+               >
+                 +
+               </Button>
             </div>
           ))}
         </div>
 
-        <button
+        <Button
           onClick={onClose}
-          style={{
-            width: '100%', marginTop: '1rem', padding: '0.7rem',
-            background: 'none', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '10px', color: '#666', fontSize: '0.8rem',
-            fontWeight: 600, cursor: 'pointer',
-          }}
+          variant="secondary"
+          fullWidth
+          style={{ marginTop: '1rem', color: 'var(--text-muted)' }}
         >
           No, gracias
-        </button>
+        </Button>
       </div>
       <style>{`@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
@@ -135,8 +150,22 @@ export default function MenuPage() {
   const [lastAdded, setLastAdded]     = useState<Product | null>(null);
   const [showProductUpsell, setShowProductUpsell] = useState<Product | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [dbProducts, setDbProducts] = useState<AdminProduct[]>([]);
+  const menuProducts = useMemo<Product[]>(() => {
+    if (dbProducts.length === 0) return staticProducts;
+    return dbProducts
+      .filter(p => p.available)
+      .map((p) => ({
+        id: numericIdFromString(p.id),
+        name: p.name,
+        description: p.description || '',
+        price: p.price,
+        category: categoryFromDb(p.category),
+        image: p.imageUrl || getProductImage({ id: p.id, name: p.name, category: p.category }),
+        available: p.available,
+      }));
+  }, [dbProducts]);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const isFirst = useRef(true);
@@ -159,7 +188,7 @@ export default function MenuPage() {
     if (orders.length === 0 || dbProducts.length === 0) {
       // Fallback: use popular flag
       const rank: Record<number, number> = {};
-      products.forEach((p, i) => {
+      menuProducts.forEach((p, i) => {
         rank[p.id] = p.popular ? 100 - i : 50 - i;
       });
       return rank;
@@ -169,7 +198,7 @@ export default function MenuPage() {
     const rank: Record<number, number> = {};
 
     // Default rank for all products
-    products.forEach((p) => { rank[p.id] = 50; });
+    menuProducts.forEach((p) => { rank[p.id] = 50; });
 
     // Assign scores based on position in bestSellers/lowPerformers
     analysis.bestSellers.forEach((item, i) => {
@@ -183,17 +212,17 @@ export default function MenuPage() {
     });
 
     return rank;
-  }, [orders, dbProducts]);
+  }, [orders, dbProducts, menuProducts]);
 
   // Sectioned menu: ordered by priority
   const combos = useMemo(() =>
-    products.filter(p => p.category === 'combos')
+    menuProducts.filter(p => p.category === 'combos')
       .sort((a, b) => (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0)),
-    [performanceRank]
+    [performanceRank, menuProducts]
   );
 
   const alaCarteAll = useMemo(() =>
-    products.filter(p => ['proteina', 'papas', 'banderillas', 'postres'].includes(p.category))
+    menuProducts.filter(p => ['proteina', 'papas', 'banderillas', 'postres'].includes(p.category))
       .sort((a, b) => {
         // Order: proteina > papas > banderillas > postres
         const order = { proteina: 1, papas: 2, banderillas: 3, postres: 4 };
@@ -201,21 +230,21 @@ export default function MenuPage() {
         if (catDiff !== 0) return catDiff;
         return (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0);
       }),
-    [performanceRank]
+    [performanceRank, menuProducts]
   );
 
   const topSellers = alaCarteAll.slice(0, 4);
   const restItems = alaCarteAll.slice(4);
   const alaCarte = showAllAlaCarte ? alaCarteAll : topSellers;
-  const extras = products.filter(p => p.category === 'extras');
+  const extras = menuProducts.filter(p => p.category === 'extras');
 
   // For category filter mode (when user taps a specific tab)
   const filtered = useMemo(() => {
     const base = activeCategory === 'todos'
-      ? products.filter(p => !['extras'].includes(p.category))
-      : products.filter(p => p.category === activeCategory);
+      ? menuProducts.filter(p => !['extras'].includes(p.category))
+      : menuProducts.filter(p => p.category === activeCategory);
     return base.sort((a, b) => (performanceRank[b.id] || 0) - (performanceRank[a.id] || 0));
-  }, [activeCategory, performanceRank]);
+  }, [activeCategory, performanceRank, menuProducts]);
 
   // ── Cart helpers ──────────────────────────────────────────────────────────
   const addToCart = useCallback((product: Product, extraNames?: string[]) => {
@@ -230,7 +259,7 @@ export default function MenuPage() {
       }
     }
 
-    const payload = { ...product, linkedExtras: extraNames } as any;
+    const payload = { ...product, linkedExtras: extraNames };
     storeAddToCart(payload);
 
     setLastAdded(product);
@@ -250,7 +279,7 @@ export default function MenuPage() {
       removeFromCart(showProductUpsell.id);
     }
     // Add the combo
-    storeAddToCart(comboProduct as any);
+    storeAddToCart(comboProduct);
     setLastAdded(comboProduct);
     setShowProductUpsell(null);
     // Open cart to show the upgrade
@@ -275,7 +304,7 @@ export default function MenuPage() {
       image: extra.imageUrl || '/images/combo.webp',
       isStandaloneExtra: standalone
     };
-    storeAddToCart(asProduct as any);
+    storeAddToCart(asProduct);
   }, [storeAddToCart]);
 
   // ── Customizer modal handlers ─────────────────────────────────────────────

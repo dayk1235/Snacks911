@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { AdminStore } from '@/lib/adminStore';
 import { AdminProduct, DEFAULT_CATEGORIES, CATEGORY_LABELS, getAllCategoryLabels, CustomCategory } from '@/lib/adminTypes';
+import { getProductImage } from '@/data/products';
 
 const CARD: React.CSSProperties = {
-  background: '#111', borderRadius: '16px',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--bg-secondary)', borderRadius: '16px',
+  border: '1px solid var(--border-subtle)',
 };
 
 const emptyForm = (): Omit<AdminProduct, 'id'> => ({
@@ -121,9 +122,9 @@ export default function ProductsPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '0.7rem 0.9rem',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '9px', color: '#fff',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--border-subtle)',
+    borderRadius: '12px', color: 'var(--text-primary)',
     fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box',
   };
 
@@ -139,7 +140,7 @@ export default function ProductsPage() {
         </div>
         <button
           onClick={openAdd}
-          style={{ padding: '0.7rem 1.4rem', background: 'linear-gradient(135deg,#FF4500,#FF6500)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 0 20px rgba(255,69,0,0.25)' }}
+          style={{ padding: '0.7rem 1.4rem', background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))', border: 'none', borderRadius: '12px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 0 20px rgba(255,69,0,0.25)' }}
         >
           ➕ Nuevo producto
         </button>
@@ -176,11 +177,10 @@ export default function ProductsPage() {
           <div key={p.id} style={{ ...CARD, overflow: 'hidden' }}>
             {/* Image / placeholder */}
             <div style={{
-              height: '160px', background: p.imageUrl ? `url(${p.imageUrl}) center/cover` : 'linear-gradient(135deg,#1a1a1a,#111)',
+              height: '100px', background: `url(${getProductImage(p)}) center/cover`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              borderBottom: '1px solid var(--border-subtle)',
             }}>
-              {!p.imageUrl && <span style={{ fontSize: '3rem', opacity: 0.3 }}>{(allCatLabels[p.category] || '📦').split(' ')[0]}</span>}
             </div>
 
             <div style={{ padding: '1rem' }}>
@@ -215,13 +215,13 @@ export default function ProductsPage() {
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                 <button
                   onClick={() => openEdit(p)}
-                  style={{ flex: 1, padding: '0.5rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#ccc', fontSize: '0.8rem', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '0.5rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer' }}
                 >
                   ✏️ Editar
                 </button>
                 <button
                   onClick={() => setDeleteId(p.id)}
-                  style={{ padding: '0.5rem 0.75rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 0.75rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', color: 'var(--status-danger)', fontSize: '0.8rem', cursor: 'pointer' }}
                 >
                   🗑️
                 </button>
@@ -244,7 +244,7 @@ export default function ProductsPage() {
           onClick={e => e.target === e.currentTarget && setModalOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
         >
-          <div style={{ background: '#111', borderRadius: '20px', border: '1px solid rgba(255,69,0,0.2)', padding: '2rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg-primary)', borderRadius: '16px', border: '1px solid var(--border-subtle)', padding: '2rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>
                 {editTarget ? '✏️ Editar producto' : '➕ Nuevo producto'}
@@ -368,8 +368,8 @@ export default function ProductsPage() {
                       src={form.imageUrl}
                       alt="Preview"
                       style={{
-                        width: '100%', height: '140px', objectFit: 'cover',
-                        borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
+                        width: '100%', height: '100px', objectFit: 'cover',
+                        borderRadius: '12px', border: '1px solid var(--border-subtle)',
                       }}
                     />
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>

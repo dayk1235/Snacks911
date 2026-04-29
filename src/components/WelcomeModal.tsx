@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Button } from './ui/Button';
 import { track } from '@/lib/analytics';
 
 /**
@@ -55,15 +56,12 @@ export default function WelcomeModal({
     >
       <div
         onClick={e => e.stopPropagation()}
+        className="card-premium"
         style={{
           width: '100%', maxWidth: '400px',
-          background: 'linear-gradient(145deg, #1a1a1a, #111)',
-          border: '1px solid rgba(255,69,0,0.2)',
-          borderRadius: '28px', padding: '2.25rem 2rem',
-          boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 60px rgba(255,69,0,0.1)',
+          padding: '2.25rem 2rem',
           textAlign: 'center',
           position: 'relative',
-          overflow: 'hidden',
         }}
       >
         {/* Glow accent */}
@@ -122,39 +120,29 @@ export default function WelcomeModal({
                 onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,69,0,0.4)'; }}
                 onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.1)'; }}
               />
-              <button
+              <Button
                 onClick={handleSubmit}
+                variant="primary"
+                fullWidth
+                disabled={phone.replace(/\D/g, '').length < 10}
                 style={{
-                  width: '100%',
                   padding: '0.85rem',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: phone.replace(/\D/g, '').length >= 10
-                    ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                    : 'rgba(255,69,0,0.3)',
-                  color: '#fff',
-                  fontWeight: 800,
                   fontSize: '0.95rem',
-                  cursor: phone.replace(/\D/g, '').length >= 10 ? 'pointer' : 'default',
-                  transition: 'all 0.2s',
-                  boxShadow: phone.replace(/\D/g, '').length >= 10 ? '0 8px 24px rgba(255,69,0,0.3)' : 'none',
+                  background: phone.replace(/\D/g, '').length < 10 ? 'rgba(255,69,0,0.3)' : undefined,
                 }}
               >
                 Quiero mi 10% OFF →
-              </button>
+              </Button>
             </div>
 
-            <button
+            <Button
               onClick={handleDismiss}
-              style={{
-                marginTop: '1.25rem',
-                background: 'none', border: 'none',
-                color: '#444', fontSize: '0.78rem',
-                cursor: 'pointer', padding: '0.4rem',
-              }}
+              variant="ghost"
+              fullWidth
+              style={{ marginTop: '1.25rem', color: '#444', fontSize: '0.78rem' }}
             >
               Ahora no, gracias
-            </button>
+            </Button>
           </>
         )}
       </div>

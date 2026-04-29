@@ -24,7 +24,7 @@ export const products: Product[] = [
     price: 249,
     originalPrice: 339,
     category: 'combos',
-    image: '/images/combo-mixto.webp',
+    image: '/images/combo.webp',
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $90', '🔥 Bestia'],
@@ -36,7 +36,7 @@ export const products: Product[] = [
     price: 155,
     originalPrice: 209,
     category: 'combos',
-    image: '/images/boneless-power.webp',
+    image: '/images/boneless.webp',
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $54'],
@@ -48,7 +48,7 @@ export const products: Product[] = [
     price: 145,
     originalPrice: 205,
     category: 'combos',
-    image: '/images/alitas-fuego.webp',
+    image: '/images/alitas.webp',
     spicy: 2,
     badges: ['💰 Ahorra $60', '🍗 12 piezas'],
   },
@@ -59,7 +59,7 @@ export const products: Product[] = [
     price: 175,
     originalPrice: 214,
     category: 'combos',
-    image: '/images/combo-callejero.webp',
+    image: '/images/combo.webp',
     spicy: 0,
     badges: ['🌭 Callejero', '💰 Ahorra $39'],
   },
@@ -70,7 +70,7 @@ export const products: Product[] = [
     price: 149,
     originalPrice: 184,
     category: 'combos',
-    image: '/images/banderilla-suprema.webp',
+    image: '/images/combo.webp',
     spicy: 0,
     badges: ['💰 Ahorra $35'],
   },
@@ -81,7 +81,7 @@ export const products: Product[] = [
     price: 139,
     originalPrice: 175,
     category: 'combos',
-    image: '/images/dedos-papas.webp',
+    image: '/images/papas.webp',
     spicy: 0,
     badges: ['💰 Ahorra $36'],
   },
@@ -92,7 +92,7 @@ export const products: Product[] = [
     price: 149,
     originalPrice: 194,
     category: 'combos',
-    image: '/images/papas-loaded.webp',
+    image: '/images/papas.webp',
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $45', '🔥 Loaded'],
@@ -135,7 +135,7 @@ export const products: Product[] = [
     description: 'Cheddar fundido + tocino. El combo que no puedes rechazar 🧀',
     price: 65,
     category: 'papas',
-    image: '/images/papas-queso.webp',
+    image: '/images/papas.webp',
     spicy: 0,
     popular: true,
     badge: '🧀 Favorita',
@@ -146,7 +146,7 @@ export const products: Product[] = [
     description: 'Salchicha + papas + vegetales + salsas. Antojo callejero que no falla 🌭',
     price: 85,
     category: 'papas',
-    image: '/images/salchipapas.webp',
+    image: '/images/papas.webp',
     spicy: 0,
     badge: '🌭 Callejero',
   },
@@ -158,7 +158,7 @@ export const products: Product[] = [
     description: 'Empanizada con salsa especial. Crujiente, dorada y con queso que se estira 🇰🇷',
     price: 79,
     category: 'banderillas',
-    image: '/images/banderilla-coreana.webp',
+    image: '/images/combo.webp',
     spicy: 0,
     popular: true,
     badge: '🇰🇷 Trending',
@@ -169,7 +169,7 @@ export const products: Product[] = [
     description: '6 piezas + salsa marinara. Crujientes por fuera, queso fundido por dentro 🧀',
     price: 85,
     category: 'banderillas',
-    image: '/images/dedos-queso.webp',
+    image: '/images/combo.webp',
     spicy: 0,
     badge: '🧀 Hit',
   },
@@ -181,7 +181,7 @@ export const products: Product[] = [
     description: 'Coca, Sprite, Fanta, Manzanita. Bien frío para acompañar tu pedido 🥤',
     price: 30,
     category: 'bebidas',
-    image: '/images/refresco.webp',
+    image: '/images/combo.webp',
     spicy: 0,
   },
 
@@ -192,7 +192,7 @@ export const products: Product[] = [
     description: 'BBQ o Mango Habanero. Para bañarlo todo 🔥',
     price: 12,
     category: 'extras',
-    image: '/images/salsa.webp',
+    image: '/images/alitas.webp',
     spicy: 2,
   },
   {
@@ -201,7 +201,7 @@ export const products: Product[] = [
     description: 'Parmesano o Queso Cheddar. El dip que hace la diferencia 🧀',
     price: 15,
     category: 'extras',
-    image: '/images/dip.webp',
+    image: '/images/combo.webp',
     spicy: 0,
   },
 ];
@@ -215,3 +215,56 @@ export const categories = [
   { id: 'bebidas',    label: '🥤 Bebidas' },
   { id: 'extras',     label: '➕ Extras' },
 ];
+
+export const PRODUCT_IMAGE_MAP: Record<string | number, string> = {
+  1: '/images/combo.webp',
+  2: '/images/boneless.webp',
+  3: '/images/alitas.webp',
+  4: '/images/combo.webp',
+  5: '/images/combo.webp',
+  6: '/images/papas.webp',
+  7: '/images/papas.webp',
+  8: '/images/boneless.webp',
+  9: '/images/alitas.webp',
+  10: '/images/papas.webp',
+  11: '/images/papas.webp',
+  12: '/images/papas.webp',
+  13: '/images/combo.webp',
+  14: '/images/combo.webp',
+  15: '/images/combo.webp',
+  16: '/images/alitas.webp',
+  17: '/images/combo.webp',
+  'p1': '/images/alitas.webp',
+  'p2': '/images/alitas.webp',
+  'p3': '/images/boneless.webp',
+  'p4': '/images/boneless.webp',
+  'p5': '/images/papas.webp',
+  'p6': '/images/combo.webp',
+  'e1': '/images/alitas.webp',
+  'e2': '/images/alitas.webp',
+  'e3': '/images/combo.webp',
+  'e4': '/images/combo.webp',
+  'e5': '/images/combo.webp',
+  'e6': '/images/combo.webp',
+  'e7': '/images/combo.webp',
+  'e8': '/images/alitas.webp',
+};
+
+export function getProductImage(product: { id?: string | number, name?: string, category?: string }): string {
+  if (product.id && PRODUCT_IMAGE_MAP[product.id]) {
+    return PRODUCT_IMAGE_MAP[product.id];
+  }
+  
+  const name = product.name?.toLowerCase() || '';
+  if (name.includes('alitas')) return '/images/alitas.webp';
+  if (name.includes('boneless')) return '/images/boneless.webp';
+  if (name.includes('combo')) return '/images/combo.webp';
+  if (name.includes('papas')) return '/images/papas.webp';
+  if (name.includes('banderilla')) return '/images/combo.webp';
+  
+  if (product.category === 'proteina' || product.category === 'alitas') return '/images/alitas.webp';
+  if (product.category === 'combos') return '/images/combo.webp';
+  if (product.category === 'papas') return '/images/papas.webp';
+  
+  return '/images/logo.png';
+}

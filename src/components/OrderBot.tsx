@@ -1,99 +1,43 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { detectIntent } from '@/lib/intents';
-import { products } from '@/data/products';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Button } from './ui/Button';
+import { handleMessage, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
+import { products as allProducts } from '@/data/products';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-interface Msg { id: number; text: string; sender: 'bot' | 'user'; }
-interface HistoryItem { role: 'user' | 'model'; text: string; }
+interface Msg { id: number; text: string; sender: 'bot' | 'user'; actions?: { label: string; value: string }[]; }
 
-// ─── Intents que las reglas manejan (80%) — gratis e instantáneo ────────────
-const RULE_INTENTS = new Set([
-  'aceptacion', 'rechazo', 'rechazo_fuerte', 'pago_problema',
-  'pedido', 'edicion', 'urgencia', 'hambre', 'gratitud', 'despedida',
-  'precio', 'exploracion', 'browsing',
-]);
+// ─── Product refs for the engine ─────────────────────────────────────────────
+const COMBO_911      = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos')!;
+const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless')!;
+const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded')!;
+const BEBIDA         = allProducts.find(p => p.name.includes('Refresco'))!;
+const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado')!;
 
-// ─── Respuestas por reglas (80%) ────────────────────────────────────────────
-function getRuleResponse(intent: string, text: string): string | null {
-  switch (intent) {
-    case 'pedido':
-    case 'aceptacion':
-      return '¡Va que va! 🔥 Te recomiendo el Combo Mixto 911 ($249) — Boneless + Alitas + Papas + Bebida y ahorras $90. O si quieres algo más directo, el Boneless Power 911 ($155). ¿Cuál te late?';
-
-    case 'hambre':
-      return '¡Ese antojo se arregla rápido! 🤤 El Combo Mixto 911 ($249) es el más pedido — lleva de todo. ¿Le entramos?';
-
-    case 'precio':
-      return 'Aquí los precios:\n\n🔥 Combo Mixto 911 — $249 (ahorra $90)\n💪 Boneless Power 911 — $155\n🍗 Alitas Fuego 911 — $145 (12pz)\n🌭 Combo Callejero 911 — $175\n🧀 Banderilla Suprema — $149\n🔥 Papas 911 Loaded — $149\n🍗 Boneless 250g — $139\n🍟 Papas Clásicas — $45\n🥤 Refresco — $30\n\n¿Cuál se te antoja?';
-
-    case 'exploracion':
-    case 'browsing':
-      return 'Tenemos Combos, Proteína (alitas/boneless), Papas, Banderillas y más 🔥 Lo más pedido es el Combo Mixto 911 ($249 con todo incluido). ¿Te cuento de alguno?';
-
-    case 'rechazo':
-      return 'Sin rollo 👊 ¿Algo más accesible? Las Papas Clásicas están a $45, la Banderilla Coreana a $79, o los Dedos de Queso a $85.';
-
-    case 'rechazo_fuerte':
-      return 'Entendido, no hay presión 🙌 Aquí estaremos cuando se te antoje algo. ¡Que te vaya chido!';
-
-    case 'pago_problema':
-      return 'Aceptamos efectivo y transferencia 💳 Te mandamos los datos al confirmar por WhatsApp. ¿Procedemos?';
-
-    case 'urgencia':
-      return '¡Entrega en ~30 min! ⚡ El Combo Mixto 911 sale volando. ¿Te lo mando?';
-
-    case 'gratitud':
-      return '¡A ti por elegirnos! 🔥 Si se te antoja algo más, aquí andamos.';
-
-    case 'despedida':
-      return '¡Nos vemos! 👋 Cuando se te antoje, aquí estaremos. ¡Snacks 911 no falla! 🔥';
-
-    case 'edicion':
-      return 'Claro, dime qué quieres cambiar y lo ajustamos 🔥';
-
-    default:
-      return null;
-  }
-}
-
-// ─── AI (20%) — solo cuando las reglas no saben ─────────────────────────────
-async function callAI(message: string, history: HistoryItem[], state: any): Promise<{ text: string, state: any }> {
-  try {
-    const res = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        history: history.map(h => ({ role: h.role === 'model' ? 'assistant' : 'user', text: h.text })),
-        state
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error');
-    return { text: data.text, state: data.state };
-  } catch {
-    // Fallback ultra-seguro si la API falla
-    return { 
-      text: 'Mmm no te entendí bien, pero te puedo ayudar con tu pedido. ¿Quieres ver el menú o armar un combo? 🔥',
-      state
-    };
-  }
-}
-
-// ─── Component ──────────────────────────────────────────────────────────────
 export default function OrderBot() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [state, setState] = useState<ConversationState>(INITIAL_STATE);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(1);
-  const historyRef = useRef<HistoryItem[]>([]);
-  const stateRef = useRef<any>({ producto: null, paso: 'inicio' });
+
+  const productRefs = useMemo(() => ({
+    comboName: COMBO_911.name, comboPrice: COMBO_911.price,
+    papasName: PAPAS_LOADED.name, papasPrice: PAPAS_LOADED.price,
+    bebidaName: BEBIDA?.name ?? 'Refresco', bebidaPrice: BEBIDA?.price ?? 25,
+    postreName: POSTRE?.name ?? 'Postre', postrePrice: POSTRE?.price ?? 59,
+    comboBonelessName: COMBO_BONELESS.name, comboBonelessPrice: COMBO_BONELESS.price,
+    ahorroBoneless: COMBO_BONELESS.originalPrice ? COMBO_BONELESS.originalPrice - COMBO_BONELESS.price : 49,
+    currentTotal: state.cartTotal,
+    hasPapas: state.cart.includes('Papas Loaded'),
+    hasBebida: state.cart.some(i => i.includes('Refresco')),
+    hasPostre: state.cart.some(i => i.includes('Brownie')),
+  }), [state.cart, state.cartTotal]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, thinking]);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 350); }, [open]);
@@ -103,124 +47,152 @@ export default function OrderBot() {
     if (open && msgs.length === 0) {
       const g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
       setMsgs([{ id: idRef.current++, text: g, sender: 'bot' }]);
-      historyRef.current = [{ role: 'model', text: g }];
     }
   }, [open, msgs.length]);
 
-  // ── Hybrid send ─────────────────────────────────────────────────────
+  const processResponse = useCallback(async (text: string, action?: string) => {
+    setThinking(true);
+    
+    // Artificial delay for realism
+    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+    
+    const output: ResponseOutput = handleMessage(text, state, productRefs, action);
+    
+    setThinking(false);
+    setMsgs(p => [...p, { 
+      id: idRef.current++, 
+      text: output.text, 
+      sender: 'bot', 
+      actions: output.actions 
+    }]);
+    setState(output.nextState);
+
+    if (output.nextState.whatsappUrl && output.nextState.deliveryStep === 'done') {
+      window.open(output.nextState.whatsappUrl, '_blank');
+    }
+  }, [state, productRefs]);
+
   const send = useCallback(async () => {
     const t = input.trim();
     if (!t || thinking) return;
     setInput('');
 
-    // Show user message
     setMsgs(p => [...p, { id: idRef.current++, text: t, sender: 'user' }]);
-    historyRef.current.push({ role: 'user', text: t });
+    await processResponse(t);
+  }, [input, thinking, processResponse]);
 
-    // ── 80%: Detectar intención y responder con reglas ──
-    const { intent, confidence } = detectIntent(t);
-    const ruleResponse = (confidence > 0.3 && RULE_INTENTS.has(intent))
-      ? getRuleResponse(intent, t)
-      : null;
+  const handleAction = useCallback(async (actionValue: string, label: string) => {
+    if (thinking) return;
+    setMsgs(p => [...p, { id: idRef.current++, text: label, sender: 'user' }]);
+    await processResponse('', actionValue);
+  }, [thinking, processResponse]);
 
-    if (ruleResponse) {
-      // Respuesta instantánea por reglas (gratis, 0 tokens)
-      setThinking(true);
-      await new Promise(r => setTimeout(r, 300 + Math.random() * 200)); // Delay natural
-      setThinking(false);
-
-      setMsgs(p => [...p, { id: idRef.current++, text: ruleResponse, sender: 'bot' }]);
-      historyRef.current.push({ role: 'model', text: ruleResponse });
-    } else {
-      // ── 20%: Backend FlowEngine / Gemini ──
-      setThinking(true);
-      const { text: reply, state: newState } = await callAI(t, historyRef.current, stateRef.current);
-      if (newState) stateRef.current = newState; // Guardar nuevo estado devuelto por el Flow Engine
-      setThinking(false);
-
-      setMsgs(p => [...p, { id: idRef.current++, text: reply, sender: 'bot' }]);
-      historyRef.current.push({ role: 'model', text: reply });
-    }
-
-    // Keep history manageable
-    if (historyRef.current.length > 20) historyRef.current = historyRef.current.slice(-14);
-    
-    // Refocus input automatically so user doesn't have to click
-    setTimeout(() => inputRef.current?.focus(), 10);
-  }, [input, thinking]);
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Panel */}
-      <div style={{
-        position: 'fixed', bottom: open ? '5rem' : '-600px', left: '1.25rem',
-        width: '360px', maxWidth: 'calc(100vw - 2.5rem)',
-        height: '500px', maxHeight: 'calc(100vh - 7rem)',
-        zIndex: 9998, borderRadius: '20px',
-        overflow: 'hidden', display: 'flex', flexDirection: 'column',
-        background: '#111', border: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
-        transition: 'bottom 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
-        opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none',
-      }}>
+      <div
+        className="card-premium"
+        style={{
+          position: 'fixed', bottom: open ? '5.5rem' : '-600px', left: '1.25rem',
+          width: '380px', maxWidth: 'calc(100vw - 2.5rem)',
+          height: '520px', maxHeight: 'calc(100vh - 8rem)',
+          zIndex: 9998,
+          borderRadius: '16px',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          transition: 'bottom 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+          opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none',
+          fontFamily: 'var(--font-inter), sans-serif',
+        }}
+      >
         {/* Header */}
         <div style={{
-          padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.65rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'linear-gradient(180deg, rgba(255,69,0,0.08) 0%, transparent 100%)',
+          padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,69,0,0.06)',
         }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #FF4500, #FF7A00)',
+            background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '1rem', flexShrink: 0,
           }}>🔥</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fff' }}>Snacks 911</div>
-            <div style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
-              Asistente inteligente
+            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--status-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)', display: 'inline-block' }} />
+              En línea
             </div>
           </div>
           <button onClick={() => setOpen(false)} style={{
-            background: 'none', border: 'none', color: '#555', fontSize: '1.2rem',
+            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
             cursor: 'pointer', padding: '4px', lineHeight: 1,
           }}>×</button>
         </div>
 
         {/* Messages */}
         <div style={{
-          flex: 1, overflowY: 'auto', padding: '0.85rem',
-          display: 'flex', flexDirection: 'column', gap: '0.5rem',
+          flex: 1, overflowY: 'auto', padding: '1rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
         }}>
           {msgs.map(m => (
             <div key={m.id} style={{
               alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '80%',
+              maxWidth: '85%',
             }}>
               <div style={{
-                padding: '0.55rem 0.85rem',
-                borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                padding: '0.75rem 1rem',
+                borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                 background: m.sender === 'user'
-                  ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                  : 'rgba(255,255,255,0.05)',
-                border: m.sender === 'bot' ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                color: m.sender === 'user' ? '#fff' : '#ccc',
-                fontSize: '0.82rem', lineHeight: 1.55, whiteSpace: 'pre-line',
+                  ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
+                  : 'var(--bg-secondary)',
+                border: m.sender === 'bot' ? '1px solid var(--border-subtle)' : 'none',
+                color: m.sender === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontSize: '0.88rem', lineHeight: 1.55, whiteSpace: 'pre-line',
               }}>{m.text}</div>
+              
+              {m.actions && m.actions.length > 0 && m.sender === 'bot' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                  {m.actions.map(a => (
+                    <button
+                      key={a.value}
+                      onClick={() => handleAction(a.value, a.label)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        background: 'rgba(255,69,0,0.1)',
+                        border: '1px solid rgba(255,69,0,0.2)',
+                        color: 'var(--accent)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.background = 'var(--accent)';
+                        (e.currentTarget as HTMLElement).style.color = '#fff';
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.1)';
+                        (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
+                      }}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
           {thinking && (
             <div style={{ alignSelf: 'flex-start' }}>
               <div style={{
                 padding: '0.6rem 1rem', borderRadius: '14px 14px 14px 4px',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
                 display: 'flex', gap: '4px',
               }}>
                 {[0, 1, 2].map(i => (
                   <span key={i} style={{
-                    width: '6px', height: '6px', borderRadius: '50%', background: '#FF4500',
+                    width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)',
                     animation: `dot 1.2s ease-in-out ${i * 0.15}s infinite`,
                   }} />
                 ))}
@@ -232,49 +204,40 @@ export default function OrderBot() {
 
         {/* Input */}
         <div style={{
-          padding: '0.6rem 0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex', gap: '0.4rem',
+          padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex', gap: '0.5rem',
         }}>
           <input ref={inputRef} value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send()}
             placeholder="Escribe tu mensaje..."
             style={{
-              flex: 1, padding: '0.6rem 0.85rem',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '12px', color: '#fff', fontSize: '0.82rem',
+              flex: 1, padding: '0.75rem 1rem',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.88rem',
               outline: 'none', fontFamily: 'inherit',
             }}
           />
-          <button onClick={send} disabled={!input.trim() || thinking} style={{
-            width: '38px', height: '38px', borderRadius: '12px', border: 'none',
-            background: input.trim() && !thinking
-              ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'rgba(255,255,255,0.04)',
-            color: input.trim() && !thinking ? '#fff' : '#444',
-            fontSize: '1rem', cursor: input.trim() ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>↑</button>
+          <Button onClick={send} disabled={!input.trim() || thinking} variant={input.trim() && !thinking ? 'primary' : 'secondary'} style={{
+            width: '38px', height: '38px', padding: 0, borderRadius: '12px', flexShrink: 0,
+          }}>↑</Button>
         </div>
       </div>
 
       {/* FAB */}
-      <button
+      <Button
         onClick={() => setOpen(p => !p)}
         aria-label={open ? 'Cerrar chat' : 'Abrir asistente'}
+        variant={open ? 'secondary' : 'primary'}
         style={{
           position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999,
           width: open ? '48px' : '56px', height: open ? '48px' : '56px',
           borderRadius: open ? '14px' : '16px',
-          background: open ? '#222' : 'linear-gradient(135deg, #FF4500 0%, #FF6B00 50%, #FF8C00 100%)',
-          border: open ? '1px solid rgba(255,255,255,0.08)' : 'none',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff',
+          padding: 0,
+          background: open ? 'var(--bg-secondary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent-gold) 100%)',
           boxShadow: open ? '0 2px 12px rgba(0,0,0,0.4)' : '0 4px 20px rgba(255,69,0,0.45), 0 8px 40px rgba(255,69,0,0.2)',
-          transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
         {open ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -288,7 +251,7 @@ export default function OrderBot() {
             <circle cx="16" cy="12" r="1.2" fill="#FF4500"/>
           </svg>
         )}
-      </button>
+      </Button>
 
       <style>{`
         @keyframes dot {

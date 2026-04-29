@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     used: false,
   }, { onConflict: 'employee_id' });
 
-  console.log(`[Reset] Token generado para "${employeeId}": ${token} (expira ${expiresAt})`);
+  console.log(`[Reset] Token de recuperación generado para employeeId="${employeeId}"`);
 
   // En producción: enviar por WhatsApp o email
   // Por ahora: el admin puede verlo en /admin/staff

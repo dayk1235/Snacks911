@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { handleMessage, INITIAL_STATE, type ConversationState } from '@/lib/responseEngine';
+import { handleMessage, INITIAL_STATE, type ConversationState } from '@/core';
 import { products } from '@/data/products';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -200,28 +200,28 @@ export default function ChatBot() {
           boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(255,69,0,0.05)',
         }}>
           {/* Header */}
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,69,0,0.06)' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #FF4500, #FFB800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>🚨</div>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,69,0,0.06)' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-gold))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>🚨</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>Snacks 911</div>
               <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)', display: 'inline-block' }} />
                 En línea · IA activa
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: '#888', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <button onClick={() => setIsOpen(false)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle)', borderRadius: '12px', width: '32px', height: '32px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
 
           {/* Messages — pure text, no buttons */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {messages.map(msg => (
               <div key={msg.id} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <div style={{ padding: '0.7rem 1rem', borderRadius: msg.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: msg.sender === 'user' ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'rgba(255,255,255,0.06)', border: msg.sender === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)', color: msg.sender === 'user' ? '#fff' : '#ccc', fontSize: '0.84rem', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{msg.text}</div>
+                <div style={{ padding: '0.7rem 1rem', borderRadius: msg.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: msg.sender === 'user' ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))' : 'var(--bg-secondary)', border: msg.sender === 'user' ? 'none' : '1px solid var(--border-subtle)', color: msg.sender === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{msg.text}</div>
               </div>
             ))}
             {typing && (
-              <div style={{ alignSelf: 'flex-start', padding: '0.7rem 1.2rem', borderRadius: '14px 14px 14px 4px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '4px', alignItems: 'center' }}>
-                {[0, 1, 2].map(i => (<span key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#888', animation: `typingDot 1.2s ease-in-out ${i * 0.15}s infinite` }} />))}
+              <div style={{ alignSelf: 'flex-start', padding: '0.7rem 1.2rem', borderRadius: '14px 14px 14px 4px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                {[0, 1, 2].map(i => (<span key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: `typingDot 1.2s ease-in-out ${i * 0.15}s infinite` }} />))}
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -229,17 +229,17 @@ export default function ChatBot() {
 
           {/* Cart */}
           {state.cart.length > 0 && (
-            <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,69,0,0.04)' }}>
-              <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 600 }}>🛒 {state.cart.length} item{state.cart.length > 1 ? 's' : ''} · ${state.cartTotal}</div>
+            <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid var(--border-subtle)', background: 'rgba(255,69,0,0.04)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>🛒 {state.cart.length} item{state.cart.length > 1 ? 's' : ''} · ${state.cartTotal}</div>
             </div>
           )}
 
           {/* Input */}
-          <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '0.5rem' }}>
+          <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: '0.5rem' }}>
             <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder={state.deliveryStep === 'name' ? 'Tu nombre...' : state.deliveryStep === 'address' ? 'Tu dirección...' : state.deliveryStep === 'reference' ? 'Referencia...' : state.deliveryStep === 'payment' ? 'Ej. efectivo o transferencia...' : 'Ej. “recomiéndame algo” o “quiero boneless”'}
-              style={{ flex: 1, padding: '0.65rem 1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#fff', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit' }} />
-            <button onClick={handleSend} disabled={!input.trim()} style={{ padding: '0.65rem 1rem', background: input.trim() ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: input.trim() ? '#fff' : '#555', fontWeight: 700, fontSize: '0.9rem', cursor: input.trim() ? 'pointer' : 'default' }}>↑</button>
+              style={{ flex: 1, padding: '0.65rem 1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit' }} />
+            <button onClick={handleSend} disabled={!input.trim()} style={{ padding: '0.65rem 1rem', background: input.trim() ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))' : 'var(--bg-secondary)', border: 'none', borderRadius: '12px', color: input.trim() ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.9rem', cursor: input.trim() ? 'pointer' : 'default' }}>↑</button>
           </div>
         </div>
       )}
@@ -247,9 +247,9 @@ export default function ChatBot() {
       <button onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.12)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-        style={{ position: 'fixed', bottom: '2rem', left: '1.5rem', zIndex: 500, width: '52px', height: '52px', borderRadius: '50%', background: isOpen ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #FF4500, #FF6500)', border: isOpen ? '1px solid rgba(255,255,255,0.15)' : '2px solid rgba(255,184,0,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: isOpen ? 'none' : '0 4px 24px rgba(255,69,0,0.35)', transition: 'transform 0.2s ease' }}>
+        style={{ position: 'fixed', bottom: '2rem', left: '1.5rem', zIndex: 500, width: '52px', height: '52px', borderRadius: '50%', background: isOpen ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, var(--accent), var(--accent-gradient))', border: isOpen ? '1px solid var(--border-subtle)' : '2px solid rgba(255,184,0,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: isOpen ? 'none' : '0 4px 24px rgba(255,69,0,0.35)', transition: 'transform 0.2s ease' }}>
         {isOpen ? '✕' : '🔥'}
-        {unread > 0 && !isOpen && (<span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#FFB800', color: '#000', borderRadius: '50%', width: '20px', height: '20px', fontSize: '0.65rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unread}</span>)}
+        {unread > 0 && !isOpen && (<span style={{ position: 'absolute', top: '-4px', right: '-4px', background: 'var(--accent-gold)', color: '#000', borderRadius: '50%', width: '20px', height: '20px', fontSize: '0.65rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unread}</span>)}
       </button>
 
       <style>{`@keyframes typingDot { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.1); } }`}</style>

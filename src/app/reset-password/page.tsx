@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
 
 type Step = 'request' | 'verify';
 
@@ -139,7 +140,7 @@ export default function ResetPasswordPage() {
         }}>
           {/* Steps indicator */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem' }}>
-            {(['request', 'verify'] as Step[]).map((s, i) => (
+            {(['request', 'verify'] as Step[]).map((s) => (
               <div key={s} style={{
                 flex: 1, height: '4px', borderRadius: '2px',
                 background: step === s || (s === 'request' && step === 'verify')
@@ -190,9 +191,9 @@ export default function ResetPasswordPage() {
                   </div>
                 )}
 
-                <button type="submit" disabled={loading} style={primaryBtn(loading)}>
+                <Button type="submit" disabled={loading} variant="primary" fullWidth>
                   {loading ? 'Enviando...' : 'Solicitar código →'}
-                </button>
+                </Button>
               </form>
             </>
           ) : (
@@ -266,20 +267,18 @@ export default function ResetPasswordPage() {
                 {error && <ErrorBox msg={error} />}
                 {success && <SuccessBox msg={success} />}
 
-                <button type="submit" disabled={loading || (!!confirmPass && confirmPass !== newPass)} style={primaryBtn(loading)}>
-                  {loading ? 'Guardando...' : 'Cambiar contraseña ✓'}
-                </button>
+                <Button type="submit" disabled={loading || (!!confirmPass && confirmPass !== newPass)} variant="primary" fullWidth>
+                  {loading ? 'Restableciendo...' : 'Restablecer Contraseña →'}
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => { setStep('request'); setError(''); setSuccess(''); setDevToken(''); }}
-                  style={{
-                    background: 'none', border: 'none', color: '#555',
-                    fontSize: '0.82rem', cursor: 'pointer', textAlign: 'center',
-                  }}
+                  style={{ fontSize: '0.82rem', marginTop: '0.5rem' }}
                 >
-                  ← Solicitar otro código
-                </button>
+                  Intentar con otro número
+                </Button>
               </form>
             </>
           )}
@@ -306,18 +305,6 @@ const labelStyle: React.CSSProperties = {
   marginBottom: '0.4rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
 };
 
-function primaryBtn(loading: boolean): React.CSSProperties {
-  return {
-    marginTop: '0.25rem', padding: '0.9rem',
-    background: loading ? 'rgba(255,69,0,0.5)' : 'linear-gradient(135deg, #FF4500, #FF6500)',
-    border: 'none', borderRadius: '12px',
-    color: '#fff', fontWeight: 800, fontSize: '1rem',
-    cursor: loading ? 'wait' : 'pointer',
-    boxShadow: '0 0 20px rgba(255,69,0,0.25)',
-    transition: 'opacity 0.2s',
-  };
-}
-
 function ErrorBox({ msg }: { msg: string }) {
   return (
     <div style={{
@@ -340,10 +327,9 @@ function SuccessBox({ msg }: { msg: string }) {
 
 function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
   return (
-    <button type="button" tabIndex={-1} onClick={onToggle} style={{
+    <Button type="button" tabIndex={-1} onClick={onToggle} variant="ghost" style={{
       position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)',
-      background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '0.3rem',
-      display: 'flex', alignItems: 'center',
+      color: '#555', padding: '0.3rem', width: '32px', height: '32px'
     }}>
       {show ? (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -356,6 +342,6 @@ function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) 
           <circle cx="12" cy="12" r="3"/>
         </svg>
       )}
-    </button>
+    </Button>
   );
 }

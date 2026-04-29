@@ -1,0 +1,40 @@
+{
+  "name": "Snacks 911 - WebApp",
+  "description": "Configuration for Cline MCP integration with Snacks911 Web Application",
+  "version": "1.0.0",
+  "capabilities": {
+    "fileOperations": true,
+    "codeExecution": true,
+    "terminalAccess": true
+  },
+  "tools": {
+    "enabled": ["file_search", "read_file", "write_file", "run_terminal", "git"]
+  },
+  "context": {
+    "projectType": "nextjs",
+    "frameworks": ["React", "Next.js", "TypeScript"],
+    "database": "Supabase (PostgreSQL)",
+    "aiServices": ["Google Generative AI"],
+    "stateManagement": "Zustand"
+  },
+  "customs": {
+    "aiCommands": {
+      "fixOverflow": "npm run ai:fix-overflow",
+      "fixCursor": "npm run ai:fix-cursor",
+      "addLogout": "npm run ai:add-logout",
+      "togglePassword": "npm run ai:toggle-password",
+      "orderAlert": "npm run ai:order-alert",
+      "orderSound": "npm run ai:order-sound",
+      "manageStaff": "npm run ai:manage-staff",
+      "auto": "npm run ai:auto"
+    }
+  },
+  "excludePatterns": [
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    ".git",
+    "*.lock"
+  ]
+}

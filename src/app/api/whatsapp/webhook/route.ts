@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { processMessage } from "@/lib/whatsapp/botEngine";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("[whatsapp webhook] INCOMING PAYLOAD:", JSON.stringify(body, null, 2));
 
     const entry = body?.entry?.[0];
     const changes = entry?.changes?.[0];
@@ -37,6 +35,8 @@ export async function POST(req: Request) {
     if (messages && messages.length > 0) {
       const message = messages[0];
       const phone = message.from;
+      const messageType = message?.type ?? 'unknown';
+      console.log(`[whatsapp webhook] incoming message type=${messageType} from=${phone ?? 'unknown'}`);
       
       let text = "Mensaje no soportado";
       if (message.type === 'text') {

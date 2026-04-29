@@ -5,11 +5,13 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Product } from '@/data/products';
 import { products } from '@/data/products';
+import { getProductImage } from '@/data/products';
 import { track } from '@/lib/analytics';
 import Link from 'next/link';
 import type { AdminProduct } from '@/lib/adminTypes';
 import { useCartStore } from '@/lib/cartStore';
 import { TickerBar } from '@/components/Hero';
+import { Button } from '@/components/ui/Button';
 
 const Navbar        = dynamic(() => import('@/components/Navbar'),        { ssr: false });
 const CombosSection = dynamic(() => import('@/components/CombosSection'), { ssr: false });
@@ -74,9 +76,9 @@ function UpsellPopup({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '380px',
-          background: 'rgba(14,14,14,0.98)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '24px', padding: '1.75rem',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px', padding: '1.75rem',
           boxShadow: '0 30px 80px rgba(0,0,0,0.8)',
         }}
       >
@@ -96,43 +98,36 @@ function UpsellPopup({
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem',
                 padding: '0.65rem 0.75rem', borderRadius: '12px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-subtle)',
               }}
             >
               <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#222', position: 'relative' }}>
-                <Image src={item.image} alt={item.name} fill style={{ objectFit: 'cover' }} loading="lazy" sizes="48px" />
+                <Image src={getProductImage(item)} alt={item.name} fill style={{ objectFit: 'cover' }} loading="lazy" sizes="48px" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ddd' }}>{item.name}</div>
-                <div style={{ fontSize: '0.78rem', color: '#FF4500', fontWeight: 800, marginTop: '0.1rem' }}>${item.price}</div>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{item.name}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--accent)', fontWeight: 800, marginTop: '0.1rem' }}>${item.price}</div>
               </div>
-              <button
+              <Button
                 onClick={() => { onAdd(item); onClose(); }}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                  background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                  border: 'none', color: '#fff', fontSize: '1.1rem',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
+                variant="primary"
+                style={{ width: '32px', height: '32px', padding: 0, borderRadius: '12px' }}
               >
                 +
-              </button>
+              </Button>
             </div>
           ))}
         </div>
 
-        <button
+        <Button
           onClick={onClose}
-          style={{
-            width: '100%', marginTop: '1rem', padding: '0.7rem',
-            background: 'none', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '10px', color: '#666', fontSize: '0.8rem',
-            fontWeight: 600, cursor: 'pointer',
-          }}
+          variant="secondary"
+          fullWidth
+          style={{ marginTop: '1rem', color: 'var(--text-muted)' }}
         >
           No, gracias
-        </button>
+        </Button>
       </div>
       <style>{`@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
@@ -153,14 +148,14 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <span style={{
           display: 'block', fontSize: '0.65rem', fontWeight: 700,
-          color: '#FF4500', letterSpacing: '0.18em', textTransform: 'uppercase',
+          color: 'var(--accent)', letterSpacing: '0.18em', textTransform: 'uppercase',
           marginBottom: '0.5rem',
         }}>Los mas pedidos</span>
         <h2 style={{
           fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3rem)',
-          fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.04em',
+          fontWeight: 400, color: 'var(--text-primary)', margin: 0, letterSpacing: '0.04em',
         }}>
-          FAVORITOS DEL <span style={{ color: '#FF4500' }}>MENU</span>
+          FAVORITOS DEL <span style={{ color: 'var(--accent)' }}>MENU</span>
         </h2>
       </div>
 
@@ -172,8 +167,8 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
           <div
             key={item.id}
             style={{
-              background: 'rgba(20,20,20,0.8)', backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px',
+              background: 'var(--bg-secondary)', backdropFilter: 'blur(16px)',
+              border: '1px solid var(--border-subtle)', borderRadius: '16px',
               overflow: 'hidden',
               transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
             }}
@@ -189,32 +184,49 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
             }}
           >
             <div style={{ position: 'relative', height: '140px', background: '#1a1a1a', overflow: 'hidden' }}>
-              <Image src={item.image} alt={item.name} fill sizes="(max-width: 640px) 100vw, 320px" style={{ objectFit: 'cover' }} loading="lazy" />
+              <Image src={getProductImage(item)} alt={item.name} fill sizes="(max-width: 640px) 100vw, 320px" style={{ objectFit: 'cover' }} loading="lazy" />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(14,14,14,0.6) 0%, transparent 50%)' }} />
-              {item.badge && (
-                <span style={{
-                  position: 'absolute', top: '8px', left: '8px',
-                  background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                  borderRadius: '6px', padding: '0.2rem 0.5rem',
-                  fontSize: '0.6rem', fontWeight: 700, color: '#fff',
-                  letterSpacing: '0.03em', textTransform: 'uppercase',
-                }}>{item.badge}</span>
-              )}
+              {/* Badge Priority Logic */}
+              {(() => {
+                const isBest = item.popular || item.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
+                const savings = item.originalPrice ? item.originalPrice - item.price : 0;
+                
+                let displayBadge = null;
+                if (isBest) displayBadge = "⭐ Más vendido";
+                else if (savings > 0) displayBadge = `💰 Ahorra $${savings}`;
+
+                if (!displayBadge) return null;
+
+                return (
+                  <span style={{
+                    position: 'absolute', top: '8px', left: '8px', zIndex: 10,
+                    background: isBest 
+                      ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
+                      : 'linear-gradient(135deg, var(--status-success), #16a34a)',
+                    borderRadius: '12px', padding: '0.2rem 0.5rem',
+                    fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-primary)',
+                    letterSpacing: '0.03em', textTransform: 'uppercase',
+                    boxShadow: isBest ? '0 2px 8px rgba(255,69,0,0.3)' : 'none',
+                  }}>
+                    {displayBadge}
+                  </span>
+                );
+              })()}
             </div>
             <div style={{ padding: '0.85rem' }}>
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.15rem' }}>{item.name}</div>
               <div style={{ fontSize: '0.72rem', color: '#555', lineHeight: 1.4, marginBottom: '0.5rem' }}>{item.description}</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#FF4500' }}>${item.price}</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent)' }}>${item.price}</span>
                 <button
                   onClick={() => onAdd(item)}
                   style={{
                     fontSize: '0.72rem', fontWeight: 700, color: '#fff',
                     background: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
-                      ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                      : 'rgba(255,69,0,0.85)',
+                      ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
+                      : 'var(--accent)',
                     padding: '0.35rem 0.85rem',
-                    borderRadius: '8px', border: 'none',
+                    borderRadius: '12px', border: 'none',
                     cursor: 'pointer', fontFamily: 'var(--font-body)',
                     transition: 'transform 0.15s ease',
                     boxShadow: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
@@ -224,11 +236,7 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                 >
-                  {item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
-                    ? '🔥 Más vendido'
-                    : item.category === 'combos'
-                      ? 'Pedir Combo'
-                      : 'Recomendado'}
+                  🔥 Pedir ahora
                 </button>
               </div>
             </div>
@@ -241,7 +249,7 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
           href="/menu"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-            color: '#FF4500', textDecoration: 'none',
+            color: 'var(--accent)', textDecoration: 'none',
             fontWeight: 700, fontSize: '0.82rem',
             transition: 'opacity 0.2s',
           }}
@@ -283,7 +291,7 @@ function MenuCTASection() {
           display: 'block',
           fontFamily: 'var(--font-body)',
           fontSize: '0.65rem',
-          color: '#FF4500',
+          color: 'var(--accent)',
           fontWeight: 700,
           letterSpacing: '0.18em',
           textTransform: 'uppercase',
@@ -294,17 +302,17 @@ function MenuCTASection() {
           fontFamily: 'var(--font-display)',
           fontSize: 'clamp(2.5rem, 7vw, 4.5rem)',
           fontWeight: 400,
-          color: '#fff',
+          color: 'var(--text-primary)',
           letterSpacing: '0.04em',
           margin: '0 0 0.75rem',
           lineHeight: 0.95,
         }}>
-          EXPLORA <span style={{ color: '#FF4500' }}>TODO</span>
+          EXPLORA <span style={{ color: 'var(--accent)' }}>TODO</span>
         </h2>
 
         <p style={{
           fontFamily: 'var(--font-body)',
-          color: '#555',
+          color: 'var(--text-muted)',
           fontSize: '0.92rem',
           lineHeight: 1.6,
           margin: '0 0 2rem',
@@ -324,9 +332,9 @@ function MenuCTASection() {
             <span key={cat} style={{
               padding: '0.4rem 1rem',
               borderRadius: '50px',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              color: '#666',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
               fontSize: '0.75rem',
               fontWeight: 600,
               fontFamily: 'var(--font-body)',
@@ -342,9 +350,9 @@ function MenuCTASection() {
             alignItems: 'center',
             gap: '0.6rem',
             padding: '0.9rem 2.25rem',
-            background: 'linear-gradient(135deg, #FF4500 0%, #FF6A00 100%)',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-gradient) 100%)',
             borderRadius: '100px',
-            color: '#fff',
+            color: 'var(--text-primary)',
             textDecoration: 'none',
             fontFamily: 'var(--font-display)',
             fontSize: '1.3rem',
@@ -502,29 +510,29 @@ export default function Page() {
   }, []);
 
   return (
-    <main style={{ background: '#080808', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
+    <main style={{ background: 'var(--bg-primary)', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
       <CustomCursor />
       <TickerBar />
       <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} />
 
-      <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 10, background: '#080808' }}>
+      <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 10, background: 'var(--bg-primary)' }}>
         <Hero featuredProduct={featuredCombo} onOrderFeatured={handleOrderFeatured} />
       </div>
 
       {/* Reorder banner — only if user has a previous order */}
       {lastOrder && cartItems.length === 0 && (
         <div style={{
-          position: 'relative', zIndex: 11, background: '#080808',
+          position: 'relative', zIndex: 11, background: 'var(--bg-primary)',
           padding: '1.25rem 1.5rem',
-          borderTop: '1px solid rgba(255,255,255,0.04)',
+          borderTop: '1px solid var(--border-subtle)',
         }}>
           <div style={{
             maxWidth: '600px', margin: '0 auto',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
             padding: '1rem 1.25rem',
             background: 'rgba(255,69,0,0.06)',
-            border: '1px solid rgba(255,69,0,0.15)',
-            borderRadius: '14px',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '16px',
           }}>
             <div>
               <div style={{ fontSize: '0.78rem', color: '#FF4500', fontWeight: 700, marginBottom: '0.15rem' }}>
@@ -537,9 +545,9 @@ export default function Page() {
             <button
               onClick={handleReorder}
               style={{
-                padding: '0.55rem 1.25rem', borderRadius: '10px', flexShrink: 0,
-                background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                border: 'none', color: '#fff',
+                padding: '0.55rem 1.25rem', borderRadius: '12px', flexShrink: 0,
+                background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
+                border: 'none', color: 'var(--text-primary)',
                 fontWeight: 700, fontSize: '0.78rem',
                 cursor: 'pointer', whiteSpace: 'nowrap',
               }}
@@ -551,27 +559,27 @@ export default function Page() {
       )}
 
       {/* Promo Banner */}
-      <div style={{ position: 'relative', zIndex: 11, background: '#080808' }}>
+      <div style={{ position: 'relative', zIndex: 11, background: 'var(--bg-primary)' }}>
         <PromoBanner />
       </div>
 
       {/* Combos Section */}
-      <div style={{ position: 'relative', zIndex: 11, background: '#080808' }}>
+      <div style={{ position: 'relative', zIndex: 11, background: 'var(--bg-primary)' }}>
         <CombosSection onAdd={addToCart} />
       </div>
 
       {/* Bestsellers */}
-      <div style={{ position: 'relative', zIndex: 12, background: '#080808' }}>
+      <div style={{ position: 'relative', zIndex: 12, background: 'var(--bg-primary)' }}>
         <BestsellersSection onAdd={(p) => { addToCart(p); setCartOpen(true); }} />
       </div>
 
       {/* Menu CTA */}
-      <div style={{ position: 'relative', zIndex: 13, background: '#080808' }}>
+      <div style={{ position: 'relative', zIndex: 13, background: 'var(--bg-primary)' }}>
         <MenuCTASection />
       </div>
 
       {/* Reviews */}
-      <div className="gsap-panel" style={{ position: 'relative', zIndex: 14, background: '#080808', boxShadow: '0 -15px 30px rgba(0,0,0,0.8)' }}>
+      <div className="gsap-panel" style={{ position: 'relative', zIndex: 14, background: 'var(--bg-primary)', boxShadow: '0 -15px 30px rgba(0,0,0,0.8)' }}>
         <ReviewSection />
       </div>
 
@@ -594,26 +602,13 @@ export default function Page() {
           paddingBottom: 'max(0.65rem, env(safe-area-inset-bottom))',
           pointerEvents: 'none',
         }}>
-          <button
+          <Button
             onClick={() => setCartOpen(true)}
+            variant="primary"
+            fullWidth
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
               padding: '0.85rem',
-              background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-              border: 'none',
-              borderRadius: '14px',
-              color: '#fff',
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.6), 0 0 24px rgba(255,69,0,0.3)',
               pointerEvents: 'auto',
-              letterSpacing: '0.02em',
             }}
           >
             Ver pedido
@@ -627,7 +622,7 @@ export default function Page() {
             </span>
             <span style={{ opacity: 0.6 }}>·</span>
             <span>${totalPrice}</span>
-          </button>
+          </Button>
         </div>
       )}
 

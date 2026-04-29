@@ -6,7 +6,7 @@
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
-  Customer,
+  Customer, AuditLog,
 } from './adminTypes';
 
 import {
@@ -16,6 +16,7 @@ import {
   dbGetSales,
   dbGetCustomCategories, dbSaveCustomCategory, dbDeleteCustomCategory,
   dbGetCustomer, dbUpsertCustomer, dbGetAllCustomers,
+  dbGetAuditLogs,
 } from './db';
 
 // ─── localStorage keys (used as offline cache) ────────────────────────────────
@@ -63,6 +64,13 @@ const TTL = {
   PRODUCTS:   2 * 60 * 1000, // 2 min
   CATEGORIES: 5 * 60 * 1000, // 5 min
 } as const;
+
+function createUuid() {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `ord_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+}
 
 
 // ─── AdminStore ───────────────────────────────────────────────────────────────
@@ -137,7 +145,8 @@ export const AdminStore = {
 
   async saveOrder(order: Order): Promise<void> {
     try {
-      await dbSaveOrder(order);
+      const savedId = await dbSaveOrder(order);
+      order.id = savedId;
       const all = lsRead<Order[]>(K.ORDERS, []);
       const idx = all.findIndex(o => o.id === order.id);
       if (idx >= 0) all[idx] = order; else all.unshift(order);
@@ -161,11 +170,15 @@ export const AdminStore = {
     customerPhone?: string,
     whatsappConfirmed?: boolean,
   ): Promise<string> {
-    const id = `ord_${Date.now()}`;
+    const id = createUuid();
+    const dbProducts = await this.getProducts().catch(() => []);
+    const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+    const byName = new Map(dbProducts.map(p => [normalize(p.name), p.id]));
+
     const order: Order = {
       id,
       items: items.map(i => ({
-        productId: String(i.id),
+        productId: byName.get(normalize(i.name)) ?? String(i.id),
         productName: i.name + (i.linkedExtras && i.linkedExtras.length ? ` (${i.linkedExtras.join(', ')})` : ''),
         quantity: i.quantity,
         price: i.price,
@@ -353,6 +366,15 @@ export const AdminStore = {
         favoriteProduct: topProduct,
         createdAt: now,
       });
+    }
+  },
+  
+  async getAuditLogs(): Promise<AuditLog[]> {
+    try {
+      return await dbGetAuditLogs();
+    } catch (e) {
+      console.warn('[AdminStore] getAuditLogs fallback', e);
+      return [];
     }
   },
 };

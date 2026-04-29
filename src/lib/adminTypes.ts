@@ -144,3 +144,14 @@ export function getAllCategoryLabels(customCategories: CustomCategory[]): Record
   }
   return labels;
 }
+
+export interface AuditLog {
+  id: string;
+  tableName: string;
+  recordId: string;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  oldData: any;
+  newData: any;
+  changedBy: string;
+  createdAt: string;
+}

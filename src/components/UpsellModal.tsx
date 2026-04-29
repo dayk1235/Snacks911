@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { track } from '@/lib/analytics';
+import { Button } from './ui/Button';
 import type { Product } from '@/data/products';
 
 /**
@@ -112,13 +113,12 @@ export default function UpsellModal({
     >
       <div
         onClick={e => e.stopPropagation()}
+        className="card-premium"
         style={{
           width: '100%', maxWidth: '360px',
-          background: 'linear-gradient(145deg, #1a1a1a, #111)',
-          border: '1px solid rgba(255,69,0,0.2)',
-          borderRadius: '24px', padding: '1.75rem 1.5rem',
-          boxShadow: '0 30px 80px rgba(0,0,0,0.8), 0 0 40px rgba(255,69,0,0.08)',
+          padding: '1.75rem 1.5rem',
           textAlign: 'center',
+          background: 'linear-gradient(145deg, #1a1a1a, #0d0d0d)',
         }}
       >
         <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem', lineHeight: 1 }}>
@@ -152,50 +152,23 @@ export default function UpsellModal({
 
         {/* Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <button
+          <Button
             onClick={handleAccept}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(255,69,0,0.4)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.transform = '';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(255,69,0,0.25)';
-            }}
-            style={{
-              width: '100%',
-              padding: '0.95rem',
-              borderRadius: '14px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: '1rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(255,69,0,0.25)',
-              transition: 'all 0.15s ease',
-              fontFamily: 'var(--font-body)',
-            }}
+            variant="primary"
+            fullWidth
+            style={{ padding: '0.95rem', fontSize: '1rem' }}
           >
             Sí, hacerlo combo →
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleReject}
-            style={{
-              width: '100%',
-              padding: '0.7rem',
-              borderRadius: '10px',
-              background: 'none',
-              border: '1px solid rgba(255,255,255,0.06)',
-              color: '#555',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-            }}
+            variant="secondary"
+            fullWidth
+            style={{ padding: '0.7rem', color: 'var(--text-muted)' }}
           >
             {offer.rejectLabel || 'No, gracias'}
-          </button>
+          </Button>
         </div>
       </div>
       <style>{`

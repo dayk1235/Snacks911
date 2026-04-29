@@ -195,6 +195,10 @@ export async function listEmployees(): Promise<Employee[]> {
 }
 
 export async function initDefaultAdmin(): Promise<boolean> {
+  if (process.env.ALLOW_DEFAULT_ADMIN_BOOTSTRAP !== 'true') {
+    return false;
+  }
+
   const db = getDb();
   if (!db) {
     console.error('[EmployeeStore] CRITICAL: No database connection — cannot create default admin');

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useProductStore } from '@/lib/productStore';
 import { CATEGORY_LABELS } from '@/lib/adminTypes';
-import type { Product } from '@/data/products';
+import { Product, getProductImage } from '@/data/products';
 import Image from 'next/image';
 
 export default function AdminMenuPage() {
@@ -56,8 +56,8 @@ export default function AdminMenuPage() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           style={{
-            padding: '0.6rem 1rem', background: '#1a1a1a', border: '1px solid #333', 
-            borderRadius: '8px', color: '#fff', fontSize: '0.9rem'
+            padding: '0.6rem 1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', 
+            borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.9rem'
           }}
         >
           <option value="all">Todas las categorías</option>
@@ -77,13 +77,13 @@ export default function AdminMenuPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
           {filteredProducts.map(p => (
             <div key={p.id} style={{
-              background: '#141414', border: '1px solid #222', borderRadius: '12px', overflow: 'hidden',
+              background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden',
               display: 'flex', flexDirection: 'column',
               opacity: p.available === false ? 0.6 : 1,
               transition: 'opacity 0.2s'
             }}>
-              <div style={{ position: 'relative', height: '140px', background: '#111' }}>
-                <Image src={p.image} alt={p.name} fill style={{ objectFit: 'cover' }} />
+              <div style={{ position: 'relative', height: '100px', background: 'var(--bg-primary)' }}>
+                <Image src={getProductImage(p)} alt={p.name} fill style={{ objectFit: 'cover' }} />
                 <div style={{ position: 'absolute', top: 10, right: 10 }}>
                   <button 
                     onClick={() => toggleAvailability(p)}
@@ -111,8 +111,8 @@ export default function AdminMenuPage() {
                   <button 
                     onClick={() => handleEdit(p)}
                     style={{
-                      padding: '0.5rem 1rem', background: '#222', border: '1px solid #333',
-                      borderRadius: '6px', color: '#fff', fontSize: '0.85rem', cursor: 'pointer'
+                      padding: '0.5rem 1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.85rem', cursor: 'pointer'
                     }}
                   >
                     ✏️ Editar
@@ -132,7 +132,7 @@ export default function AdminMenuPage() {
           display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem'
         }}>
           <form onSubmit={handleSave} style={{
-            background: '#1a1a1a', border: '1px solid #333', borderRadius: '16px',
+            background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '16px',
             width: '100%', maxWidth: '500px', padding: '2rem',
             boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
           }}>
@@ -145,7 +145,7 @@ export default function AdminMenuPage() {
                   required
                   value={editingProduct.name}
                   onChange={e => setEditingProduct({...editingProduct, name: e.target.value})}
-                  style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
+                  style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)' }}
                 />
               </div>
 
@@ -156,7 +156,7 @@ export default function AdminMenuPage() {
                     type="number" required min="0" step="0.5"
                     value={editingProduct.price}
                     onChange={e => setEditingProduct({...editingProduct, price: Number(e.target.value)})}
-                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)' }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -165,7 +165,7 @@ export default function AdminMenuPage() {
                     type="number" min="0" step="0.5"
                     value={editingProduct.originalPrice || ''}
                     onChange={e => setEditingProduct({...editingProduct, originalPrice: e.target.value ? Number(e.target.value) : undefined})}
-                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)' }}
                   />
                 </div>
               </div>
@@ -176,7 +176,7 @@ export default function AdminMenuPage() {
                   required rows={3}
                   value={editingProduct.description}
                   onChange={e => setEditingProduct({...editingProduct, description: e.target.value})}
-                  style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)', resize: 'vertical' }}
                 />
               </div>
 
@@ -186,7 +186,7 @@ export default function AdminMenuPage() {
                   required
                   value={editingProduct.image}
                   onChange={e => setEditingProduct({...editingProduct, image: e.target.value})}
-                  style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
+                  style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: 'var(--text-primary)' }}
                 />
               </div>
             </div>
@@ -203,8 +203,8 @@ export default function AdminMenuPage() {
                 type="submit" 
                 disabled={saving}
                 style={{ 
-                  padding: '0.8rem 2rem', background: '#FF4500', border: 'none', borderRadius: '8px', 
-                  color: '#fff', fontWeight: 'bold', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1
+                  padding: '0.8rem 2rem', background: 'var(--accent)', border: 'none', borderRadius: '12px', 
+                  color: 'var(--text-primary)', fontWeight: 'bold', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1
                 }}
               >
                 {saving ? 'Guardando...' : 'Guardar Cambios'}

@@ -79,10 +79,10 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
         top: 0, left: 0, right: 0,
         zIndex: 100,
         padding: '0.9rem 2rem',
-        background: 'rgba(6,6,6,0.85)',
+        background: 'var(--bg-primary-transparent)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(255,100,0,0.12)',
+        borderBottom: '1px solid var(--border-subtle)',
         boxShadow: '0 4px 30px rgba(0,0,0,0.3)',
         ...navStyle,
       }}
@@ -135,11 +135,11 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
               fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
               transition: 'color 0.2s ease',
               padding: '0.45rem 0.9rem',
-              borderRadius: '10px',
+              borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '0.35rem',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             Menú
@@ -155,11 +155,11 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
               fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
               transition: 'color 0.2s ease',
               padding: '0.45rem 0.9rem',
-              borderRadius: '10px',
+              borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '0.35rem',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#FF7040'; e.currentTarget.style.background = 'rgba(255,69,0,0.08)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(255,69,0,0.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             Combos
@@ -175,11 +175,11 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
               fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
               transition: 'color 0.2s ease',
               padding: '0.45rem 0.9rem',
-              borderRadius: '10px',
+              borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '0.35rem',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Contacto
@@ -193,9 +193,9 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             onClick={() => onCartOpen()}
             style={{
               fontFamily: 'var(--font-body)', position: 'relative',
-              background: 'linear-gradient(135deg, #FF4500, #FF6500)',
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
               border: 'none', borderRadius: '12px', padding: '0.55rem 1.25rem',
-              color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+              color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               boxShadow: '0 0 16px rgba(255,69,0,0.2)', letterSpacing: '0.02em',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
@@ -230,9 +230,9 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
           <button
             onClick={onCartOpen}
             style={{
-              position: 'relative', background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-              border: 'none', borderRadius: '10px', padding: '0.5rem 0.75rem',
-              color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+              position: 'relative', background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
+              border: 'none', borderRadius: '12px', padding: '0.5rem 0.75rem',
+              color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '0.3rem',
             }}
           >
@@ -255,8 +255,8 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '10px', padding: '0.5rem 0.7rem',
+              background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
+              borderRadius: '12px', padding: '0.5rem 0.7rem',
               cursor: 'pointer', display: 'flex', flexDirection: 'column',
               gap: '4px', alignItems: 'center', justifyContent: 'center',
             }}

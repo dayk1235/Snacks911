@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Button } from './ui/Button';
 import { startOrderLoop, stopOrderLoop } from '@/lib/sound';
 
 export interface PendingOrder {
@@ -62,16 +63,15 @@ export default function OrderAlertModal({ order, onAccept }: OrderAlertModalProp
       <div style={{ position: 'absolute', inset: 0 }} />
 
       <div
+        className="card-premium"
         style={{
           position: 'relative',
           width: '100%', maxWidth: '420px',
-          background: '#111',
-          border: '2px solid #FF4500',
-          borderRadius: '20px',
           padding: '2rem',
-          boxShadow: '0 0 60px rgba(255,69,0,0.3), 0 30px 80px rgba(0,0,0,0.8)',
+          border: '2px solid #FF4500',
           animation: 'orderAlertSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           textAlign: 'center',
+          boxShadow: '0 0 60px rgba(255, 69, 0, 0.3), 0 30px 80px rgba(0, 0, 0, 0.8)',
         }}
       >
         {/* Pulse ring */}
@@ -133,30 +133,19 @@ export default function OrderAlertModal({ order, onAccept }: OrderAlertModalProp
         </div>
 
         {/* Accept button */}
-        <button
+        <Button
           onClick={handleAccept}
+          variant="primary"
+          fullWidth
           autoFocus
           style={{
-            width: '100%', marginTop: '1.25rem', padding: '0.9rem',
-            background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-            border: 'none', borderRadius: '14px',
-            color: '#fff', fontWeight: 800, fontSize: '1rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(255,69,0,0.4)',
-            letterSpacing: '0.03em',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.transform = 'scale(1.03)';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 28px rgba(255,69,0,0.5)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(255,69,0,0.4)';
+            marginTop: '1.25rem',
+            padding: '0.9rem',
+            fontSize: '1rem',
           }}
         >
           ACEPTAR PEDIDO
-        </button>
+        </Button>
 
         <style>{`
           @keyframes orderAlertFadeIn {

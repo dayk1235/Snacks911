@@ -2,8 +2,9 @@
 
 import Image from 'next/image';
 import { memo, useRef, useState } from 'react';
+import { Button } from './ui/Button';
 import type { Product } from '@/data/products';
-import { products } from '@/data/products';
+import { products, getProductImage } from '@/data/products';
 
 interface ProductCardProps {
   product: Product;
@@ -64,65 +65,52 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
     setShowUpsell(false);
   };
 
-  const isBestSeller = product.badges?.some(b => b.includes('Más pedido') || b.includes('Top Seller'));
+  const isBestSeller = product.popular || product.badges?.some(b => 
+    b.includes('Más pedido') || b.includes('Top Seller') || b.includes('Más vendido')
+  );
   const savings = product.originalPrice ? product.originalPrice - product.price : 0;
+
+  // Badge Priority Logic
+  let displayBadge = null;
+  if (isBestSeller) {
+    displayBadge = "⭐ Más vendido";
+  } else if (savings > 0) {
+    displayBadge = `💰 Ahorra $${savings}`;
+  }
 
   return (
     <div
       ref={cardRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      className="card-premium"
       style={{
-        background: isCombo
-          ? 'linear-gradient(145deg, rgba(255,69,0,0.1), rgba(20,20,20,0.95))'
-          : 'rgba(20,20,20,0.85)',
-        border: isCombo
-          ? '1.5px solid rgba(255,69,0,0.3)'
-          : isBestSeller
-            ? '1px solid rgba(255,69,0,0.15)'
-            : '1px solid rgba(255,255,255,0.07)',
-        borderRadius: isCombo ? '18px' : '14px',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        transition: 'all 0.25s ease',
-        transform: hovered ? 'translateY(-3px)' : 'none',
-        boxShadow: isCombo
-          ? '0 0 25px rgba(255,69,0,0.08)'
-          : hovered && isBestSeller
-            ? '0 0 20px rgba(255,69,0,0.1)'
-            : 'none',
+        border: isCombo ? '1.5px solid rgba(255, 69, 0, 0.35)' : undefined,
+        background: isCombo ? 'linear-gradient(145deg, rgba(255, 69, 0, 0.12), rgba(20, 20, 20, 0.7))' : undefined,
       }}
     >
-      {/* Badges */}
-      {(product.badge || product.badges) && (
+      {/* Badge */}
+      {displayBadge && (
         <div style={{
           position: 'absolute', top: '10px', left: '10px', zIndex: 10,
-          display: 'flex', flexDirection: 'column', gap: '5px',
         }}>
-          {(product.badges && product.badges.length > 0 ? product.badges : product.badge ? [product.badge] : []).map((b, i) => (
-            <span
-              key={i}
-              style={{
-                background: i === 0
-                  ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                  : b.includes('Ahorra')
-                    ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                    : 'rgba(0,0,0,0.75)',
-                borderRadius: '6px',
-                padding: '0.2rem 0.55rem',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                color: '#fff',
-                whiteSpace: 'nowrap',
-                letterSpacing: '0.02em',
-                boxShadow: i === 0 ? '0 2px 8px rgba(255,69,0,0.3)' : 'none',
-              }}
-            >
-              {b}
-            </span>
-          ))}
+          <span
+            style={{
+              background: isBestSeller
+                ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
+                : 'linear-gradient(135deg, var(--status-success), #16a34a)',
+              borderRadius: '12px',
+              padding: '0.2rem 0.55rem',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.02em',
+              boxShadow: isBestSeller ? '0 2px 8px rgba(255,69,0,0.3)' : 'none',
+            }}
+          >
+            {displayBadge}
+          </span>
         </div>
       )}
 
@@ -134,7 +122,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
         overflow: 'hidden',
       }}>
         <Image
-          src={product.image}
+          src={getProductImage(product)}
           alt={product.name}
           fill
           sizes="(max-width: 768px) 50vw, 33vw"
@@ -160,11 +148,11 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
             padding: '0.3rem 0.65rem',
             background: 'rgba(14,14,14,0.85)',
             backdropFilter: 'blur(8px)',
-            borderRadius: '8px',
+            borderRadius: '12px',
             border: '1px solid rgba(255,69,0,0.2)',
             fontSize: '0.68rem',
             fontWeight: 700,
-            color: '#FF7040',
+            color: 'var(--accent)',
             letterSpacing: '0.02em',
           }}>
             {emotionLabel}
@@ -184,7 +172,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
             {Array.from({ length: 3 }).map((_, i) => (
               <span key={i} style={{
                 width: '7px', height: '7px', borderRadius: '50%',
-                background: i < (product.spicy ?? 0) ? '#FF4500' : 'rgba(255,255,255,0.12)',
+                background: i < (product.spicy ?? 0) ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
                 boxShadow: i < (product.spicy ?? 0) ? '0 0 6px rgba(255,69,0,0.5)' : 'none',
               }} />
             ))}
@@ -217,7 +205,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
         {/* Description — 2 lines max */}
         <p style={{
           fontSize: '0.73rem',
-          color: isBestSeller ? '#888' : '#666',
+          color: isBestSeller ? 'var(--text-secondary)' : 'var(--text-muted)',
           margin: 0,
           lineHeight: 1.45,
           display: '-webkit-box',
@@ -263,40 +251,31 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
             <span style={{
               fontSize: isCombo ? '1.4rem' : '1.25rem',
               fontWeight: 900,
-              color: '#FF4500',
+              color: 'var(--accent)',
               letterSpacing: '-0.02em',
             }}>
               ${product.price}
             </span>
           </div>
-          <button
+          <Button
             ref={btnRef}
             onClick={handleAdd}
+            variant="primary"
             style={{
               flex: 1,
               maxWidth: isCombo ? '165px' : '145px',
               background: added
                 ? 'linear-gradient(135deg, #00C853, #00E676)'
-                : 'linear-gradient(135deg, #FF4500, #FF6500)',
-              border: 'none',
-              borderRadius: '10px',
-              padding: isCombo ? '0.7rem 1rem' : '0.6rem 0.9rem',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: isCombo ? '0.92rem' : '0.82rem',
-              cursor: added ? 'default' : 'pointer',
-              transition: 'all 0.2s',
+                : undefined,
               boxShadow: added
                 ? '0 4px 14px rgba(0,200,83,0.25)'
-                : isCombo
-                  ? '0 4px 18px rgba(255,69,0,0.3)'
-                  : '0 2px 10px rgba(255,69,0,0.2)',
-              whiteSpace: 'nowrap',
-              transform: hovered && !added ? 'scale(1.03)' : 'none',
+                : undefined,
+              padding: isCombo ? '0.7rem 1rem' : '0.6rem 0.9rem',
+              fontSize: isCombo ? '0.92rem' : '0.82rem',
             }}
           >
-            {added ? '✓ Agregado' : isCombo ? 'Pedir 🔥' : 'Agregar'}
-          </button>
+            {added ? '✓ Agregado' : '🔥 Pedir ahora'}
+          </Button>
         </div>
       </div>
 
@@ -319,22 +298,17 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
                 +${upsellProduct.price}
               </div>
             </div>
-            <button
+            <Button
               onClick={handleAddUpsell}
+              variant="primary"
               style={{
                 padding: '0.4rem 0.8rem',
-                background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff',
-                fontWeight: 800,
+                borderRadius: '12px',
                 fontSize: '0.72rem',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
               }}
             >
-              + Agregar
-            </button>
+              🔥 Pedir ahora
+            </Button>
           </div>
         </div>
       )}

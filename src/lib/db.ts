@@ -7,7 +7,7 @@ import { supabase } from './supabase';
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
-  Customer,
+  Customer, AuditLog,
 } from './adminTypes';
 
 // ─── Seed defaults (used when table is empty) ─────────────────────────────────
@@ -59,13 +59,14 @@ const DEFAULT_SETTINGS: BusinessSettings = {
 // ─── Row mapping helpers ──────────────────────────────────────────────────────
 
 function rowToProduct(row: Record<string, unknown>): AdminProduct {
+  const availabilityRaw = row.available ?? row.is_available ?? row.is_active;
   return {
     id:                   String(row.id),
     name:                 String(row.name),
     price:                Number(row.price),
     category:             String(row.category),
     imageUrl:             String(row.image_url ?? ''),
-    available:            Boolean(row.available),
+    available:            availabilityRaw === undefined ? true : Boolean(availabilityRaw),
     description:          String(row.description ?? ''),
     applicableProductIds: (row.applicable_product_ids as string[]) ?? [],
   };
@@ -84,10 +85,36 @@ function productToRow(p: AdminProduct) {
   };
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function mapOrderStatusFromDb(status: unknown): OrderStatus {
+  const normalized = String(status ?? '').toLowerCase();
+  if (normalized === 'confirmed') return 'pending';
+  if (normalized === 'draft') return 'pending';
+  if (normalized === 'cancelled') return 'delivered';
+  if (normalized === 'pending' || normalized === 'preparing' || normalized === 'ready' || normalized === 'delivered') {
+    return normalized;
+  }
+  return 'pending';
+}
+
+function mapOrderStatusToDb(status: OrderStatus): string {
+  return status;
+}
+
+function createUuid() {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `ord_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+}
+
 function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>[]): Order {
   return {
     id:            String(row.id),
-    status:        (row.status as OrderStatus) ?? 'pending',
+    status:        mapOrderStatusFromDb(row.status),
     total:         Number(row.total),
     createdAt:     String(row.created_at),
     customerName:  String(row.customer_name),
@@ -97,9 +124,9 @@ function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>
     whatsappConfirmed: Boolean(row.whatsapp_confirmed ?? false),
     items: items.map(i => ({
       productId:   String(i.product_id ?? ''),
-      productName: String(i.product_name),
-      quantity:    Number(i.quantity),
-      price:       Number(i.price),
+      productName: String(i.product_name ?? i.product_id ?? 'Producto'),
+      quantity:    Number(i.quantity ?? i.qty ?? 1),
+      price:       Number(i.price ?? i.unit_price ?? 0),
     })),
   };
 }
@@ -168,10 +195,11 @@ export async function dbGetOrders(): Promise<Order[]> {
   );
 }
 
-export async function dbSaveOrder(order: Order): Promise<void> {
+export async function dbSaveOrder(order: Order): Promise<string> {
+  const orderId = isUuid(order.id) ? order.id : createUuid();
   const orderRow = {
-    id:             order.id,
-    status:         order.status,
+    id:             orderId,
+    status:         mapOrderStatusToDb(order.status),
     total:          order.total,
     created_at:     order.createdAt,
     customer_name:  order.customerName,
@@ -182,19 +210,32 @@ export async function dbSaveOrder(order: Order): Promise<void> {
   const { error } = await supabase.from('orders').upsert(orderRow);
   if (error) throw error;
 
-  // Delete existing items & re-insert (atomic per-row, not transactional)
-  await supabase.from('order_items').delete().eq('order_id', order.id);
+  // Delete existing items & re-insert
+  await supabase.from('order_items').delete().eq('order_id', orderId);
   if (order.items.length > 0) {
-    const itemRows = order.items.map(i => ({
-      order_id:     order.id,
-      product_id:   i.productId,
+    const legacyRows = order.items.map(i => ({
+      order_id: orderId,
+      product_id: i.productId,
       product_name: i.productName,
-      quantity:     i.quantity,
-      price:        i.price,
+      quantity: i.quantity,
+      price: i.price,
     }));
-    const { error: e2 } = await supabase.from('order_items').insert(itemRows);
-    if (e2) throw e2;
+    const { error: legacyErr } = await supabase.from('order_items').insert(legacyRows);
+
+    if (legacyErr) {
+      const botRows = order.items.map(i => ({
+        order_id: orderId,
+        product_id: isUuid(i.productId) ? i.productId : null,
+        qty: i.quantity,
+        unit_price: i.price,
+        selected_modifiers_json: [],
+      }));
+      const { error: botErr } = await supabase.from('order_items').insert(botRows);
+      if (botErr) throw botErr;
+    }
   }
+
+  return orderId;
 }
 
 export async function dbUpdateOrderStatus(id: string, status: OrderStatus, handledBy?: string): Promise<void> {
@@ -351,4 +392,22 @@ export async function dbGetAllCustomers(): Promise<Customer[]> {
   if (error) throw error;
   if (!data) return [];
   return (data as Record<string, unknown>[]).map(rowToCustomer);
+}
+
+export async function dbGetAuditLogs(): Promise<AuditLog[]> {
+  const { data, error } = await supabase
+    .from('audit_logs')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(r => ({
+    id:        String(r.id),
+    tableName: String(r.table_name),
+    recordId:  String(r.record_id),
+    action:    (r.action === 'INSERT' || r.action === 'UPDATE' || r.action === 'DELETE') ? r.action : 'UPDATE',
+    oldData:   r.old_data,
+    newData:   r.new_data,
+    changedBy: String(r.changed_by),
+    createdAt: String(r.created_at),
+  }));
 }

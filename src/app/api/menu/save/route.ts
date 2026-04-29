@@ -11,9 +11,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbSaveProduct, dbGetProducts } from '@/lib/db';
 import type { AdminProduct } from '@/lib/adminTypes';
+import { requireApiRole } from '@/lib/server/apiAuth';
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireApiRole(req, ['admin', 'gerente']);
+    if (!auth.ok) return auth.response;
+
     const body = await req.json();
     const items: Array<{ name: string; price: number; description: string; category: string; imageUrl?: string }> = body.items;
 

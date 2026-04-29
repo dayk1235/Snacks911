@@ -3,6 +3,7 @@
 import { memo, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import { Button } from '@/components/ui/Button';
 import { AdminStore } from '@/lib/adminStore';
 import type { BusinessSettings } from '@/lib/adminTypes';
 import { useStoreSettings } from '@/lib/storeSettingsStore';
@@ -11,7 +12,7 @@ const FireCanvas = dynamic(() => import('./FireCanvas'), { ssr: false });
 
 
 import type { Product } from '@/data/products';
-import { products } from '@/data/products';
+import { products, getProductImage } from '@/data/products';
 
 interface HeroProps {
   featuredProduct?: Product;
@@ -60,7 +61,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        background: '#080808',
+        background: 'var(--bg-primary)',
       }}
     >
       {/* Background layers — reduced blur for cleaner look */}
@@ -82,12 +83,12 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
               background: storeOpen ? 'rgba(255,69,0,0.08)' : 'rgba(239,68,68,0.1)',
-              border: storeOpen ? '1px solid rgba(255,69,0,0.22)' : '1px solid rgba(239,68,68,0.35)',
+              border: storeOpen ? '1px solid var(--border-subtle)' : '1px solid var(--status-danger)',
               borderRadius: '50px',
               padding: '0.45rem 1.25rem',
               fontSize: '0.78rem',
               fontFamily: 'var(--font-body)',
-              color: storeOpen ? '#FF7040' : '#ef4444',
+              color: storeOpen ? 'var(--accent)' : 'var(--status-danger)',
               fontWeight: 600,
               marginBottom: '2rem',
               letterSpacing: '0.05em',
@@ -95,8 +96,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
           >
             <span style={{
               width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-              background: storeOpen ? '#FF7040' : '#ef4444',
-              boxShadow: storeOpen ? '0 0 6px #FF7040' : '0 0 6px #ef4444',
+              background: storeOpen ? 'var(--accent)' : 'var(--status-danger)',
+              boxShadow: storeOpen ? '0 0 6px var(--accent)' : '0 0 6px var(--status-danger)',
               animation: storeOpen ? 'heroPulse 2s ease-in-out infinite' : 'none',
             }} />
             <span suppressHydrationWarning>
@@ -149,15 +150,11 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
           {/* Featured Combo Card */}
           <div style={{ marginBottom: '1.5rem' }}>
             {featuredProduct && onOrderFeatured ? (
-              <div style={{
+              <div className="card-premium" style={{
                 maxWidth: '380px', margin: '0 auto',
-                background: 'rgba(20,20,20,0.88)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                border: '1.5px solid rgba(255,69,0,0.25)',
-                borderRadius: '18px',
                 padding: '1.1rem',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255,69,0,0.08)',
+                border: '1.5px solid var(--border-subtle)',
+                background: 'var(--bg-secondary)',
               }}>
                 <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', marginBottom: '0.85rem' }}>
                   <div style={{
@@ -165,7 +162,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                     overflow: 'hidden', flexShrink: 0, background: '#1a1a1a',
                   }}>
                     <Image
-                      src={featuredProduct.image}
+                      src={getProductImage(featuredProduct)}
                       alt={featuredProduct.name}
                       width={72}
                       height={72}
@@ -174,14 +171,24 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{
-                      fontSize: '0.6rem', color: '#FF4500', fontWeight: 700,
-                      letterSpacing: '0.15em', textTransform: 'uppercase',
-                    }}>
-                      Mas pedido
-                    </span>
+                    {featuredProduct && (() => {
+                      const isBest = featuredProduct.popular || featuredProduct.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
+                      const savings = featuredProduct.originalPrice ? featuredProduct.originalPrice - featuredProduct.price : 0;
+                      
+                      let label = isBest ? "⭐ Más pedido" : savings > 0 ? `💰 Ahorra $${savings}` : null;
+                      if (!label) return null;
+
+                      return (
+                        <span style={{
+                          fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 700,
+                          letterSpacing: '0.15em', textTransform: 'uppercase',
+                        }}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                     <h3 style={{
-                      fontSize: '1.05rem', fontWeight: 800, color: '#FFB800',
+                      fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)',
                       margin: '0.15rem 0 0', lineHeight: 1.2,
                       fontFamily: 'var(--font-body)',
                     }}>
@@ -196,36 +203,23 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <span style={{
-                      fontSize: '1.5rem', fontWeight: 900, color: '#FF4500',
+                      fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)',
                       display: 'block', lineHeight: 1,
                     }}>
                       ${featuredProduct.price}
                     </span>
                   </div>
                 </div>
-                <button
+                <Button
                   id="hero-cta-order"
                   onClick={storeOpen ? onOrderFeatured : undefined}
                   disabled={!storeOpen}
                   title={storeOpen ? '' : closedMessage || 'Estamos cerrados'}
-                  style={{
-                    width: '100%', padding: '0.8rem',
-                    background: storeOpen
-                      ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                      : 'rgba(255,255,255,0.06)',
-                    border: storeOpen ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    color: storeOpen ? '#fff' : '#555',
-                    fontWeight: 800, fontSize: '0.92rem',
-                    cursor: storeOpen ? 'pointer' : 'not-allowed',
-                    fontFamily: 'var(--font-body)',
-                    boxShadow: storeOpen ? '0 4px 16px rgba(255,69,0,0.3)' : 'none',
-                    letterSpacing: '0.02em',
-                    transition: 'all 0.15s ease',
-                  }}
+                  variant={storeOpen ? 'primary' : 'secondary'}
+                  fullWidth
                 >
-                  {storeOpen ? 'Pedir Combo 🔥' : '🔴 Cerrado por ahora'}
-                </button>
+                  {storeOpen ? '🔥 Pedir ahora' : '🔴 Cerrado por ahora'}
+                </Button>
               </div>
             ) : (
               /* Fallback CTAs — closed state shows banner */
@@ -233,12 +227,12 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                 <div style={{
                   maxWidth: '400px', margin: '0 auto',
                   background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
+                  border: '1px solid var(--status-danger)',
                   borderRadius: '16px', padding: '1.25rem 1.5rem',
                   textAlign: 'center',
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔴</div>
-                  <p style={{ color: '#ef4444', fontWeight: 700, fontSize: '1rem', margin: '0 0 0.4rem' }}>Estamos cerrados</p>
+                  <p style={{ color: 'var(--status-danger)', fontWeight: 700, fontSize: '1rem', margin: '0 0 0.4rem' }}>Estamos cerrados</p>
                   <p style={{ color: '#888', fontSize: '0.82rem', margin: 0 }}>{closedMessage || '¡Vuelve pronto!'}</p>
                 </div>
               ) : (
@@ -247,14 +241,13 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                     id="hero-cta-menu" href="#menu"
                     className="glow-btn"
                     style={{
-                      background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-                      color: '#fff', padding: '1rem 2.5rem',
-                      borderRadius: '14px', fontWeight: 700,
+                      background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
+                      color: 'var(--text-primary)', padding: '1rem 2.5rem',
+                      borderRadius: '12px', fontWeight: 700,
                       fontFamily: 'var(--font-body)',
                       fontSize: '0.95rem', textDecoration: 'none',
                       display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                      boxShadow: '0 0 16px rgba(255,69,0,0.25)',
-                      letterSpacing: '0.02em',
+                      boxShadow: '0 0 16px rgba(255,69,0,0.25)', letterSpacing: '0.02em',
                       transition: 'transform 0.18s ease',
                     }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
@@ -300,32 +293,22 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                   const isTop = combo.badges?.some(b => b.includes('Más pedido'));
                   const badge = isTop ? '🔥 Más vendido' : combo.badges?.[0] ?? '⚡ Combo';
                   return (
-                    <button
+                    <Button
                       key={combo.id}
                       onClick={() => {
-                        // Add to cart and open it
                         if (onOrderFeatured && combo === topCombo) {
                           onOrderFeatured();
                         }
                       }}
+                      variant={isTop ? 'primary' : 'secondary'}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: isTop
-                          ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                          : 'rgba(255,255,255,0.06)',
-                        border: isTop ? 'none' : '1px solid rgba(255,69,0,0.2)',
                         borderRadius: '50px',
-                        color: '#fff',
                         fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: 'var(--font-body)',
-                        transition: 'all 0.2s',
-                        boxShadow: isTop ? '0 0 16px rgba(255,69,0,0.25)' : 'none',
                       }}
                     >
                       {badge}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -342,8 +325,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                     fontFamily: 'var(--font-body)',
                     transition: 'color 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF4500'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
                 >
                   O explora el menu completo →
                 </a>
@@ -359,8 +342,8 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                     fontFamily: 'var(--font-body)',
                     transition: 'color 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF4500'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
                 >
                   Ver menu completo →
                 </a>
@@ -371,7 +354,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
           <div style={{ display: 'flex', gap: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             {(siteSettings.heroStats ?? DEFAULT_SETTINGS.heroStats ?? []).map((stat) => (
               <div key={stat.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.04em', color: '#FF4500' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.04em', color: 'var(--accent)' }}>
                   {stat.value}
                 </div>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.25rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -418,8 +401,11 @@ export const TickerBar = memo(function TickerBar() {
       position: 'fixed',
       bottom: 0, left: 0, right: 0,
       zIndex: 90, // below navbar (100) but above all panels
-      background: '#FF4500',
+      background: 'linear-gradient(90deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent) 100%)',
+      backgroundSize: '200% 100%',
+      animation: 'moveGradient 4s linear infinite',
       borderTop: '1px solid rgba(255,255,255,0.15)',
+      boxShadow: '0 -4px 20px rgba(255,69,0,0.35)',
       overflow: 'hidden',
       pointerEvents: 'none',
     }}>
@@ -430,11 +416,12 @@ export const TickerBar = memo(function TickerBar() {
               <span key={item} style={{
                 display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
                 fontFamily: 'var(--font-body)',
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em',
-                color: 'rgba(255,255,255,0.95)', textTransform: 'uppercase', padding: '0 2rem',
+                fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em',
+                color: 'var(--text-primary)', textTransform: 'uppercase', padding: '0 2rem',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
               }}>
                 {item}
-                <span style={{ marginLeft: '2rem', opacity: 0.35, fontSize: '0.55rem' }}>◆</span>
+                <span style={{ marginLeft: '2rem', opacity: 0.6, fontSize: '0.55rem' }}>◆</span>
               </span>
             ))}
           </div>

@@ -2,9 +2,11 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import { Button } from './ui/Button';
 import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { track } from '@/lib/analytics';
+import { getProductImage } from '@/data/products';
 import type { CartItem } from '@/types';
 import type { AdminProduct } from '@/lib/adminTypes';
 import type { Product } from '@/data/products';
@@ -77,9 +79,9 @@ function CustomerCaptureModal({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '380px',
-          background: 'rgba(14,14,14,0.98)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '24px', padding: '2rem',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px', padding: '2rem',
           boxShadow: '0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)',
           animation: 'cartSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           textAlign: 'center', cursor: 'default',
@@ -114,8 +116,8 @@ function CustomerCaptureModal({
             onChange={e => setName(e.target.value)}
             style={{
               width: '100%', padding: '0.8rem 1rem',
-              borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.04)', color: '#fff',
+              borderRadius: '12px', border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
               fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box',
               transition: 'border-color 0.15s',
             }}
@@ -132,8 +134,8 @@ function CustomerCaptureModal({
             autoFocus={!phone}
             style={{
               width: '100%', padding: '0.8rem 1rem',
-              borderRadius: '12px', border: '1px solid rgba(255,69,0,0.3)',
-              background: 'rgba(255,69,0,0.04)', color: '#fff',
+              borderRadius: '12px', border: '1px solid var(--accent)',
+              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
               fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box',
               transition: 'border-color 0.15s',
             }}
@@ -150,9 +152,9 @@ function CustomerCaptureModal({
               width: '100%', padding: '0.85rem',
               borderRadius: '14px', border: 'none',
               background: phone.replace(/\D/g, '').length >= 10
-                ? 'linear-gradient(135deg, #FF4500, #FF6500)'
+                ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
                 : 'rgba(255,69,0,0.2)',
-              color: '#fff', fontWeight: 800, fontSize: '0.95rem',
+              color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.95rem',
               cursor: phone.replace(/\D/g, '').length >= 10 ? 'pointer' : 'default',
               boxShadow: phone.replace(/\D/g, '').length >= 10 ? '0 4px 16px rgba(255,69,0,0.25)' : 'none',
               transition: 'all 0.15s',
@@ -224,9 +226,9 @@ function OrderConfirmModal({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '400px',
-          background: 'rgba(14,14,14,0.98)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '24px',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px',
           padding: '2rem',
           boxShadow: '0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)',
           animation: 'cartSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
@@ -392,9 +394,9 @@ function CartExtras({
                 display: 'flex', alignItems: 'center',
                 gap: '0.75rem',
                 padding: '0.55rem 0.75rem',
-                borderRadius: '10px',
-                background: isAdded ? 'rgba(255,69,0,0.08)' : 'rgba(255,255,255,0.03)',
-                border: isAdded ? '1px solid rgba(255,69,0,0.25)' : '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '12px',
+                background: isAdded ? 'rgba(255,69,0,0.08)' : 'var(--bg-secondary)',
+                border: isAdded ? '1px solid rgba(255,69,0,0.25)' : '1px solid var(--border-subtle)',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -417,10 +419,10 @@ function CartExtras({
                   if (!isAdded) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)';
                 }}
                 style={{
-                  width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
-                  background: isAdded ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
-                  border: isAdded ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.1)',
-                  color: isAdded ? '#22c55e' : '#fff',
+                  width: '28px', height: '28px', borderRadius: '12px', flexShrink: 0,
+                  background: isAdded ? 'rgba(34,197,94,0.15)' : 'var(--bg-secondary)',
+                  border: isAdded ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-subtle)',
+                  color: isAdded ? 'var(--status-success)' : 'var(--text-primary)',
                   fontSize: isAdded ? '0.75rem' : '1rem',
                   fontWeight: 700,
                   cursor: isAdded ? 'default' : 'pointer',
@@ -663,10 +665,10 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         style={{
                   position: 'fixed', top: 0, right: 0, bottom: 0,
           width: 'min(420px, 100vw)',
-          background: 'rgba(14,14,14,0.95)',
+          background: 'var(--bg-primary)',
           backdropFilter: 'blur(28px)',
           WebkitBackdropFilter: 'blur(28px)',
-          borderLeft: '1px solid rgba(255,255,255,0.09)',
+          borderLeft: '1px solid var(--border-subtle)',
           zIndex: 300,
           display: 'flex', flexDirection: 'column',
         }}
@@ -675,22 +677,16 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '1.5rem',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          borderBottom: '1px solid var(--border-subtle)',
         }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Tu Pedido</h2>
-          <button
+          <Button
             onClick={onClose}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'scale(1.12) rotate(90deg)'; }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'scale(1) rotate(0deg)'; }}
-            style={{
-              background: 'rgba(255,255,255,0.07)', border: 'none',
-              borderRadius: '8px', width: '36px', height: '36px',
-              cursor: 'pointer', color: '#fff', fontSize: '1rem',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
+            variant="ghost"
+            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '12px', color: 'var(--text-primary)' }}
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         {/* Scrollable content area */}
@@ -716,32 +712,32 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                     <div
                       key={item.id}
                       style={{
-                        display: 'flex', gap: '0.75rem',
+                        display: 'flex', gap: '0.85rem',
                         background: isExtra
                           ? 'rgba(255,69,0,0.06)'
-                          : 'rgba(255,255,255,0.04)',
-                        borderRadius: '14px',
-                        padding: isExtra ? '0.65rem 0.85rem' : '0.85rem',
-                        alignItems: 'flex-start',
+                          : 'var(--bg-secondary)',
+                        borderRadius: '16px',
+                        padding: isExtra ? '0.75rem 1rem' : '0.85rem',
+                        alignItems: 'center',
                         border: isExtra
                           ? '1px solid rgba(255,69,0,0.18)'
-                          : '1px solid rgba(255,255,255,0.07)',
+                          : '1px solid var(--border-subtle)',
                       }}
                     >
                       {/* Thumbnail */}
                       <div style={{
-                        width: isExtra ? '40px' : '52px',
-                        height: isExtra ? '40px' : '52px',
-                        borderRadius: isExtra ? '8px' : '10px',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '12px',
                         overflow: 'hidden', flexShrink: 0,
                         background: '#222',
-                        border: isExtra ? '1px solid rgba(255,69,0,0.2)' : 'none',
+                        border: isExtra ? '1.5px solid rgba(255,69,0,0.25)' : '1px solid var(--border-subtle)',
                       }}>
                         <Image
-                          src={item.image}
+                          src={getProductImage(item)}
                           alt={item.name}
-                          width={isExtra ? 40 : 52}
-                          height={isExtra ? 40 : 52}
+                          width={56}
+                          height={56}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           loading="lazy"
                         />
@@ -803,34 +799,28 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                         display: 'flex', alignItems: 'center',
                         gap: '0.35rem', flexShrink: 0, alignSelf: 'center',
                       }}>
-                        <button
+                        <Button
                           onClick={() => onUpdateQuantity(item.id, -1)}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.15)'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                          variant="secondary"
                           style={{
-                            width: '26px', height: '26px', borderRadius: '7px',
-                            background: 'rgba(255,255,255,0.08)', border: 'none',
-                            color: '#fff', cursor: 'pointer', fontSize: '0.9rem',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '26px', height: '26px', padding: 0,
+                            borderRadius: '7px', fontSize: '0.9rem',
                           }}
-                        >−</button>
+                        >−</Button>
                         <span style={{
                           fontWeight: 700, minWidth: '16px',
                           textAlign: 'center', fontSize: '0.85rem',
                         }}>
                           {item.quantity}
                         </span>
-                        <button
+                        <Button
                           onClick={() => onUpdateQuantity(item.id, 1)}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.15)'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                          variant="primary"
                           style={{
-                            width: '26px', height: '26px', borderRadius: '7px',
-                            background: '#FF4500', border: 'none',
-                            color: '#fff', cursor: 'pointer', fontSize: '0.9rem',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '26px', height: '26px', padding: 0,
+                            borderRadius: '7px', fontSize: '0.9rem',
                           }}
-                        >+</button>
+                        >+</Button>
                       </div>
                     </div>
                   );
@@ -868,23 +858,19 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
               <span style={{ color: '#777', fontSize: '0.85rem' }}>Total</span>
               <span style={{ fontWeight: 900, color: '#FF4500', fontSize: '1.5rem' }}>${total}</span>
             </div>
-            <button
+            <Button
               id="checkout-whatsapp"
               onClick={handleWhatsApp}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.03)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              fullWidth
               style={{
-                width: '100%',
                 background: 'linear-gradient(135deg,#25D366,#128C7E)',
-                border: 'none', borderRadius: '14px',
-                padding: '1rem', color: '#fff',
-                fontWeight: 800, fontSize: '1.05rem', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                padding: '1rem',
+                fontSize: '1.05rem',
                 boxShadow: '0 4px 20px rgba(37,211,102,0.2)',
               }}
             >
               Pedir por WhatsApp
-            </button>
+            </Button>
           </div>
         )}
       </div>

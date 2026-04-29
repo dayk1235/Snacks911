@@ -2,7 +2,8 @@
 
 import { memo, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { products } from '@/data/products';
+import { Button } from './ui/Button';
+import { products, getProductImage } from '@/data/products';
 import type { Product } from '@/data/products';
 
 interface CombosSectionProps {
@@ -73,51 +74,36 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
           return (
             <div
               key={combo.id}
+              className="card-premium"
               style={{
-                background: isBest
-                  ? 'linear-gradient(145deg, rgba(255,69,0,0.07), rgba(20,20,20,0.95))'
-                  : 'rgba(20,20,20,0.85)',
-                border: isBest
-                  ? '1.5px solid rgba(255,69,0,0.3)'
-                  : '1px solid rgba(255,255,255,0.07)',
-                borderRadius: isBest ? '18px' : '16px',
-                overflow: 'hidden',
-                position: 'relative',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-                boxShadow: isBest ? '0 0 30px rgba(255,69,0,0.08)' : 'none',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)';
-                (e.currentTarget as HTMLElement).style.boxShadow = isBest
-                  ? '0 0 40px rgba(255,69,0,0.15), 0 8px 30px rgba(0,0,0,0.4)'
-                  : '0 8px 30px rgba(0,0,0,0.3)';
-                (e.currentTarget as HTMLElement).style.borderColor = isBest
-                  ? 'rgba(255,69,0,0.4)'
-                  : 'rgba(255,69,0,0.2)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.transform = '';
-                (e.currentTarget as HTMLElement).style.boxShadow = isBest
-                  ? '0 0 30px rgba(255,69,0,0.08)'
-                  : 'none';
-                (e.currentTarget as HTMLElement).style.borderColor = isBest
-                  ? 'rgba(255,69,0,0.3)'
-                  : 'rgba(255,255,255,0.07)';
+                border: isBest ? '1.5px solid rgba(255, 69, 0, 0.35)' : undefined,
+                background: isBest ? 'linear-gradient(145deg, rgba(255, 69, 0, 0.08), rgba(20, 20, 20, 0.5))' : undefined,
               }}
             >
               {/* Badge */}
-              {combo.badges && combo.badges.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: '10px', left: '10px', zIndex: 10,
-                  display: 'flex', flexDirection: 'column', gap: '5px',
-                }}>
-                  {combo.badges.map((b, i) => (
+              {(() => {
+                const isBest = combo.popular || combo.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
+                const savings = combo.originalPrice ? combo.originalPrice - combo.price : 0;
+                
+                let displayBadge = null;
+                let badgeBg = 'linear-gradient(135deg, #FF4500, #FF6500)';
+                
+                if (isBest) {
+                  displayBadge = "⭐ Más vendido";
+                } else if (savings > 0) {
+                  displayBadge = `💰 Ahorra $${savings}`;
+                  badgeBg = 'linear-gradient(135deg, #16a34a, #22c55e)';
+                }
+
+                if (!displayBadge) return null;
+
+                return (
+                  <div style={{
+                    position: 'absolute', top: '10px', left: '10px', zIndex: 10,
+                  }}>
                     <span
-                      key={i}
                       style={{
-                        background: i === 0
-                          ? 'linear-gradient(135deg, #FF4500, #FF6500)'
-                          : 'rgba(0,0,0,0.7)',
+                        background: badgeBg,
                         borderRadius: '6px',
                         padding: '0.2rem 0.55rem',
                         fontSize: '0.62rem',
@@ -126,20 +112,21 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
                         whiteSpace: 'nowrap',
                         letterSpacing: '0.02em',
                         textTransform: 'uppercase',
+                        boxShadow: isBest ? '0 2px 8px rgba(255,69,0,0.3)' : 'none',
                       }}
                     >
-                      {b}
+                      {displayBadge}
                     </span>
-                  ))}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
 
               {/* Image */}
               <div style={{
                 position: 'relative', height: '160px', background: '#1a1a1a', overflow: 'hidden',
               }}>
                 <Image
-                  src={combo.image}
+                  src={getProductImage(combo)}
                   alt={combo.name}
                   fill
                   sizes="(max-width: 640px) 100vw, 400px"
@@ -193,30 +180,20 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
                       ${combo.price}
                     </span>
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleAdd(combo)}
                     disabled={isAdded}
+                    variant="primary"
                     style={{
-                      flex: 1, maxWidth: isBest ? '170px' : '150px',
-                      background: isAdded
-                        ? 'linear-gradient(135deg, #00C853, #00E676)'
-                        : 'linear-gradient(135deg, #FF4500, #FF6500)',
-                      border: 'none', borderRadius: '10px',
+                      flex: 1,
+                      maxWidth: isBest ? '170px' : '150px',
+                      background: isAdded ? 'linear-gradient(135deg, #00C853, #00E676)' : undefined,
                       padding: '0.6rem 1rem',
-                      color: '#fff', fontWeight: 800, fontSize: isBest ? '0.9rem' : '0.85rem',
-                      cursor: isAdded ? 'default' : 'pointer',
-                      fontFamily: 'var(--font-body)',
-                      boxShadow: isBest
-                        ? '0 4px 20px rgba(255,69,0,0.35)'
-                        : isAdded
-                          ? '0 4px 14px rgba(0,200,83,0.25)'
-                          : '0 2px 10px rgba(255,69,0,0.2)',
-                      transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap',
+                      fontSize: isBest ? '0.9rem' : '0.85rem',
                     }}
                   >
-                    {isAdded ? '✓ Agregado' : isBest ? 'Pedir Combo 🔥' : 'Agregar'}
-                  </button>
+                    {isAdded ? '✓ Agregado' : '🔥 Pedir ahora'}
+                  </Button>
                 </div>
               </div>
             </div>

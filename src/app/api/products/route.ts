@@ -1,20 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
-import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
+import { requireApiRole } from '@/lib/server/apiAuth';
 
 function getDb() { return supabaseAdmin || supabaseAnon; }
-
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-async function getSession(req: Request) {
-  const adminToken = parseCookie(req, ADMIN_SESSION_COOKIE);
-  const empToken   = parseCookie(req, EMPLOYEE_SESSION_COOKIE);
-  return (await verifySessionToken(adminToken)) || (await verifySessionToken(empToken));
-}
 
 // GET: Fetch products
 export async function GET(req: Request) {
@@ -38,10 +26,8 @@ export async function GET(req: Request) {
 
 // POST: Create product
 export async function POST(req: Request) {
-  const session = await getSession(req);
-  if (!session || !session.role || !['admin', 'gerente'].includes(session.role as string)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  const auth = await requireApiRole(req, ['admin', 'gerente']);
+  if (!auth.ok) return auth.response;
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
@@ -55,10 +41,8 @@ export async function POST(req: Request) {
 
 // PUT: Update product
 export async function PUT(req: Request) {
-  const session = await getSession(req);
-  if (!session || !session.role || !['admin', 'gerente'].includes(session.role as string)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  const auth = await requireApiRole(req, ['admin', 'gerente']);
+  if (!auth.ok) return auth.response;
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
@@ -75,10 +59,8 @@ export async function PUT(req: Request) {
 
 // DELETE: Delete product
 export async function DELETE(req: Request) {
-  const session = await getSession(req);
-  if (!session || !session.role || !['admin', 'gerente'].includes(session.role as string)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  const auth = await requireApiRole(req, ['admin', 'gerente']);
+  if (!auth.ok) return auth.response;
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });

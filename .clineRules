@@ -1,0 +1,49 @@
+# Cline Rules for Snacks911 Web Application
+
+## Project Overview
+- **Framework**: Next.js 16 with TypeScript
+- **UI Library**: React 19 with Tailwind CSS
+- **Database**: Supabase (PostgreSQL) with RLS
+- **State Management**: Zustand
+- **AI Integration**: Google Generative AI + Custom AI Orchestrators
+
+## Key Directories
+- `/src/app/` - Next.js app router pages
+- `/src/components/` - React components
+- `/src/lib/` - Utilities, stores, and services
+- `/src/core/` - Core business logic (AI, recommendations)
+- `/src/ai/` - AI runtime and agents
+- `/supabase/` - Database migrations
+
+## Development Rules
+1. Always use TypeScript with proper types
+2. Follow existing naming conventions (camelCase for functions, PascalCase for components)
+3. Use Zustand for state management - check existing stores before creating new ones
+4. Database changes must include migrations in `/supabase/migrations/`
+5. New components should be in `/src/components/` or feature-specific subdirectories
+6. API routes should be in `/src/app/api/`
+
+## Before Making Changes
+- Check for existing implementations in `/src/lib/` and `/src/core/`
+- Review existing Zustand stores in `/src/lib/*Store.ts`
+- Check Supabase schema and RLS policies
+- Look at existing AI orchestrators for patterns
+
+## Common Tasks
+- Add feature: Component + Store (if needed) + API route (if needed) + Types
+- Fix UI: Check component in `/src/components/`, styles in Tailwind/CSS
+- Database work: Migration file + Type update + RLS policy
+- AI logic: Update stores/orchestrators in `/src/lib/` or `/src/ai/`
+
+## Important Files
+- `.env.local` - Environment variables (not in repo)
+- `middleware.ts` - Next.js middleware
+- `src/lib/supabase.ts` - Supabase client
+- `src/core/intents.ts` - AI intent definitions
+- `src/lib/cartStore.ts` - Shopping cart state
+
+## Testing & Validation
+- Run `npm run dev` to start dev server
+- Check console for errors
+- Test on mobile (responsive design is important)
+- Verify Supabase RLS doesn't block operations

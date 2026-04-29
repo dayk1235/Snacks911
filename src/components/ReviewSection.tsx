@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Button } from './ui/Button';
 import gsap from 'gsap';
 
 interface Review {
@@ -15,11 +16,11 @@ interface Review {
 }
 
 const SEED_REVIEWS: Review[] = [
-  { id: 'r1', name: 'Carlos M.',  emoji: '😤', rating: 5, text: 'Las alitas BBQ son un pecado, no puedo dejar de pedirlas. Entrega súper rápida y bien calientes 🔥', date: '2026-04-07', reaction: '🔥' },
-  { id: 'r2', name: 'Valeria R.', emoji: '🤩', rating: 5, text: 'El Combo 911 me dejó sin palabras. Los boneless mango habanero son otro nivel, picante perfecto.', date: '2026-04-06', reaction: '❤️' },
-  { id: 'r3', name: 'Javier T.',  emoji: '😮', rating: 4, text: 'Super riquísimo todo. Las papas gajo loaded me voló la cabeza. Solo le falta un poco más de salsa.', date: '2026-04-05', reaction: '🔥' },
-  { id: 'r4', name: 'Ana P.',     emoji: '🥵', rating: 5, text: '¡No puedo con esto! Las alitas buffalo me dejaron llorando (de felicidad). Definitivamente lo mejor de la zona.', date: '2026-04-04', reaction: '💯' },
-  { id: 'r5', name: 'Mike S.',    emoji: '😋', rating: 5, text: 'Pedí por primera vez y ya soy cliente fijo. Atención increíble y la comida llegó perfecto.', date: '2026-04-03', reaction: '❤️' },
+  { id: 'r1', name: 'Carlos M.',  emoji: '😤', rating: 5, text: 'Las alitas BBQ son un pecado, no puedo dejar de pedirlas. Entrega súper rápida y bien calientes 🔥', date: '2026-04-07', reaction: '🔥', photoUrl: '/images/alitas.webp' },
+  { id: 'r2', name: 'Valeria R.', emoji: '🤩', rating: 5, text: 'El Combo 911 me dejó sin palabras. Los boneless mango habanero son otro nivel, picante perfecto.', date: '2026-04-06', reaction: '❤️', photoUrl: '/images/combo.webp' },
+  { id: 'r3', name: 'Javier T.',  emoji: '😮', rating: 4, text: 'Super riquísimo todo. Las papas gajo loaded me voló la cabeza. Solo le falta un poco más de salsa.', date: '2026-04-05', reaction: '🔥', photoUrl: '/images/papas.webp' },
+  { id: 'r4', name: 'Ana P.',     emoji: '🥵', rating: 5, text: '¡No puedo con esto! Las alitas buffalo me dejaron llorando (de felicidad). Definitivamente lo mejor de la zona.', date: '2026-04-04', reaction: '💯', photoUrl: '/images/alitas.webp' },
+  { id: 'r5', name: 'Mike S.',    emoji: '😋', rating: 5, text: 'Pedí por primera vez y ya soy cliente fijo. Atención increíble y la comida llegó perfecto.', date: '2026-04-03', reaction: '❤️', photoUrl: '/images/boneless.webp' },
   { id: 'r6', name: 'Sofía L.',   emoji: '💪', rating: 5, text: 'Lo mejor que le ha pasado a mis noches de Netflix. Antojo resuelto en 30 min.', date: '2026-04-02', reaction: '🔥' },
 ];
 
@@ -31,7 +32,30 @@ function loadReviews(): Review[] {
   if (typeof window === 'undefined') return SEED_REVIEWS;
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : SEED_REVIEWS;
+    let reviews = raw ? JSON.parse(raw) : SEED_REVIEWS;
+    
+    // Data Cleanup: Filter out invalid/junk reviews
+    reviews = (reviews as Review[]).filter(r => {
+      // Must have a real name
+      if (!r.name || r.name.trim().length < 2) return false;
+      
+      // Must have realistic text (not junk like "jhgf" or "sdfgh")
+      const isJunkText = /^[asdfghjkl]+$/i.test(r.text.toLowerCase()) || 
+                        /^[qwertyuiop]+$/i.test(r.text.toLowerCase()) ||
+                        r.text.length < 5;
+      if (isJunkText) return false;
+
+      // Photo must be valid if present
+      if (r.photoUrl && (
+        r.photoUrl === 'Z' || 
+        r.photoUrl.length < 3 || 
+        (!r.photoUrl.startsWith('/') && !r.photoUrl.startsWith('data:') && !r.photoUrl.startsWith('http'))
+      )) return false;
+
+      return true;
+    });
+
+    return reviews.length > 0 ? reviews : SEED_REVIEWS;
   } catch {
     return SEED_REVIEWS;
   }
@@ -127,14 +151,10 @@ function ReviewCard({
 }) {
   return (
     <div
+      className="card-premium"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-        border: '1px solid rgba(255,255,255,0.09)',
-        borderRadius: '20px',
         padding: '1.6rem',
         display: 'flex', flexDirection: 'column', gap: '0.9rem',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
         minWidth: '300px',
         maxWidth: '380px',
         flexShrink: 0,
@@ -175,7 +195,8 @@ function ReviewCard({
             src={review.photoUrl}
             alt={`Foto de ${review.name}`}
             style={{
-              width: '100%', height: '160px',
+              width: '100%', height: '100px',
+              maxHeight: '100px',
               objectFit: 'cover', display: 'block',
               transition: 'transform 0.3s ease',
             }}
@@ -276,23 +297,16 @@ function ReviewRail({
         flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',
       }}>
         <div>
-          <div style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Lo que dicen</div>
-          <div style={{ color: '#444', fontSize: '0.82rem' }}>Pasa el cursor sobre una reseña para leerla con calma.</div>
+          <div style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Lo que dicen</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Pasa el cursor sobre una reseña para leerla con calma.</div>
         </div>
-        <button
+        <Button
           onClick={onCreateReview}
-          onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.05, duration: 0.18 })}
-          onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.18 })}
-          style={{
-            padding: '0.6rem 1.4rem',
-            background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-            border: 'none', borderRadius: '50px',
-            color: '#fff', fontWeight: 700, fontSize: '0.85rem',
-            cursor: 'pointer', boxShadow: '0 4px 18px rgba(255,69,0,0.3)',
-          }}
+          variant="primary"
+          style={{ borderRadius: '50px', padding: '0.6rem 1.4rem' }}
         >
           ✍️ Dejar mi reseña
-        </button>
+        </Button>
       </div>
 
       {/* Carousel viewport — masks overflow both sides */}
@@ -322,7 +336,6 @@ function ReviewRail({
                   setActive(`${review.id}-${idx}`);
                   gsap.to(e.currentTarget, {
                     scale: 1.03, y: -6,
-                    boxShadow: '0 24px 60px rgba(255,69,0,0.18), 0 0 0 1px rgba(255,69,0,0.25)',
                     duration: 0.3, ease: 'back.out(1.4)',
                   });
                 }}
@@ -330,24 +343,17 @@ function ReviewRail({
                   setActive(null);
                   gsap.to(e.currentTarget, {
                     scale: 1, y: 0,
-                    boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
                     duration: 0.3, ease: 'power2.inOut',
                   });
                 }}
+                className="card-premium"
                 style={{
-                  background: isActive
-                    ? 'rgba(255,69,0,0.06)'
-                    : 'rgba(255,255,255,0.04)',
-                  backdropFilter: 'blur(24px)',
-                  border: isActive
-                    ? '1px solid rgba(255,69,0,0.25)'
-                    : '1px solid rgba(255,255,255,0.09)',
-                  borderRadius: '20px',
+                  background: isActive ? 'rgba(255, 69, 0, 0.08)' : undefined,
+                  borderColor: isActive ? 'rgba(255, 69, 0, 0.3)' : undefined,
                   padding: '1.6rem',
                   display: 'flex', flexDirection: 'column', gap: '0.9rem',
-                  boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
                   minWidth: '300px', maxWidth: '360px', flexShrink: 0,
-                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                  transition: 'all 0.3s ease',
                   userSelect: 'none',
                 }}
               >
@@ -440,12 +446,10 @@ function ReviewModal({ onClose }: { onClose: () => void }) {
       <div
         ref={cardRef}
         onClick={e => e.stopPropagation()}
+        className="card-premium"
         style={{
           width: '100%', maxWidth: '560px',
-          background: 'linear-gradient(160deg, #141414 0%, #0d0d0d 100%)',
-          border: '1px solid rgba(255,69,0,0.22)',
-          borderRadius: '28px',
-          boxShadow: '0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 60px rgba(255,69,0,0.04)',
+          padding: '2rem',
           maxHeight: '92vh', overflowY: 'auto',
           scrollbarWidth: 'thin',
         }}
@@ -581,8 +585,8 @@ function ReviewModal({ onClose }: { onClose: () => void }) {
                 <label style={labelStyle}>📷 Foto (opcional)</label>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display: 'none' }} />
                 {formPhoto ? (
-                  <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(255,69,0,0.3)' }}>
-                    <img src={formPhoto} alt="Preview" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                    <img src={formPhoto} alt="Preview" style={{ width: '100%', maxHeight: '100px', objectFit: 'cover', display: 'block' }} />
                     <button
                       type="button" onClick={() => setFormPhoto(null)}
                       style={{
@@ -623,24 +627,14 @@ function ReviewModal({ onClose }: { onClose: () => void }) {
               </div>
 
               {/* Submit */}
-              <button
+              <Button
                 type="submit"
-                onMouseEnter={e => gsap.to(e.currentTarget, { scale: 1.02, duration: 0.18 })}
-                onMouseLeave={e => gsap.to(e.currentTarget, { scale: 1, duration: 0.18 })}
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  background: 'linear-gradient(135deg, #FF4500 0%, #FF6500 100%)',
-                  border: 'none', borderRadius: '16px',
-                  color: '#fff', fontFamily: 'var(--font-display)',
-                  fontSize: '1.1rem', letterSpacing: '0.06em',
-                  cursor: 'pointer',
-                  boxShadow: '0 6px 24px rgba(255,69,0,0.35)',
-                  transition: 'box-shadow 0.2s ease',
-                }}
+                variant="primary"
+                fullWidth
+                style={{ padding: '1rem', fontSize: '1.1rem' }}
               >
                 PUBLICAR RESEÑA 🔥
-              </button>
+              </Button>
             </form>
           </>
         )}
@@ -657,7 +651,9 @@ export default function ReviewSection() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setReviews(loadReviews());
+    const loaded = loadReviews();
+    setReviews(loaded);
+    saveReviews(loaded); // Persistent cleanup of any junk data
     setReady(true);
   }, []);
 

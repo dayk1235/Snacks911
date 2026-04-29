@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -156,17 +157,16 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                 />
-                <button
+                <Button
                   type="button"
                   tabIndex={-1}
+                  variant="ghost"
                   aria-label={showPass ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPass(p => !p)}
                   style={{
                     position: 'absolute', right: '0.5rem', top: '50%',
                     transform: 'translateY(-50%)',
-                    background: 'none', border: 'none',
-                    color: '#555', cursor: 'pointer', padding: '0.3rem',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '32px', height: '32px', padding: 0, color: '#555'
                   }}
                 >
                   {showPass ? (
@@ -174,7 +174,7 @@ export default function LoginPage() {
                   ) : (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -189,22 +189,15 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              style={{
-                marginTop: '0.5rem',
-                padding: '0.9rem',
-                background: loading ? 'rgba(255,69,0,0.5)' : 'linear-gradient(135deg, #FF4500, #FF6500)',
-                border: 'none', borderRadius: '12px',
-                color: '#fff', fontWeight: 800,
-                fontSize: '1rem', cursor: loading ? 'wait' : 'pointer',
-                boxShadow: '0 0 20px rgba(255,69,0,0.25)',
-                transition: 'opacity 0.2s',
-              }}
+              variant="primary"
+              fullWidth
+              style={{ marginTop: '0.5rem', padding: '0.9rem' }}
             >
               {loading ? '...' : 'Entrar →'}
-            </button>
+            </Button>
 
             {/* ── Forgot password ── */}
             <div style={{ textAlign: 'center', marginTop: '0.25rem' }}>

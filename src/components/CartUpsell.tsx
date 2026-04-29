@@ -3,6 +3,7 @@
 import { memo, useMemo, useState } from 'react';
 import type { Product } from '@/data/products';
 import { products } from '@/data/products';
+import { Button } from './ui/Button';
 
 interface CartUpsellProps {
   cartItems: { id: number; name: string; price: number; quantity: number; category?: string }[];
@@ -93,12 +94,10 @@ function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
   const isAdded = addedId === upsell.product.id;
 
   return (
-    <div style={{
+    <div className="card-premium" style={{
       margin: '0.75rem 1rem',
       padding: '0.85rem',
-      background: 'linear-gradient(135deg, rgba(255,69,0,0.08), rgba(255,69,0,0.03))',
-      border: '1px solid rgba(255,69,0,0.2)',
-      borderRadius: '14px',
+      background: 'linear-gradient(135deg, rgba(255, 69, 0, 0.08), rgba(20, 20, 20, 0.5))',
       animation: 'upsellSlideIn 0.3s ease',
     }}>
       {/* Header */}
@@ -149,29 +148,18 @@ function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
         </div>
 
         {/* Quick add button */}
-        <button
+        <Button
           onClick={handleAdd}
           disabled={isAdded}
+          variant="primary"
           style={{
             padding: '0.55rem 1.2rem',
-            background: isAdded
-              ? 'linear-gradient(135deg, #00C853, #00E676)'
-              : 'linear-gradient(135deg, #FF4500, #FF6500)',
-            border: 'none',
-            borderRadius: '10px',
-            color: '#fff',
-            fontWeight: 800,
+            background: isAdded ? 'linear-gradient(135deg, #00C853, #00E676)' : undefined,
             fontSize: '0.82rem',
-            cursor: isAdded ? 'default' : 'pointer',
-            boxShadow: isAdded
-              ? '0 4px 14px rgba(0,200,83,0.25)'
-              : '0 2px 12px rgba(255,69,0,0.3)',
-            transition: 'all 0.2s',
-            whiteSpace: 'nowrap',
           }}
         >
-          {isAdded ? '✓ Agregado' : '+ Agregar'}
-        </button>
+          {isAdded ? '✓ Agregado' : '🔥 Pedir ahora'}
+        </Button>
       </div>
 
       <style>{`

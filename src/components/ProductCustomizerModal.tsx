@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import gsap from 'gsap';
-import type { Product } from '@/data/products';
+import { Product, getProductImage } from '@/data/products';
 import type { AdminProduct } from '@/lib/adminTypes';
 import { AdminStore } from '@/lib/adminStore';
 
@@ -180,7 +180,7 @@ export default function ProductCustomizerModal({ product, onClose, onConfirm }: 
         {/* ── Product hero (always visible) ── */}
         <div style={{ position: 'relative', height: '190px', background: '#1a1a1a', flexShrink: 0 }}>
           <Image
-            src={product.image}
+            src={getProductImage(product)}
             alt={product.name}
             fill
             loading="eager"
@@ -439,7 +439,7 @@ export default function ProductCustomizerModal({ product, onClose, onConfirm }: 
                 (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(255,69,0,0.35)';
               }}
             >
-              AGREGAR AL CARRITO
+              🔥 Pedir ahora
             </button>
           )}
         </div>
