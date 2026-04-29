@@ -6,7 +6,7 @@ import { AdminStore } from '@/lib/adminStore';
 import { supabase } from '@/lib/supabase';
 import { playOrderNotification } from '@/lib/sound';
 import type { Order, OrderStatus } from '@/lib/adminTypes';
-import OrderAlertModal, { type PendingOrder } from '@/components/OrderAlertModal';
+import OrderAlertModal, { type PendingOrder } from '@/components/modals/OrderAlertModal';
 
 // ─── Operational constants ───────────────────────────────────────────────────
 const TARGET_PREP_MIN = 8;        // ideal time per order
