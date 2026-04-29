@@ -6,7 +6,7 @@
  */
 
 import { IntentType } from './intentDetector';
-import { CustomerProfile } from './customerProfileStore';
+import { CustomerProfile } from './types';
 import { Product, products } from '@/data/products';
 
 /**
