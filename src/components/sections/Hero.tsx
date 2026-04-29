@@ -8,7 +8,7 @@ import { AdminStore } from '@/lib/adminStore';
 import type { BusinessSettings } from '@/lib/adminTypes';
 import { useStoreSettings } from '@/lib/storeSettingsStore';
 
-const FireCanvas = dynamic(() => import('./FireCanvas'), { ssr: false });
+const FireCanvas = dynamic(() => import('../effects/FireCanvas'), { ssr: false });
 
 
 import type { Product } from '@/data/products';

@@ -22,20 +22,17 @@ export async function GET() {
   if (!db) return NextResponse.json({ error: 'No db connection' }, { status: 500 });
 
   try {
-    const { data } = await db.from('store_settings').select('key, value');
-
-    const settings: Record<string, string> = {};
-    (data || []).forEach((row: { key: string; value: string }) => {
-      settings[row.key] = row.value;
-    });
+    const { data } = await db.from('business_settings').select('*').limit(1).single();
 
     return NextResponse.json({
-      is_open: settings['is_open'] !== 'false',
-      closed_message: settings['closed_message'] || '¡Estamos cerrados por hoy! Vuelve pronto 🔥',
-      promo_banner_active: settings['promo_banner_active'] === 'true',
-      promo_banner_text: settings['promo_banner_text'] || '',
-      hero_title: settings['hero_title'] || '',
-      hero_subtitle: settings['hero_subtitle'] || ''
+      is_open: data?.accepting_orders ?? true,
+      closed_message: data?.closed_message || '¡Estamos cerrados por hoy! Vuelve pronto 🔥',
+      promo_banner_active: data?.promo_banner_active === true,
+      promo_banner_text: data?.promo_banner_text || '',
+      hero_title: data?.hero_title || '',
+      hero_subtitle: data?.hero_subtitle || '',
+      whatsapp_number: data?.whatsapp_number || '',
+      prep_time: data?.prep_time || 25
     }, {
       headers: { 'Cache-Control': 'no-store' },
     });
@@ -65,29 +62,17 @@ export async function POST(req: Request) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
 
-  const upserts = [];
+  const updates: Record<string, any> = {};
+  
+  if (body.is_open !== undefined) updates.accepting_orders = body.is_open;
+  if (body.closed_message !== undefined) updates.closed_message = body.closed_message;
+  if (body.promo_banner_active !== undefined) updates.promo_banner_active = body.promo_banner_active;
+  if (body.promo_banner_text !== undefined) updates.promo_banner_text = body.promo_banner_text;
+  if (body.hero_title !== undefined) updates.hero_title = body.hero_title;
+  if (body.hero_subtitle !== undefined) updates.hero_subtitle = body.hero_subtitle;
 
-  if (body.is_open !== undefined) {
-    upserts.push({ key: 'is_open', value: body.is_open ? 'true' : 'false' });
-  }
-  if (body.closed_message !== undefined) {
-    upserts.push({ key: 'closed_message', value: body.closed_message });
-  }
-  if (body.promo_banner_active !== undefined) {
-    upserts.push({ key: 'promo_banner_active', value: body.promo_banner_active ? 'true' : 'false' });
-  }
-  if (body.promo_banner_text !== undefined) {
-    upserts.push({ key: 'promo_banner_text', value: body.promo_banner_text });
-  }
-  if (body.hero_title !== undefined) {
-    upserts.push({ key: 'hero_title', value: body.hero_title });
-  }
-  if (body.hero_subtitle !== undefined) {
-    upserts.push({ key: 'hero_subtitle', value: body.hero_subtitle });
-  }
-
-  if (upserts.length > 0) {
-    const { error } = await db.from('store_settings').upsert(upserts, { onConflict: 'key' });
+  if (Object.keys(updates).length > 0) {
+    const { error } = await db.from('business_settings').update(updates).eq('id', 1);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -14,14 +14,14 @@ import { analyzeSales } from '@/lib/salesOptimizer';
 import { useCartStore } from '@/lib/cartStore';
 import { Button } from '@/components/ui/Button';
 
-import ProductCard from '@/components/ProductCard';
-import ProductCustomizerModal from '@/components/ProductCustomizerModal';
-import Cart from '@/components/Cart';
-import UpsellModal from '@/components/UpsellModal';
-import CartUpsellBanner from '@/components/CartUpsellBanner';
+import ProductCard from '@/components/common/ProductCard';
+import ProductCustomizerModal from '@/components/modals/ProductCustomizerModal';
+import Cart from '@/components/cart/Cart';
+import UpsellModal from '@/components/modals/UpsellModal';
+import CartUpsellBanner from '@/components/cart/CartUpsellBanner';
 
-const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false });
-const OrderBot     = dynamic(() => import('@/components/OrderBot'),      { ssr: false });
+const CustomCursor = dynamic(() => import('@/components/layout/CustomCursor'), { ssr: false });
+const OrderBot     = dynamic(() => import('@/components/chat/OrderBot'),      { ssr: false });
 
 function categoryFromDb(category: string): Product['category'] {
   const normalized = category.trim().toLowerCase();

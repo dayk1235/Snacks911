@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Button } from './ui/Button';
+import { Button } from '../ui/Button';
 import { handleMessage, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
 import { products as allProducts } from '@/data/products';
 
@@ -9,11 +9,11 @@ import { products as allProducts } from '@/data/products';
 interface Msg { id: number; text: string; sender: 'bot' | 'user'; actions?: { label: string; value: string }[]; }
 
 // ─── Product refs for the engine ─────────────────────────────────────────────
-const COMBO_911      = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos')!;
-const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless')!;
-const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded')!;
-const BEBIDA         = allProducts.find(p => p.name.includes('Refresco'))!;
-const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado')!;
+const COMBO_911      = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
+const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
+const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded') ?? allProducts.find(p => p.category === 'extras') ?? { name: 'Papas Loaded', price: 49 };
+const BEBIDA         = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
+const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
 
 export default function OrderBot() {
   const [open, setOpen] = useState(false);
@@ -27,11 +27,11 @@ export default function OrderBot() {
   const idRef = useRef(1);
 
   const productRefs = useMemo(() => ({
-    comboName: COMBO_911.name, comboPrice: COMBO_911.price,
-    papasName: PAPAS_LOADED.name, papasPrice: PAPAS_LOADED.price,
+    comboName: COMBO_911?.name ?? 'Combo 911', comboPrice: COMBO_911?.price ?? 149,
+    papasName: PAPAS_LOADED?.name ?? 'Papas Loaded', papasPrice: PAPAS_LOADED?.price ?? 49,
     bebidaName: BEBIDA?.name ?? 'Refresco', bebidaPrice: BEBIDA?.price ?? 25,
     postreName: POSTRE?.name ?? 'Postre', postrePrice: POSTRE?.price ?? 59,
-    comboBonelessName: COMBO_BONELESS.name, comboBonelessPrice: COMBO_BONELESS.price,
+    comboBonelessName: COMBO_BONELESS?.name ?? 'Combo Boneless', comboBonelessPrice: COMBO_BONELESS?.price ?? 179,
     ahorroBoneless: COMBO_BONELESS.originalPrice ? COMBO_BONELESS.originalPrice - COMBO_BONELESS.price : 49,
     currentTotal: state.cartTotal,
     hasPapas: state.cart.includes('Papas Loaded'),
@@ -50,6 +50,13 @@ export default function OrderBot() {
     }
   }, [open, msgs.length]);
 
+  // WhatsApp confirmation
+  useEffect(() => {
+    if (state.whatsappUrl && state.deliveryStep === 'done') {
+      window.open(state.whatsappUrl, '_blank');
+    }
+  }, [state.whatsappUrl, state.deliveryStep]);
+
   const processResponse = useCallback(async (text: string, action?: string) => {
     setThinking(true);
     
@@ -66,10 +73,6 @@ export default function OrderBot() {
       actions: output.actions 
     }]);
     setState(output.nextState);
-
-    if (output.nextState.whatsappUrl && output.nextState.deliveryStep === 'done') {
-      window.open(output.nextState.whatsappUrl, '_blank');
-    }
   }, [state, productRefs]);
 
   const send = useCallback(async () => {
@@ -104,40 +107,86 @@ export default function OrderBot() {
           fontFamily: 'var(--font-inter), sans-serif',
         }}
       >
-        {/* Header */}
-        <div style={{
-          padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(255,69,0,0.06)',
-        }}>
+         {/* Header */}
+         <div style={{
+           padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+           borderBottom: '1px solid rgba(255,255,255,0.08)',
+           background: 'rgba(255,69,0,0.06)',
+         }}>
+           <div style={{
+             width: '36px', height: '36px', borderRadius: '12px',
+             background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
+             display: 'flex', alignItems: 'center', justifyContent: 'center',
+             fontSize: '1rem', flexShrink: 0,
+           }}>🔥</div>
+           <div style={{ flex: 1 }}>
+             <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
+             <div style={{ fontSize: '0.68rem', color: 'var(--status-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)', display: 'inline-block' }} />
+               En línea
+             </div>
+           </div>
+           {/* 🟢 TOTAL EN VIVO */}
+           {state.cartTotal > 0 && (
+             <div style={{
+               padding: '0.4rem 0.75rem', borderRadius: '10px',
+               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+               color: '#fff', fontWeight: 900, fontSize: '0.85rem',
+               boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
+               animation: 'pulseTotal 1.5s ease-in-out infinite',
+             }}>
+               ${state.cartTotal}
+             </div>
+           )}
+           <button onClick={() => setOpen(false)} style={{
+             background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
+             cursor: 'pointer', padding: '4px', lineHeight: 1,
+           }}>×</button>
+         </div>
+
+        {/* PROGRESS BAR */}
+        {state.comboSelected && (
           <div style={{
-            width: '36px', height: '36px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', flexShrink: 0,
-          }}>🔥</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--status-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)', display: 'inline-block' }} />
-              En línea
+            padding: '0.75rem 1rem 0.5rem',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            background: 'rgba(0,0,0,0.2)',
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontSize: '0.65rem', color: '#555', marginBottom: '0.5rem',
+            }}>
+              <span style={{ opacity: state.cart.includes(state.comboName ?? 'Combo 911') ? 1 : 0.4 }}>Combo</span>
+              <span style={{ opacity: state.hasPapas ? 1 : 0.4 }}>Papas</span>
+              <span style={{ opacity: state.hasBebida ? 1 : 0.4 }}>Bebida</span>
+              <span style={{ opacity: state.hasPostre ? 1 : 0.4 }}>Postre</span>
+            </div>
+            <div style={{
+              height: '4px', borderRadius: '2px',
+              background: 'rgba(255,255,255,0.05)',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${(([state.comboSelected, state.hasPapas, state.hasBebida, state.hasPostre].filter(Boolean).length / 4) * 100)}%`,
+                background: 'linear-gradient(90deg, var(--accent), var(--accent-gold))',
+                borderRadius: '2px',
+                transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+              }} />
             </div>
           </div>
-          <button onClick={() => setOpen(false)} style={{
-            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
-            cursor: 'pointer', padding: '4px', lineHeight: 1,
-          }}>×</button>
-        </div>
+        )}
 
         {/* Messages */}
         <div style={{
           flex: 1, overflowY: 'auto', padding: '1rem',
           display: 'flex', flexDirection: 'column', gap: '0.75rem',
         }}>
-          {msgs.map(m => (
+          {msgs.map((m, i) => (
             <div key={m.id} style={{
               alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
               maxWidth: '85%',
+              animation: `msgSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${(i * 0.06)}s both`,
+              transformOrigin: m.sender === 'user' ? 'bottom right' : 'bottom left',
             }}>
               <div style={{
                 padding: '0.75rem 1rem',
@@ -148,32 +197,45 @@ export default function OrderBot() {
                 border: m.sender === 'bot' ? '1px solid var(--border-subtle)' : 'none',
                 color: m.sender === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
                 fontSize: '0.88rem', lineHeight: 1.55, whiteSpace: 'pre-line',
-              }}>{m.text}</div>
+                boxShadow: m.sender === 'user' ? '0 3px 12px rgba(255,69,0,0.2)' : 'none',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              >{m.text}</div>
               
               {m.actions && m.actions.length > 0 && m.sender === 'bot' && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                  {m.actions.map(a => (
+                <div style={{ 
+                  display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
+                  animation: 'actionsFadeIn 0.3s ease 0.3s both'
+                }}>
+                  {m.actions.map((a, ai) => (
                     <button
                       key={a.value}
                       onClick={() => handleAction(a.value, a.label)}
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
+                        padding: '8px 14px',
+                        borderRadius: '10px',
                         background: 'rgba(255,69,0,0.1)',
                         border: '1px solid rgba(255,69,0,0.2)',
                         color: 'var(--accent)',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                        animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
                       }}
                       onMouseEnter={e => {
                         (e.currentTarget as HTMLElement).style.background = 'var(--accent)';
                         (e.currentTarget as HTMLElement).style.color = '#fff';
+                        (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.03)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(255,69,0,0.3)';
                       }}
                       onMouseLeave={e => {
                         (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.1)';
                         (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
+                        (e.currentTarget as HTMLElement).style.transform = 'translateY(0) scale(1)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = 'none';
                       }}
                     >
                       {a.label}
@@ -245,7 +307,7 @@ export default function OrderBot() {
           </svg>
         ) : (
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95"/>
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95"/>
             <circle cx="12" cy="12" r="1.2" fill="#FF4500"/>
             <circle cx="8" cy="12" r="1.2" fill="#FF4500"/>
             <circle cx="16" cy="12" r="1.2" fill="#FF4500"/>
@@ -253,12 +315,34 @@ export default function OrderBot() {
         )}
       </Button>
 
-      <style>{`
-        @keyframes dot {
-          0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
-          40% { transform: scale(1.2); opacity: 1; }
-        }
-      `}</style>
+       <style>{`
+         @keyframes dot {
+           0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
+           40% { transform: scale(1.2); opacity: 1; }
+         }
+
+         @keyframes pulseTotal {
+           0% { transform: scale(1); }
+           50% { transform: scale(1.04); }
+           100% { transform: scale(1); }
+         }
+
+         @keyframes msgSlideIn {
+           from { opacity: 0; transform: translateY(14px) scale(0.95); }
+           to   { opacity: 1; transform: translateY(0) scale(1); }
+         }
+
+         @keyframes actionsFadeIn {
+           from { opacity: 0; transform: translateY(6px); }
+           to   { opacity: 1; transform: translateY(0); }
+         }
+
+         @keyframes btnBounceIn {
+           0% { opacity: 0; transform: scale(0.8); }
+           60% { transform: scale(1.05); }
+           100% { opacity: 1; transform: scale(1); }
+         }
+       `}</style>
     </>
   );
 }

@@ -458,7 +458,7 @@ Frecuencia: semanal. Optimizar scripts, combos y conversión por flujo.
 | :--- | :--- |
 | Scripts rígidos | Feedback loop semanal |
 | Mala detección | Fallback + LLM |
-| UX con fusa | Botones guiados |
+| UX confusa | Botones guiados |
 | **Stock desactualizado** | **Polling cada 30s + Webhooks POS** |
 | **Handoff sin contexto** | **Payload obligatorio pre-transferencia** |
 

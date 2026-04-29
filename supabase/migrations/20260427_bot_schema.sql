@@ -9,6 +9,7 @@ ALTER TABLE products
   ADD COLUMN IF NOT EXISTS is_best_seller boolean DEFAULT false;
 
 -- 2. Combo items (what each combo includes)
+-- Uses products table as reference (products.id is uuid)
 CREATE TABLE IF NOT EXISTS combo_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   combo_product_id uuid REFERENCES products(id) ON DELETE CASCADE,
@@ -53,18 +54,24 @@ CREATE TABLE IF NOT EXISTS faqs (
 );
 
 -- 7. Orders (unified: web, whatsapp, pos)
-CREATE TABLE IF NOT EXISTS orders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  channel text DEFAULT 'WHATSAPP' CHECK (channel IN ('WHATSAPP','WEB','POS')),
-  status text DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','CONFIRMED','CANCELLED')),
-  customer_name text,
-  customer_phone text,
-  delivery_type text CHECK (delivery_type IN ('PICKUP','DELIVERY')),
-  address text,
-  payment_method text CHECK (payment_method IN ('CASH','CARD','TRANSFER')),
-  total numeric(10,2),
-  created_at timestamptz DEFAULT now()
-);
+-- Note: If orders table already exists with different schema, this will be skipped
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'orders') THEN
+        CREATE TABLE orders (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          channel text DEFAULT 'WHATSAPP' CHECK (channel IN ('WHATSAPP','WEB','POS')),
+          status text DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','CONFIRMED','CANCELLED')),
+          customer_name text,
+          customer_phone text,
+          delivery_type text CHECK (delivery_type IN ('PICKUP','DELIVERY')),
+          address text,
+          payment_method text CHECK (payment_method IN ('CASH','CARD','TRANSFER')),
+          total numeric(10,2),
+          created_at timestamptz DEFAULT now()
+        );
+    END IF;
+END $$;
 
 -- 8. Order line items
 CREATE TABLE IF NOT EXISTS order_items (

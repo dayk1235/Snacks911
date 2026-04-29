@@ -52,6 +52,7 @@ export default function ProductCustomizerModal({ product, onClose, onConfirm }: 
   useEffect(() => {
     if (!product) return;
     AdminStore.getProducts().then(all => {
+      all.filter(p => p.category === 'extras' && p.available);
       setExtras(all.filter(p => p.category === 'extras' && p.available));
     });
     const included = INCLUDED[product.category] ?? [];

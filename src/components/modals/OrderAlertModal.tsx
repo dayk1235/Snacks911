@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Button } from './ui/Button';
+import { Button } from '../ui/Button';
 import { startOrderLoop, stopOrderLoop } from '@/lib/sound';
 
 export interface PendingOrder {

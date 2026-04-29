@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { memo, useRef, useState } from 'react';
-import { Button } from './ui/Button';
+import { Button } from '../ui/Button';
 import type { Product } from '@/data/products';
 import { products, getProductImage } from '@/data/products';
 

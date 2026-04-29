@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button } from './ui/Button';
+import { Button } from '../ui/Button';
 import gsap from 'gsap';
 
 interface Review {

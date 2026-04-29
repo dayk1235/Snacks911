@@ -1,88 +1,89 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
-import type { Product } from '@/data/products';
+import { memo, useMemo, useState, useEffect, useRef } from 'react';
+import { Button } from '../ui/Button';
 import { products } from '@/data/products';
-import { Button } from './ui/Button';
+import { logEvent } from '@/core/eventLogger';
+import { useCartStore } from '@/lib/cartStore';
+import { getBestUpsell, UpsellOption } from '@/core/upsellEngine';
+import type { Product } from '@/data/products';
+import type { CartItem } from '@/types';
 
 interface CartUpsellProps {
-  cartItems: { id: number; name: string; price: number; quantity: number; category?: string }[];
+  cartItems: CartItem[];
   onAdd: (product: Product) => void;
 }
 
-/**
- * CartUpsell — Shows contextual upsell based on cart contents.
- * Rules:
- *  - alitas → sugerir papas
- *  - boneless → sugerir combo
- *  - combo → sugerir bebida/extras
- */
 function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
+  const { getCartId } = useCartStore();
+  const [addedId, setAddedId]   = useState<number | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const [addedId, setAddedId] = useState<number | null>(null);
+  const lastSuggestedId = useRef<number | null>(null);
 
-  const upsell = useMemo(() => {
-    const categories = new Set(cartItems.map(i => i.category));
-    const hasAlitas = categories.has('alitas');
-    const hasBoneless = categories.has('boneless');
-    const hasCombo = categories.has('combos');
-    const hasPapas = categories.has('papas');
-    const hasBebida = cartItems.some(i => i.name.toLowerCase().includes('refresco') || i.name.toLowerCase().includes('agua'));
+  const [upsell, setUpsell] = useState<{ product: Product, title: string, subtitle: string } | null>(null);
 
-    // Priority: alitas → papas, boneless → combo, combo → bebida
-    if (hasAlitas && !hasPapas) {
-      const papas = products.find(p => p.name === 'Papas Loaded')
-        ?? products.find(p => p.name === 'Papas Gajo');
-      if (papas) {
-        return {
-          product: papas,
-          title: '🍟 ¿Con papas?',
-          subtitle: 'Queda perfecto con tus alitas',
-        };
+  useEffect(() => {
+    let cancelled = false;
+    
+    async function fetchUpsell() {
+      if (cartItems.length === 0) {
+        if (!cancelled) setUpsell(null);
+        return;
+      }
+
+      const best = await getBestUpsell(cartItems as any);
+      if (cancelled) return;
+
+      if (best) {
+        // Map string UUID to local product (if possible) or use a placeholder
+        // For now, we try to find it in our local products list
+        const product = products.find(p => p.id.toString() === best.productId);
+        
+        if (product) {
+          setUpsell({
+            product,
+            title: best.message.split('?')[0] + '?', // Extract emoji + question
+            subtitle: best.message.split('?')[1]?.trim() || best.name
+          });
+        } else {
+          setUpsell(null);
+        }
+      } else {
+        setUpsell(null);
       }
     }
 
-    if (hasBoneless && !hasCombo) {
-      const combo = products.find(p => p.badges?.some(b => b.includes('Más pedido')) && p.category === 'combos')
-        ?? products.find(p => p.category === 'combos');
-      if (combo) {
-        return {
-          product: combo,
-          title: '🔥 ¿Mejora a Combo?',
-          subtitle: 'Incluye papas + aderezo',
-        };
-      }
-    }
-
-    if (hasCombo && !hasBebida) {
-      const bebida = products.find(p => p.name === 'Refresco 600ml')
-        ?? products.find(p => p.name.includes('Refresco'));
-      if (bebida) {
-        return {
-          product: bebida,
-          title: '🥤 ¿Con bebida?',
-          subtitle: 'Refresco 600ml +$25',
-        };
-      }
-    }
-
-    // Fallback: suggest premium combo or extras
-    if (hasCombo && !cartItems.some(i => i.name.includes('Premium'))) {
-      const premium = products.find(p => p.badges?.some(b => b.includes('Premium')));
-      if (premium) {
-        return {
-          product: premium,
-          title: '💎 ¿Upgrade a Premium?',
-          subtitle: 'Alitas + Boneless + papas loaded',
-        };
-      }
-    }
-
-    return null;
+    fetchUpsell();
+    return () => { cancelled = true; };
   }, [cartItems]);
+
+  useEffect(() => {
+    if (upsell && upsell.product.id !== lastSuggestedId.current) {
+      logEvent({
+        event_type: 'upsell_suggested',
+        cart_id: getCartId(),
+        payload_json: {
+          product_id: upsell.product.id,
+          product_name: upsell.product.name,
+          upsell_type: upsell.title
+        }
+      });
+      lastSuggestedId.current = upsell.product.id;
+    }
+  }, [upsell, getCartId]);
 
   const handleAdd = () => {
     if (!upsell) return;
+    
+    logEvent({
+      event_type: 'upsell_accepted',
+      cart_id: getCartId(),
+      payload_json: {
+        product_id: upsell.product.id,
+        product_name: upsell.product.name
+      }
+    });
+
     onAdd(upsell.product);
     setAddedId(upsell.product.id);
     setTimeout(() => setAddedId(null), 1500);

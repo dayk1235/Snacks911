@@ -194,8 +194,15 @@ function getPromptByStage(
       }
       // Default: ANTOJO hook → direct recommendation → single clear CTA
       return {
-        text: (ctx) =>
-          `🔥 **Crujientes, jugosos, recién hechos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más pedido.\n\n¿Lo preparo?`,
+        text: (ctx) => {
+          const welcomeVariants = [
+            `🔥 **Crujientes, jugosos, recién hechos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más pedido.\n\n¿Lo preparo?`,
+            `🤤 **Huele increíble por aquí.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que todos piden.\n\n¿Va?`,
+            `🔥 **Todo recién salido del horno.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El clásico que no falla.\n\n¿Lo preparo?`,
+            `⚡ **Listo en 2 minutos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más vendido de la semana.\n\n¿Va?`
+          ];
+          return welcomeVariants[Math.floor(Math.random() * welcomeVariants.length)];
+        },
         actions: [
           { label: '🔥 Sí, dámelo', value: 'accept_combo_911' },
           { label: '🍗 Boneless', value: 'accept_combo_boneless' },
@@ -267,34 +274,36 @@ function getPromptByStage(
 
     // ── ORDENANDO ─────────────────────────────────────────────────────────────
     case 'ordenando':
-      // Upsell flow: papas → bebida → postre → close
+      // UPSELL 1: PAPAS - Tecnica Pie en la Puerta + Anclaje
       if (upsellStep === 'none' || upsellStep === 'papas') {
         return {
           text: (ctx) =>
-            `🍟 Papas **loaded** con queso derretido. +$${ctx.papasPrice}.\n\n¿Se las agrego?`,
+            `🍟 Excelente elección. \n\nLos ${ctx.comboName} van perfectos con unas papas loaded extra crujientes con queso derretido. \n\n🔥 Solo +$${ctx.papasPrice}. Es el complemento que todos agregan.\n\n¿Se las pongo?`,
           actions: [
-            { label: '🍟 Sí, cargadas', value: 'add_papas' },
-            { label: '❌ Sin papas', value: 'skip_papas' },
+            { label: '🍟 Por supuesto', value: 'add_papas' },
+            { label: '🤔 Por ahora no', value: 'skip_papas' },
           ],
         };
       }
+      // UPSELL 2: BEBIDA - Aversión a la perdida
       if (upsellStep === 'bebida') {
         return {
           text: (ctx) =>
-            `🥤 Refresco frío para acompañar. +$${ctx.bebidaPrice}.\n\n¿Va?`,
+            `🥤 Perfecto. \n\nPara acompañar, un refresco bien frio. \n\n💡 Casi todo el mundo lo agrega. +$${ctx.bebidaPrice}. No hay nada peor que comer algo picante sin nada para tomar.\n\n¿Va uno?`,
           actions: [
-            { label: '🥤 Va', value: 'add_bebida' },
-            { label: '❌ Sin bebida', value: 'skip_bebida' },
+            { label: '🥤 Claro que si', value: 'add_bebida' },
+            { label: '🤔 Paso', value: 'skip_bebida' },
           ],
         };
       }
+      // UPSELL 3: POSTRE - Prueba Social + Reciprocidad
       if (upsellStep === 'postre') {
         return {
           text: (ctx) =>
-            `🍫 Brownie caliente con helado. +$${ctx.postrePrice}.\n\n¿Lo incluimos?`,
+            `🍫 Último. \n\nUn brownie caliente con helado para cerrar con broche de oro. \n\n✨ Es el favorito de la casa. +$${ctx.postrePrice}. Te va a encantar.\n\n¿Le metemos uno?`,
           actions: [
-            { label: '🍫 Sí', value: 'add_postre' },
-            { label: '❌ Así cierro', value: 'skip_postre' },
+            { label: '🍫 Obvio', value: 'add_postre' },
+            { label: '🤔 Así esta bien', value: 'skip_postre' },
           ],
         };
       }

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Button } from './ui/Button';
+import { Button } from '../ui/Button';
 import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { track } from '@/lib/analytics';
@@ -10,7 +10,9 @@ import { getProductImage } from '@/data/products';
 import type { CartItem } from '@/types';
 import type { AdminProduct } from '@/lib/adminTypes';
 import type { Product } from '@/data/products';
-import CartUpsell from '@/components/CartUpsell';
+import { logEvent } from '@/core/eventLogger';
+import { cartStore } from '@/lib/cartStore';
+import CartUpsell from './CartUpsell';
 
 interface CartProps {
   isOpen: boolean;
@@ -595,6 +597,19 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
     const url = buildWaUrl();
     setWaUrl(url);
+    
+    // Log Order Created Event
+    logEvent({
+      event_type: 'order_created',
+      cart_id: cartStore.getCartId(),
+      order_id: orderId,
+      customer_phone: customerPhone,
+      payload_json: {
+        total: total,
+        item_count: items.length
+      }
+    });
+
     window.open(url, '_blank');
     setTimeout(() => setShowConfirm(true), 1200);
   };
@@ -604,6 +619,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
       await AdminStore.updateOrderWhatsAppConfirmed(lastOrderId, true).catch(() => {});
     }
     setShowConfirm(false);
+    // Note: cart_abandoned won't trigger because items will be cleared before onClose
     onClearCart();
     onClose();
   };
@@ -613,14 +629,26 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     setTimeout(() => setShowConfirm(true), 1500);
   };
   const handleCancel  = () => setShowConfirm(false);
+  
+  const handleClose = () => {
+    if (items.length > 0) {
+      logEvent({
+        event_type: 'cart_abandoned',
+        cart_id: cartStore.getCartId(),
+        payload_json: {
+          item_count: items.length,
+          total: total,
+          reason: 'drawer_closed'
+        }
+      });
+    }
+    onClose();
+  };
 
   /* ── Handle extra added from cart ─────────────────────────────────────── */
   const handleAddExtra = (extra: AdminProduct) => {
     if (onAddExtra) {
       onAddExtra(extra);
-    } else {
-      // Fallback: convert AdminProduct → CartItem-compatible and add via parent callback
-      // This is handled in page.tsx
     }
   };
 
@@ -647,7 +675,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
       {/* Backdrop */}
       <div
         ref={backdropRef}
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.65)',
@@ -663,7 +691,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         aria-modal="true"
         aria-label="Shopping cart"
         style={{
-                  position: 'fixed', top: 0, right: 0, bottom: 0,
+          position: 'fixed', top: 0, right: 0, bottom: 0,
           width: 'min(420px, 100vw)',
           background: 'var(--bg-primary)',
           backdropFilter: 'blur(28px)',
@@ -681,7 +709,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Tu Pedido</h2>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             variant="ghost"
             style={{ width: '36px', height: '36px', padding: 0, borderRadius: '12px', color: 'var(--text-primary)' }}
           >

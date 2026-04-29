@@ -1,0 +1,11 @@
+{
+  "priorityItems": ["Combo Mixto 911", "Combo Boneless Power", "Combo Alitas Fuego"],
+  "maxDiscountPercent": 15,
+  "marginProtection": true,
+  "blockedUpsells": ["postres"],
+  "happyHour": {
+    "start": "15:00",
+    "end": "18:00",
+    "multiplier": 1.2
+  }
+}

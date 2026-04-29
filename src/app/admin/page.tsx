@@ -490,13 +490,19 @@ export default function DashboardPage() {
           <div style={CARD}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Acciones rápidas</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {[
-                { label: '➕ Nuevo producto', href: '/admin/products' },
-                { label: '📦 Ver pedidos',    href: '/admin/orders'   },
-                { label: '💰 Ver ventas',     href: '/admin/sales'    },
-                { label: '🔥 Optimizar',      href: '/admin/optimize' },
-                { label: '⚙️  Configuración', href: '/admin/settings' },
-              ].map(a => (
+               {[
+                 { label: '🖥️  Punto de Venta', href: '/admin/pos' },
+                 { label: '💵 Control de Caja', href: '/admin/cash' },
+                 { label: '📋 Gestionar Menú',  href: '/admin/menu' },
+                 { label: '👥 Personal',        href: '/admin/staff' },
+                 { label: '📦 Ver pedidos',     href: '/admin/orders' },
+                 { label: '➕ Nuevo producto',  href: '/admin/products' },
+                 { label: '💰 Ver ventas',      href: '/admin/sales' },
+                 { label: '📊 Reportes',        href: '/admin/reports' },
+                 { label: '📜 Registro Audit',  href: '/admin/audit' },
+                 { label: '🔥 Optimizar',       href: '/admin/optimize' },
+                 { label: '⚙️  Configuración',  href: '/admin/settings' },
+               ].map(a => (
                 <button
                   key={a.href}
                   onClick={() => router.push(a.href)}

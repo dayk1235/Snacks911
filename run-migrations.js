@@ -67,7 +67,8 @@ async function runMigrations() {
   
   const migrationFiles = [
     '20260428_audit_logs.sql',
-    '20260428_restrict_rls.sql'
+    '20260428_restrict_rls.sql',
+    '20260429_event_logs.sql'
   ];
 
   let successful = 0;
