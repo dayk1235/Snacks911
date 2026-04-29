@@ -1,0 +1,84 @@
+🚀 Iniciando Prueba de Estrés - Snacks 911 Engine
+
+📦 Probando volumen de eventos...
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+EventLogger: Logged cart_created
+✅ 50 eventos registrados en 1011ms
+
+📊 Probando velocidad de Analytics...
+✅ Métricas calculadas en 413ms
+   - Ingresos: $0
+   - Conversión: 0.0%
+
+🛡️ Probando Resiliencia (Circuit Breaker)...
+   Simulando 3 fallos en API externa...
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (2 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (1 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (2 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (1 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (2 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Retrying... (1 left)
+[WhatsApp] Send attempt failed: Error: Unsupported post request. Object with ID 'messages' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api
+[WhatsApp] Circuit is OPEN. Request blocked.
+   - ¿Solicitud permitida tras 3 fallos?: ✅ BLOQUEADA (Circuito Abierto)
+
+🚨 Probando Motor de Alertas...
+✅ Alertas activas detectadas: 0
+
+🏁 Prueba de Estrés Finalizada.

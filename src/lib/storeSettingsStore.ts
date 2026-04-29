@@ -7,12 +7,13 @@ export interface StoreSettingsState {
   promoBannerText: string;
   heroTitle: string;
   heroSubtitle: string;
-  
+
   isLoading: boolean;
   error: string | null;
 
   fetchSettings: () => Promise<void>;
-  updateSettings: (newSettings: Partial<Omit<StoreSettingsState, 'isLoading' | 'error' | 'fetchSettings' | 'updateSettings'>>) => Promise<void>;
+  toggleStore: () => Promise<void>;
+  updateSettings: (newSettings: Partial<Omit<StoreSettingsState, 'isLoading' | 'error' | 'fetchSettings' | 'toggleStore' | 'updateSettings'>>) => Promise<void>;
 }
 
 export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
@@ -22,7 +23,7 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
   promoBannerText: '',
   heroTitle: '',
   heroSubtitle: '',
-  
+
   isLoading: false,
   error: null,
 
@@ -32,7 +33,7 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
       const res = await fetch('/api/store/settings');
       if (!res.ok) throw new Error('Error al cargar configuraciones');
       const data = await res.json();
-      
+
       set({
         isOpen: data.is_open,
         closedMessage: data.closed_message || '¡Estamos cerrados por hoy! Vuelve pronto 🔥',
@@ -45,6 +46,11 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
+  },
+
+  toggleStore: async () => {
+    const current = get();
+    await current.updateSettings({ isOpen: !current.isOpen });
   },
 
   updateSettings: async (newSettings) => {
@@ -64,12 +70,12 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Error al guardar configuración');
       }
-      
+
       const data = await res.json();
       set({
         isOpen: data.is_open,

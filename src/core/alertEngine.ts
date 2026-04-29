@@ -39,6 +39,8 @@ export async function checkAlerts(): Promise<Alert[]> {
     .eq('event_type', 'cart_created')
     .gte('occurred_at', sixtyMinsAgo);
 
+  console.log(`AlertEngine: orders=${orders}, carts=${carts}`);
+
   if (carts && carts > 10) { // Minimum sample size of 10
     const convRate = (orders || 0) / carts;
     if (convRate < 0.20) {
@@ -78,7 +80,7 @@ export async function checkAlerts(): Promise<Alert[]> {
   const { count: fallbacks } = await supabase
     .from('event_logs')
     .select('*', { count: 'exact', head: true })
-    .eq('event_type', 'fallback_triggered') // Assuming this event type exists
+    .eq('event_type', 'fallback_triggered') 
     .gte('occurred_at', sixtyMinsAgo);
 
   const { count: totalIntents } = await supabase
