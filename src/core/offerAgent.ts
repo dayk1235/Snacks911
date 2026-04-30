@@ -1,17 +1,19 @@
 /**
- * core/upsellEngine.ts — Revenue-optimized upsell selection logic.
+ * core/offerAgent.ts — Unified Product Recommendation & Upsell Agent.
  * 
- * Implements the contract defined in Phase 1.10 of the ROADMAP.
- * Goal: Increment ticket value by suggesting the most relevant complementary product.
+ * Part of Phase 1.10: Sales System Engine.
+ * Manages the entire "Offer" lifecycle: from initial entry recommendation
+ * to ticket expansion (upsells).
  */
 
-import { CartItem, CustomerProfile } from './types';
+import { Intent, CartItem, CustomerProfile } from './types';
+import { Product, products as allProducts } from '@/data/products';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
 import { supabase } from '@/lib/supabase';
 
 /**
- * Upsell Option return structure
+ * Structure for upsell results
  */
 export interface UpsellOption {
   productId: string;
@@ -23,11 +25,45 @@ export interface UpsellOption {
 }
 
 /**
- * Evaluates the current cart and customer history to suggest the single BEST upsell.
- * 
- * @param currentCart - Current items in user's cart
- * @param customerProfile - (Optional) Historical data for personalization
- * @returns Promise with the best UpsellOption or null if no valid suggestion
+ * 1. Entry Recommendation Logic
+ * Returns the best product to start the conversation.
+ */
+export async function getEntryRecommendation(
+  intent: Intent, 
+  profile?: CustomerProfile
+): Promise<Product | null> {
+  // 1. Recurring Customer Rule (Priority)
+  if (profile && profile.totalOrders > 0) {
+    // Recommendation based on "memory" (Placeholder for specific last item)
+    return allProducts.find(p => p.id === 1) || allProducts[0]; // Combo Mixto 911
+  }
+
+  // 2. Intent-based Logic
+  switch (intent) {
+    case 'hambre':
+    case 'hungry_strong':
+      // Largest/Most expensive Combo
+      return [...allProducts]
+        .filter(p => p.category === 'combos')
+        .sort((a, b) => b.price - a.price)[0] || allProducts[0];
+
+    case 'hungry_light':
+      // Best-selling individual item
+      return allProducts.find(p => p.popular && p.category !== 'combos') || allProducts[9]; // Papas Loaded
+
+    case 'undecided':
+    case 'duda':
+    case 'precio':
+    case 'other':
+    default:
+      // Absolute bestseller
+      return allProducts.find(p => p.popular) || allProducts[0];
+  }
+}
+
+/**
+ * 2. Upsell Selection Logic
+ * Evaluates current cart and profile to maximize AOV.
  */
 export async function getBestUpsell(
   currentCart: CartItem[],
@@ -47,9 +83,8 @@ export async function getBestUpsell(
   let message = '';
   let reason = '';
 
-  // 2. Decision Matrix
+  // 2. Decision Matrix (AOV Optimization)
   if (hasProteins && !hasCombos && !hasSides) {
-    // If they have alitas/boneless but no combo/papas, push a Combo upgrade or Papas
     targetCategory = 'combos';
     type = 'premium';
     reason = 'upgrade_to_combo';
@@ -86,7 +121,7 @@ export async function getBestUpsell(
 
   const bestProduct = candidates[0];
 
-  // 4. Final inventory check (Double safety)
+  // 4. Final inventory check
   const stock = await checkStock([bestProduct.id]);
   if (stock.length === 0 || !stock[0].available) return null;
 
@@ -98,4 +133,18 @@ export async function getBestUpsell(
     message,
     type
   };
+}
+
+// ─── Legacy Support Helpers (to be refactored out eventually) ───────────────
+
+export async function getTopCombos() {
+  return allProducts.filter(p => p.category === 'combos').slice(0, 3);
+}
+
+export async function getBestsellers() {
+  return allProducts.filter(p => p.popular).slice(0, 3);
+}
+
+export async function getCrossSell() {
+  return allProducts.find(p => p.category === 'extras') || null;
 }

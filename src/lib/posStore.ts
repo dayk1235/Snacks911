@@ -17,7 +17,7 @@ export interface PosCartItem {
 
 export interface PosOrder {
   id: string;
-  status: 'DRAFT' | 'CONFIRMED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED';
+  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   channel: string;
   customer_name: string | null;
   payment_method: string;
@@ -29,7 +29,7 @@ export interface PosOrder {
     qty: number;
     unit_price: number;
     selected_modifiers_json: any[];
-    products: { name: string; category: string } | null;
+    product_name: string;
   }[];
 }
 
@@ -129,6 +129,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
         body: JSON.stringify({
           items: cart.map(i => ({
             product_id: i.product_id,
+            product_name: i.product_name,
             qty: i.qty,
             unit_price: i.unit_price,
             selected_modifiers_json: i.selected_modifiers_json,
@@ -158,7 +159,11 @@ export const usePosStore = create<PosState>()((set, get) => ({
       const res = await fetch('/api/pos/orders');
       if (!res.ok) throw new Error('Error al cargar órdenes');
       const data = await res.json();
-      set({ orders: data.orders || [], isLoading: false });
+      console.log('FETCH_RESULT:', data.orders);
+      if (data.orders?.length) {
+        console.log('SETTING_ORDERS:', data.orders);
+      }
+      set((state) => ({ orders: data.orders?.length ? data.orders : state.orders, isLoading: false }));
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
@@ -166,6 +171,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
   // ── Update order status ───────────────────────────────────────────────
   updateOrderStatus: async (id, status) => {
+    set({ isLoading: true, error: null });
     try {
       const res = await fetch('/api/pos/orders', {
         method: 'PATCH',
@@ -173,15 +179,16 @@ export const usePosStore = create<PosState>()((set, get) => ({
         body: JSON.stringify({ id, status }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Error al actualizar pedido');
 
       set({
         orders: get().orders.map(o =>
           o.id === id ? { ...o, status } : o
         ),
+        isLoading: false
       });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, isLoading: false });
     }
   },
 }));

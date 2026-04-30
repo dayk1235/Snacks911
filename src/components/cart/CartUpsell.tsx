@@ -4,10 +4,11 @@ import { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/Button';
 import { products } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
+import { emitTelemetryEvent } from '@/core/telemetryEmitter';
 import { useCartStore } from '@/lib/cartStore';
-import { getBestUpsell, UpsellOption } from '@/core/upsellEngine';
+import { getBestUpsell } from '@/core';
 import type { Product } from '@/data/products';
-import type { CartItem } from '@/types';
+import type { CartItem } from '@/core/types';
 
 interface CartUpsellProps {
   cartItems: CartItem[];
@@ -36,7 +37,6 @@ function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
 
       if (best) {
         // Map string UUID to local product (if possible) or use a placeholder
-        // For now, we try to find it in our local products list
         const product = products.find(p => p.id.toString() === best.productId);
         
         if (product) {
@@ -59,30 +59,56 @@ function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
 
   useEffect(() => {
     if (upsell && upsell.product.id !== lastSuggestedId.current) {
+      const cartId = getCartId();
       logEvent({
         event_type: 'upsell_suggested',
-        cart_id: getCartId(),
+        cart_id: cartId,
         payload_json: {
           product_id: upsell.product.id,
           product_name: upsell.product.name,
           upsell_type: upsell.title
         }
       });
+      emitTelemetryEvent({
+        session_id: cartId || `cart-${upsell.product.id}`,
+        engine_type: 'MODULAR',
+        locale: 'es-MX',
+        platform: 'web',
+        environment: process.env.NODE_ENV === 'production' ? 'prod' : 'staging',
+        lifecycle_event: 'upsell_presented',
+        fields: {
+          upsell_offer_id: String(upsell.product.id),
+          accepted: false
+        }
+      }).catch(() => null);
       lastSuggestedId.current = upsell.product.id;
     }
   }, [upsell, getCartId]);
 
   const handleAdd = () => {
     if (!upsell) return;
+    const cartId = getCartId();
     
     logEvent({
       event_type: 'upsell_accepted',
-      cart_id: getCartId(),
+      cart_id: cartId,
       payload_json: {
         product_id: upsell.product.id,
         product_name: upsell.product.name
       }
     });
+    emitTelemetryEvent({
+      session_id: cartId || `cart-${upsell.product.id}`,
+      engine_type: 'MODULAR',
+      locale: 'es-MX',
+      platform: 'web',
+      environment: process.env.NODE_ENV === 'production' ? 'prod' : 'staging',
+      lifecycle_event: 'upsell_accepted',
+      fields: {
+        upsell_offer_id: String(upsell.product.id),
+        accepted: true
+      }
+    }).catch(() => null);
 
     onAdd(upsell.product);
     setAddedId(upsell.product.id);

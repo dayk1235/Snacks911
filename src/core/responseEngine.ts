@@ -7,17 +7,9 @@
  *   3. getPromptByStage(intent, stage, upsellStep)
  *   4. applyLoopStrategy() — changes strategy, not wording
  *   5. OUTPUT → { text, actions?, nextState }
- *
- * Rules:
- *   - No neutral responses
- *   - No unnecessary questions
- *   - duda → decide for user
- *   - rechazo → reduce pressure, offer alternatives
- *   - ordenando → trigger upsell
- *   - NEVER empty response
  */
 
-import { detectIntent } from './intents';
+import { detectIntent } from './intentDetector';
 import { applyLoopStrategy, getNextStrategy } from './antojo';
 import type {
   ConversationState,
@@ -27,7 +19,12 @@ import type {
   PromptContext,
   Intent,
   Stage,
+  CustomerProfile,
 } from './types';
+import { runAgents } from './agentOrchestrator';
+import { getThermostatSettings } from './salesThermostat';
+import { validateResponseOutput } from './responseValidator';
+import { logEvent } from './eventLogger';
 
 export const INITIAL_STATE: ConversationState = {
   stage: 'inicio',
@@ -571,7 +568,7 @@ export function handleMessage(
     const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
     if (deliveryPrompt) {
       nextState.lastResponse = deliveryPrompt.text;
-      return { text: deliveryPrompt.text, actions: deliveryPrompt.actions, nextState };
+      return validateResponseOutput({ text: deliveryPrompt.text, actions: deliveryPrompt.actions, nextState }, state);
     }
   }
 
@@ -597,11 +594,11 @@ export function handleMessage(
   // 7. Store last response
   nextState.lastResponse = responseText;
 
-  return {
+  return validateResponseOutput({
     text: responseText,
     actions: promptFn.actions,
     nextState,
-  };
+  }, state);
 }
 
 // ─── Exported helpers (used by ChatBot.tsx) ───────────────────────────────────
@@ -628,4 +625,148 @@ export function buildOrderConfirmation(
       { label: '🔄 Otro pedido', value: 'order_again' },
     ],
   };
+}
+/**
+ * handleMessageModular() — NEW Modular Sales System Engine Integration.
+ * 
+ * Orchestrates the full pipeline using specialized agents.
+ */
+export async function handleMessageModular(
+  text: string,
+  state: ConversationState,
+  products: ProductRefs,
+  action?: string,
+): Promise<ResponseOutput> {
+  const startTime = Date.now();
+  
+  // 1. Run the Modular Agents
+  const agentResponse = await runAgents({
+    messageHistory: [text], 
+    cartItems: state.cart.map(i => ({ name: i })), 
+    cartTotal: state.cartTotal,
+    failedAttempts: state.retryCount,
+    customerPhone: undefined 
+  });
+
+  const modularTime = Date.now() - startTime;
+
+  // 2. SHADOW EXECUTION: Run Legacy in background
+  const legacyStartTime = Date.now();
+  const legacyResponse = handleMessage(text, state, products, action);
+  const legacyTime = Date.now() - legacyStartTime;
+
+  // 3. Update state based on intent (using Modular result for actual state)
+  const nextState = updateState(state, agentResponse.intent as any, action, text);
+  
+  // 4. Handle Handoff
+  if (agentResponse.handoffRequired) {
+    const handoffMsg = "Ups, parece que necesito ayuda de un humano para esto. Un momento... ✋";
+    nextState.lastResponse = handoffMsg;
+    
+    // Log Shadow Metrics even on handoff
+    logEvent({
+      event_type: 'shadow_engine_log',
+      payload_json: {
+        modular: { intent: agentResponse.intent, latency: modularTime, handoff: true },
+        legacy: { intent: legacyResponse.nextState.lastIntent, latency: legacyTime },
+        message: text,
+        cart_total: state.cartTotal
+      }
+    });
+
+    return validateResponseOutput({ text: handoffMsg, nextState }, state);
+  }
+
+  // 5. Build prompt context
+  const ctx: PromptContext = {
+    comboName: products.comboName,
+    comboPrice: products.comboPrice,
+    papasName: products.papasName,
+    papasPrice: products.papasPrice,
+    bebidaName: products.bebidaName,
+    bebidaPrice: products.bebidaPrice,
+    postreName: products.postreName,
+    postrePrice: products.postrePrice,
+    comboBonelessName: products.comboBonelessName,
+    comboBonelessPrice: products.comboBonelessPrice,
+    ahorroBoneless: products.ahorroBoneless,
+    currentTotal: nextState.cartTotal || products.currentTotal,
+    hasPapas: products.hasPapas,
+    hasBebida: products.hasBebida,
+    hasPostre: products.hasPostre,
+  };
+
+  // 6. Intercept delivery flow
+  if (nextState.deliveryStep !== 'none') {
+    const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
+    if (deliveryPrompt) {
+      nextState.lastResponse = deliveryPrompt.text;
+      return validateResponseOutput({ text: deliveryPrompt.text, actions: deliveryPrompt.actions, nextState }, state);
+    }
+  }
+
+  // 7. Get stage-aware prompt
+  const promptFn = getPromptByStage(agentResponse.intent as any, nextState.stage, nextState.upsellStep);
+  let responseText = promptFn.text(ctx);
+
+  // 8. Modular sales copy: urgency + combo + upsell hook (short and natural)
+  const urgencyHook = 'Se está moviendo rápido ahorita.';
+  const comboHook = `Si quieres, te dejo ${ctx.comboName} de una.`;
+  const upsellHook = '¿Le sumamos algo más para que quede completo?';
+  responseText = `${responseText} ${urgencyHook} ${comboHook} ${upsellHook}`.replace(/\s+/g, ' ').trim();
+
+  // 9. Override with modular recommendation/upsell if appropriate
+  const settings = getThermostatSettings();
+  if (settings.allowUpsells && agentResponse.upsell && nextState.stage === 'ordenando') {
+    responseText = `${agentResponse.upsell.message} (+$${agentResponse.upsell.price}). ${urgencyHook} ${comboHook} ${upsellHook}`.replace(/\s+/g, ' ').trim();
+  }
+
+  // 10. Apply anti-loop (strategy rotation)
+  const { text: loopText, newRetryCount } = applyAntiLoop(
+    responseText,
+    state.lastResponse,
+    nextState.retryCount,
+    ctx,
+  );
+  responseText = loopText;
+  nextState.retryCount = newRetryCount;
+
+  // 11. Assert non-empty
+  if (!responseText?.trim()) {
+    responseText = agentResponse.closingMessage || `🔥 **${ctx.comboName}** — $${ctx.comboPrice}. El más pedido. ¿Lo agregamos?`;
+  }
+
+  // 12. Store last response
+  nextState.lastResponse = responseText;
+
+  // 13. TELEMETRY: Log Shadow Comparison
+  logEvent({
+    event_type: 'shadow_engine_log',
+    payload_json: {
+      modular: { 
+        intent: agentResponse.intent, 
+        text: responseText, 
+        latency: modularTime,
+        stage: nextState.stage
+      },
+      legacy: { 
+        intent: legacyResponse.nextState.lastIntent, 
+        text: legacyResponse.text, 
+        latency: legacyTime,
+        stage: legacyResponse.nextState.stage
+      },
+      input: text,
+      cart_total: nextState.cartTotal,
+      diff: {
+        intent_match: agentResponse.intent === legacyResponse.nextState.lastIntent,
+        stage_match: nextState.stage === legacyResponse.nextState.stage
+      }
+    }
+  });
+
+  return validateResponseOutput({
+    text: responseText,
+    actions: promptFn.actions,
+    nextState,
+  }, state);
 }

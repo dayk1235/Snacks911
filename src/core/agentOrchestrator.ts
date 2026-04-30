@@ -5,12 +5,10 @@
  */
 
 import { detectIntent } from './intentDetector';
-import { getRecommendation } from './recommendationEngine';
-import { getBestUpsell } from './upsellEngine';
-import { getClosingMessage } from './closingEngine';
+import { getEntryRecommendation, getBestUpsell } from './offerAgent';
 import { shouldHandoff } from './humanHandoff';
 import { getProfile } from './customerProfileStore';
-import { IntentType } from './intentDetector';
+import { Intent } from './types';
 
 export interface ConversationContext {
   messageHistory: string[];
@@ -21,7 +19,7 @@ export interface ConversationContext {
 }
 
 export interface AgentResponse {
-  intent: IntentType;
+  intent: Intent;
   recommendation: any;
   upsell: any;
   closingMessage: string;
@@ -30,30 +28,27 @@ export interface AgentResponse {
 
 /**
  * Executes the full agent pipeline sequentially.
- * 
- * @param context - The current state of the conversation and cart
- * @returns Combined response from all agents
  */
 export async function runAgents(context: ConversationContext): Promise<AgentResponse> {
   const lastMessage = context.messageHistory[context.messageHistory.length - 1] || '';
   
-  // 1. Get Profile (Memory)
+  // 1. Memory Agent
   const profile = context.customerPhone ? await getProfile(context.customerPhone) : undefined;
 
-  // 2. Intent Detection
+  // 2. NLU Agent
   const { intent } = detectIntent(lastMessage);
 
-  // 3. Human Handoff Check
+  // 3. Safety Agent
   const handoffRequired = shouldHandoff(context.messageHistory, context.failedAttempts, context.cartTotal);
 
-  // 4. Recommendation Logic
-  const recommendation = await getRecommendation(intent, profile);
+  // 4. Offer Agent - Entry Recommendation
+  const recommendation = await getEntryRecommendation(intent, profile);
 
-  // 5. Upsell Engine
+  // 5. Offer Agent - Upsell Expansion
   const upsell = await getBestUpsell(context.cartItems, profile);
 
-  // 6. Closing Message
-  const closingMessage = getClosingMessage(intent, context.cartTotal);
+  // 6. Closing Agent (Internal)
+  const closingMessage = generateClosingMessage(intent, context.cartTotal);
 
   return {
     intent,
@@ -62,4 +57,22 @@ export async function runAgents(context: ConversationContext): Promise<AgentResp
     closingMessage,
     handoffRequired
   };
+}
+
+function generateClosingMessage(intent: Intent, cartTotal: number): string {
+  if (cartTotal === 0) return '¿Qué se te antoja hoy? 🔥';
+
+  switch (intent) {
+    case 'pedido':
+    case 'ready_to_order':
+      return `¡Excelente! Tu pedido de $${cartTotal} está listo. Dale clic al botón para confirmar en WhatsApp. ✅`;
+    case 'hambre':
+    case 'hungry_strong':
+      return `Con ese hambre, cerramos ya tu pedido de $${cartTotal}. ¿Va? 🔥`;
+    case 'precio':
+    case 'pricing':
+      return `El total es de $${cartTotal}. ¿Lo preparamos ya? 💰`;
+    default:
+      return `Tu pedido de $${cartTotal} te espera. ¿Listo? 🤘`;
+  }
 }

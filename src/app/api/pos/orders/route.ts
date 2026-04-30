@@ -10,6 +10,11 @@ import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } fro
 
 const getDb = () => supabaseAdmin || supabaseAnon;
 
+function isUuid(v: any) {
+  if (typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
 function parseCookie(req: Request, name: string): string | undefined {
   const cookie = req.headers.get('cookie') || '';
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
@@ -30,6 +35,7 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const db = getDb();
+  console.log('[API/POS/ORDERS] Using DB Client:', db === supabaseAdmin ? 'ADMIN' : 'ANON');
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
   const today = new Date();
@@ -37,21 +43,38 @@ export async function GET(req: Request) {
 
   const { data: orders, error } = await db
     .from('orders')
-    .select(`
-      id, status, channel, customer_name, customer_phone,
-      delivery_type, payment_method, total, created_at,
-      order_items (
-        id, qty, unit_price, selected_modifiers_json,
-        products ( name, category )
-      )
-    `)
-    .eq('channel', 'POS')
-    .gte('created_at', today.toISOString())
-    .order('created_at', { ascending: false });
+    .select('*')
+    ;
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.log('[API/POS/ORDERS] Supabase Error:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
-  return NextResponse.json({ orders: orders || [] });
+  // Fetch items separately to avoid join 500s
+  const orderIds = (orders || []).map(o => o.id);
+  const { data: allItems, error: itemsErr } = await db
+    .from('order_items')
+    .select('*')
+    .in('order_id', orderIds);
+
+  if (itemsErr) {
+    console.log('[API/POS/ORDERS] Items Error:', itemsErr);
+  }
+
+  // Map items back to orders
+  const ordersWithItems = (orders || []).map(order => ({
+    ...order,
+    order_items: (allItems || []).filter(item => item.order_id === order.id)
+  }));
+
+  console.log('POS_ORDERS:', ordersWithItems);
+  return NextResponse.json({ orders: ordersWithItems });
 }
 
 // ── POST — Crear orden POS ─────────────────────────────────────────────────
@@ -63,7 +86,7 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
 
   const {
-    items,           // [{product_id, qty, unit_price, selected_modifiers_json}]
+    items,           // [{product_id, product_name, qty, unit_price, selected_modifiers_json}]
     payment_method,  // CASH | CARD | TRANSFER
     delivery_type,   // PICKUP | DELIVERY
     customer_name,
@@ -81,16 +104,17 @@ export async function POST(req: Request) {
     (sum: number, i: { qty: number; unit_price: number }) => sum + i.qty * i.unit_price, 0
   );
 
-  // Create order
+  // 1. Create order with status 'pending' (lowercase) for better panel visibility
   const { data: order, error: orderErr } = await db
     .from('orders')
     .insert({
       channel: 'POS',
-      status: 'DRAFT',
+      status: 'pending',
       payment_method: payment_method || 'CASH',
       delivery_type: delivery_type || 'PICKUP',
-      customer_name: customer_name || null,
+      customer_name: customer_name || 'Cliente POS',
       total,
+      notes: notes || '',
     })
     .select()
     .single();
@@ -99,22 +123,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: orderErr?.message || 'Error creando orden' }, { status: 500 });
   }
 
-  // Insert order items
+  // 2. Insert order items with proper product_id UUID handling and product_name
   const orderItems = items.map((item: any) => ({
     order_id: order.id,
-    product_id: item.product_id,
+    product_id: isUuid(item.product_id) ? item.product_id : null,
+    product_name: item.product_name || 'Producto',
     qty: item.qty,
     unit_price: item.unit_price,
     selected_modifiers_json: item.selected_modifiers_json || [],
   }));
 
   const { error: itemsErr } = await db.from('order_items').insert(orderItems);
-  if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 });
+  
+  if (itemsErr) {
+    // Cleanup if items failed to ensure we don't have empty orders
+    await db.from('orders').delete().eq('id', order.id);
+    return NextResponse.json({ error: itemsErr.message }, { status: 500 });
+  }
 
-  // Auto-confirm the order
-  await db.from('orders').update({ status: 'CONFIRMED' }).eq('id', order.id);
-
-  return NextResponse.json({ order: { ...order, status: 'CONFIRMED', total } });
+  return NextResponse.json({ order: { ...order, status: 'pending', total } });
 }
 
 // ── PATCH — Actualizar estado ──────────────────────────────────────────────
@@ -127,9 +154,16 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Se requiere id y status' }, { status: 400 });
   }
 
-  const validStatuses = ['DRAFT', 'CONFIRMED', 'PREPARING', 'DELIVERED', 'CANCELLED'];
-  if (!validStatuses.includes(body.status)) {
-    return NextResponse.json({ error: 'Status inválido' }, { status: 400 });
+  // Map incoming POS statuses to standard statuses if needed
+  let dbStatus = body.status;
+  if (dbStatus === 'CONFIRMED') dbStatus = 'pending';
+  if (dbStatus === 'PREPARING') dbStatus = 'preparing';
+  if (dbStatus === 'DELIVERED') dbStatus = 'delivered';
+  if (dbStatus === 'CANCELLED') dbStatus = 'cancelled'; // Note: Kitchen filters out 'cancelled' usually
+
+  const validStatuses = ['pending', 'preparing', 'ready', 'delivered', 'cancelled', 'DRAFT', 'CONFIRMED'];
+  if (!validStatuses.includes(dbStatus)) {
+    return NextResponse.json({ error: `Status inválido: ${dbStatus}` }, { status: 400 });
   }
 
   const db = getDb();
@@ -137,7 +171,7 @@ export async function PATCH(req: Request) {
 
   const { data, error } = await db
     .from('orders')
-    .update({ status: body.status })
+    .update({ status: dbStatus })
     .eq('id', body.id)
     .select()
     .single();

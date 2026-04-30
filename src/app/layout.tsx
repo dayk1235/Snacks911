@@ -34,7 +34,9 @@ export default function RootLayout({
       <head>
         <link rel="preload" as="image" href="/images/hero.webp" fetchPriority="high" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body suppressHydrationWarning className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }

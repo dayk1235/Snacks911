@@ -4,7 +4,7 @@
  */
 
 import type {
-  AdminProduct, Order, OrderStatus,
+  AdminProduct, Order, OrderStatus, OrderChannel,
   SaleRecord, BusinessSettings, CustomCategory,
   Customer, AuditLog,
 } from './adminTypes';
@@ -22,7 +22,6 @@ import {
 // ─── localStorage keys (used as offline cache) ────────────────────────────────
 const K = {
   PRODUCTS:   'snacks911_admin_products',
-  ORDERS:     'snacks911_admin_orders',
   SETTINGS:   'snacks911_admin_settings',
   CATEGORIES: 'snacks911_admin_categories',
 } as const;
@@ -69,7 +68,12 @@ function createUuid() {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
   }
-  return `ord_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  // RFC4122 v4 compliant fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 
@@ -134,12 +138,14 @@ export const AdminStore = {
   // ── Orders ──────────────────────────────────────────────────────────────────
   async getOrders(): Promise<Order[]> {
     try {
-      const orders = await dbGetOrders();
-      lsWrite(K.ORDERS, orders);
-      return orders;
+      const response = await fetch('/api/orders');
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'API error');
+      return result.data;
     } catch (e) {
-      console.warn('[AdminStore] getOrders fallback', e);
-      return lsRead<Order[]>(K.ORDERS, []);
+      console.warn('[AdminStore] getOrders API failed', e);
+      return [];
     }
   },
 
@@ -147,18 +153,10 @@ export const AdminStore = {
     try {
       const savedId = await dbSaveOrder(order);
       order.id = savedId;
-      const all = lsRead<Order[]>(K.ORDERS, []);
-      const idx = all.findIndex(o => o.id === order.id);
-      if (idx >= 0) all[idx] = order; else all.unshift(order);
-      lsWrite(K.ORDERS, all);
-      return;
     } catch (e) {
-      console.warn('[AdminStore] saveOrder fallback', e);
+      console.warn('[AdminStore] saveOrder failed', e);
+      throw e;
     }
-    const all = lsRead<Order[]>(K.ORDERS, []);
-    const idx = all.findIndex(o => o.id === order.id);
-    if (idx >= 0) all[idx] = order; else all.unshift(order);
-    lsWrite(K.ORDERS, all);
   },
 
   /** Quick order submit — generates ID, saves to Supabase, returns order ID */
@@ -169,6 +167,7 @@ export const AdminStore = {
     customerName?: string,
     customerPhone?: string,
     whatsappConfirmed?: boolean,
+    channel: OrderChannel = 'WEB'
   ): Promise<string> {
     const id = createUuid();
     const dbProducts = await this.getProducts().catch(() => []);
@@ -185,6 +184,7 @@ export const AdminStore = {
       })),
       total,
       status: 'pending',
+      channel,
       createdAt: new Date().toISOString(),
       customerName: customerName || 'Web Order',
       customerPhone: customerPhone || '',
@@ -194,28 +194,31 @@ export const AdminStore = {
     return id;
   },
 
-  async updateOrderStatus(id: string, status: OrderStatus, handledBy?: string): Promise<void> {
-    try {
-      await dbUpdateOrderStatus(id, status, handledBy);
-    } catch (e) {
-      console.warn('[AdminStore] updateOrderStatus fallback', e);
+  async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+    console.log('[AdminStore] update', id, status);
+    const response = await fetch('/api/orders/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Failed to update status: ${response.status}`);
     }
-    const all = lsRead<Order[]>(K.ORDERS, []);
-    const order = all.find(o => o.id === id);
-    if (order) { order.status = status; if (handledBy) order.handledBy = handledBy; lsWrite(K.ORDERS, all); }
   },
 
   async updateOrderWhatsAppConfirmed(id: string, confirmed: boolean): Promise<void> {
     try {
-      const { supabase } = await import('./supabase');
-      const { error } = await supabase.from('orders').update({ whatsapp_confirmed: confirmed }).eq('id', id);
-      if (error) throw error;
+      const response = await fetch('/api/orders/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, whatsappConfirmed: confirmed }),
+      });
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
     } catch (e) {
-      console.warn('[AdminStore] updateOrderWhatsAppConfirmed fallback', e);
+      console.warn('[AdminStore] updateOrderWhatsAppConfirmed failed', e);
     }
-    const all = lsRead<Order[]>(K.ORDERS, []);
-    const order = all.find(o => o.id === id);
-    if (order) { order.whatsappConfirmed = confirmed; lsWrite(K.ORDERS, all); }
   },
 
   // ── Settings — stale-while-revalidate ────────────────────────────────────────

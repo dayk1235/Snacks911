@@ -178,7 +178,7 @@ export default function MenuPage() {
       AdminStore.getOrders(),
       AdminStore.getProducts(),
     ]).then(([o, p]) => {
-      setOrders(o);
+      void o;
       setDbProducts(p);
     }).catch(() => {});
   }, []);

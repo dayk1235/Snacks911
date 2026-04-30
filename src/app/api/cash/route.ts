@@ -53,7 +53,6 @@ export async function GET(req: Request) {
   const { data: ordersData } = await client
     .from('orders')
     .select('total, payment_method')
-    .eq('channel', 'POS')
     .neq('status', 'CANCELLED')
     .gte('created_at', today.toISOString());
 
@@ -100,7 +99,7 @@ export async function POST(req: Request) {
 
     // Cash sales today
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const { data: cashOrders } = await client.from('orders').select('total').eq('channel', 'POS').eq('payment_method', 'CASH').neq('status', 'CANCELLED').gte('created_at', today.toISOString());
+    const { data: cashOrders } = await client.from('orders').select('total').eq('payment_method', 'CASH').neq('status', 'CANCELLED').gte('created_at', today.toISOString());
     const cashSales = (cashOrders || []).reduce((s: number, o: any) => s + (o.total || 0), 0);
 
     const expected = (session?.opening_amount || 0) + movementsNet + cashSales;

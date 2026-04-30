@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { handleMessage, INITIAL_STATE, type ConversationState } from '@/core';
+import { handleMessageModular, INITIAL_STATE, type ConversationState } from '@/core';
 import { products, getProductImage, type Product } from '@/data/products';
 import { useCartStore } from '@/lib/cartStore';
 
@@ -78,32 +78,57 @@ export default function ChatBot() {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typing]);
 
-  const handleSend = useCallback(() => {
-    if (!input.trim()) return;
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || typing) return;
     const text = input.trim();
     setInput('');
     
     setMessages(prev => [...prev, { id: idCounter.current++, text, sender: 'user' }]);
-    
-    // Simple logic placeholder: if includes "combo", show a product card
-    setTimeout(() => {
-      setTyping(true);
-      setTimeout(() => {
-        const foundProduct = products.find(p => text.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
-        
-        setMessages(prev => [
-          ...prev, 
-          { 
-            id: idCounter.current++, 
-            text: foundProduct ? `¡Excelente elección! Aquí tienes los detalles:` : '¿En qué puedo ayudarte hoy?', 
-            sender: 'bot',
-            product: foundProduct
-          }
-        ]);
-        setTyping(false);
-      }, 800);
-    }, 200);
-  }, [input]);
+    setTyping(true);
+
+    try {
+      // Modular engine call
+      const output = await handleMessageModular(text, state, {
+        comboName: '🔥 Combo 911',
+        comboPrice: 119,
+        papasName: 'Papas Loaded',
+        papasPrice: 69,
+        bebidaName: 'Refresco',
+        bebidaPrice: 25,
+        postreName: 'Brownie',
+        postrePrice: 59,
+        comboBonelessName: '🍗 Combo Boneless',
+        comboBonelessPrice: 99,
+        ahorroBoneless: 40,
+        currentTotal: state.cartTotal,
+        hasPapas: state.cart.includes('Papas Loaded'),
+        hasBebida: state.cart.some(i => i.includes('Refresco')),
+        hasPostre: state.cart.some(i => i.includes('Brownie')),
+      });
+
+      setState(output.nextState);
+      
+      // If a product was recommended, find it in data
+      const recommendedProduct = products.find(p => 
+        output.text.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+      );
+
+      setMessages(prev => [
+        ...prev, 
+        { 
+          id: idCounter.current++, 
+          text: output.text, 
+          sender: 'bot',
+          product: recommendedProduct
+        }
+      ]);
+    } catch (error) {
+      console.error('ChatBot Error:', error);
+      setMessages(prev => [...prev, { id: idCounter.current++, text: "Ups, algo salió mal. Intenta de nuevo.", sender: 'bot' }]);
+    } finally {
+      setTyping(false);
+    }
+  }, [input, state, typing]);
 
   return (
     <>

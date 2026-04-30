@@ -1,17 +1,19 @@
 /**
  * core/eventLogger.ts — Sales Event Logging System.
- *
- * Implements the contract defined in ROADMAP 2.1.
  */
 
 import { supabase } from '@/lib/supabase';
 
 export type EventType = 
+  | 'session_start'
   | 'cart_created'
-  | 'cart_abandoned'
-  | 'upsell_suggested'
+  | 'order_created'
+  | 'checkout_completed'
+  | 'upsell_presented'
   | 'upsell_accepted'
-  | 'order_created';
+  | 'upsell_suggested'
+  | 'cart_abandoned'
+  | 'shadow_engine_log';
 
 export interface SalesEvent {
   tenant_id?: string;
@@ -30,17 +32,16 @@ export interface SalesEvent {
  * Logs a sales event to Supabase.
  */
 export async function logEvent(event: SalesEvent): Promise<void> {
-  // Use the established supabase client from lib
   const { error } = await supabase.from('event_logs').insert({
     tenant_id: event.tenant_id || 'main',
     event_type: event.event_type,
     actor: event.actor || 'customer',
     channel: event.channel || 'web',
-    order_id: event.order_id,
-    cart_id: event.cart_id,
-    customer_phone: event.customer_phone,
-    session_id: event.session_id,
-    idempotency_key: event.idempotency_key,
+    order_id: event.order_id || undefined,
+    cart_id: event.cart_id || undefined,
+    customer_phone: event.customer_phone || undefined,
+    session_id: event.session_id || undefined,
+    idempotency_key: event.idempotency_key || undefined,
     payload_json: event.payload_json || {}
   });
 

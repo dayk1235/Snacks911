@@ -12,6 +12,8 @@ const NAV = [
   { href: '/admin',          icon: '📊', label: 'Dashboard',   roles: ['admin', 'gerente'] },
   { href: '/admin/products', icon: '🍗', label: 'Productos',   roles: ['admin', 'gerente'] },
   { href: '/admin/orders',   icon: '📦', label: 'Pedidos',     roles: ['admin', 'gerente', 'staff'] },
+  { href: '/admin/pos',      icon: '💻', label: 'P. de Venta', roles: ['admin', 'gerente', 'staff'] },
+  { href: '/admin/cash',     icon: '💰', label: 'Caja',        roles: ['admin', 'gerente', 'staff'] },
   { href: '/admin/staff',    icon: '👥', label: 'Personal',    roles: ['admin'] },
   { href: '/admin/sales',    icon: '💰', label: 'Ventas',      roles: ['admin', 'gerente'] },
   { href: '/admin/settings', icon: '⚙️',  label: 'Configuración', roles: ['admin'] },

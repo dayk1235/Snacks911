@@ -462,17 +462,27 @@ Frecuencia: semanal. Optimizar scripts, combos y conversión por flujo.
 | **Stock desactualizado** | **Polling cada 30s + Webhooks POS** |
 | **Handoff sin contexto** | **Payload obligatorio pre-transferencia** |
 
-### 🟡 Status: ⏳ Not Started
+### 🟢 Status: ✅ Completed
 
 ---
 
 ## 🧪 PHASE 2 — Analytics & Stability
 - 2.4 Analytics & Revenue Intelligence (Dashboards, Alertas)
 
-## 🏗️ PHASE 3 — Scale Foundation
-- 3.1 WhatsApp Cloud API (BLOCKER)
-- 3.2 Multi-tenant Refactor
-- 3.3 Billing & Templates
+## ✅ Phase 1.10 — Sales System Engine (Omnicanal) — COMPLETO
+- Motor de intenciones unificado.
+- Middleware de inventario real-time.
+- Sistema de sonido redundante (Realtime + Polling).
+- Impresión térmica optimizada (58mm/80mm).
+- Logs de auditoría y ventas determinísticas.
+
+---
+
+## 🏗️ PHASE 3 — Scale Foundation (Multi-tenant SaaS)
+- **3.1 WhatsApp Cloud API (Oficial)**: Migración a API oficial de Meta para estabilidad total.
+- **3.2 Multi-tenant Refactor**: Aislamiento de datos mediante `tenant_id` y RLS.
+- **3.3 Billing & Subscriptions**: Integración con Stripe para monetización.
+- **3.4 Dashboard de Tenant**: Panel para que nuevos negocios configuren su propia tienda.
 
 ## 🚀 PHASE 4 — Innovación
 - 4.1 Group Ordering
@@ -488,7 +498,7 @@ Frecuencia: semanal. Optimizar scripts, combos y conversión por flujo.
 | Sprint | Features |
 | :--- | :--- |
 | **Sprint 1-2** | 1.9 Resilience + 1.6 Memory (shadow) |
-| **Sprint 3-4** | **1.10 Sales System Engine (Completo con 5 módulos)** |
+| **Sprint 3-4** | **✅ 1.10 Sales System Engine (Completo con 5 módulos)** |
 | **Sprint 5-6** | 2.4 Analytics + WA Cloud API |
 | **Sprint 7+** | Innovación + Multi-tenant |
 
@@ -540,3 +550,223 @@ Cada feature nueva debe incluir:
 4. KPIs
 5. Gates
 6. Feature Flags
+
+---
+
+# 🚀 Snacks 911 — BOT DE VENTAS & MULTICANAL v3.0 (Plan para 1 de mayo de 2026)
+
+Estado: 🔥 En construcción (Alta prioridad)  
+Objetivo: Convertir el bot en una máquina de ventas conectada a Web + WhatsApp + POS con aprendizaje continuo.
+
+---
+
+# 🧠 VISIÓN
+
+"No es un chatbot. Es un sistema de ventas automatizado."
+
+El bot debe:
+- Guiar → Simplificar → Cerrar
+- Operar igual en Web, WhatsApp y POS
+- Aprender de errores sin romper lógica
+
+---
+
+# ⚙️ FASE 1 — CORE BOT (PRIORIDAD ALTA)
+
+## 🎯 Objetivo
+Tener un bot que cierre pedidos correctamente.
+
+## 🧱 Estados
+- idle
+- browsing_menu
+- building_order
+- confirming
+- checkout
+
+## 🔧 Tools
+- getMenu()
+- addItem()
+- getCart()
+- createOrder()
+
+## 📌 Tasks
+
+- [ ] Crear `runBot()` orchestrator
+- [ ] Implementar state machine
+- [ ] Integrar tools con Supabase
+- [ ] Validar flujo completo:
+  menu → add → cart → confirm → order
+
+---
+
+# 💰 FASE 2 — OPTIMIZACIÓN DE VENTAS
+
+## 🎯 Objetivo
+Aumentar conversión
+
+## 📌 Tasks
+
+- [ ] Limitar menú a 5 productos (best-sellers)
+- [ ] Agregar upsell automático (1 sugerencia)
+- [ ] Reducir respuestas a máximo 2 líneas
+- [ ] Implementar CTA constante ("¿Confirmamos?")
+- [ ] Formatear carrito claro
+
+## 📊 Métricas
+- % conversión
+- tiempo a compra
+- tasa de abandono
+
+---
+
+# 📲 FASE 3 — WHATSAPP INTEGRATION
+
+## 🎯 Objetivo
+Recibir y responder pedidos por WhatsApp
+
+## 🧱 Stack
+- WhatsApp Cloud API (Meta)
+- Webhook en Next.js
+
+## 📌 Tasks
+
+- [ ] Crear endpoint `/api/whatsapp/webhook`
+- [ ] Parsear mensajes entrantes
+- [ ] Conectar `runBot()`
+- [ ] Enviar respuestas con API Meta
+- [ ] Mapear `phone → user_id`
+
+---
+
+# 🔗 FASE 4 — MULTICANAL UNIFICADO
+
+## 🎯 Objetivo
+Web + WhatsApp + POS usando la misma lógica
+
+## 📌 Tasks
+
+- [ ] Unificar `user_id = phone`
+- [ ] Centralizar en Supabase:
+  - customers
+  - orders
+  - order_items
+- [ ] Usar `runBot()` en TODOS los canales
+
+---
+
+# 🧠 FASE 5 — LEARNING SYSTEM (AUTOMÁTICO)
+
+## 🎯 Objetivo
+Mejorar el bot sin intervención manual
+
+## 🧱 Arquitectura
+
+Usuarios → Logs → Filtro → Mejora → Memoria
+
+## 📌 Tasks
+
+- [ ] Crear tabla `chat_logs`
+- [ ] Guardar:
+  - message
+  - response
+  - success flag
+- [ ] Detectar errores:
+  - repetición
+  - abandono
+- [ ] Crear cron nocturno:
+  - filtrar errores
+  - generar mejoras
+- [ ] Guardar en `bot_knowledge`
+
+---
+
+# 🧠 FASE 6 — BOT MEMORY
+
+## 🎯 Objetivo
+Respuestas más inteligentes
+
+## 📌 Tasks
+
+- [ ] Crear tabla `bot_knowledge`
+- [ ] Buscar patrones antes de usar IA
+- [ ] fallback → IA solo si necesario
+
+---
+
+# 🔊 FASE 7 — SONIDO INTELIGENTE
+
+## 🎯 Objetivo
+Feedback en tiempo real sin spam
+
+## 📌 Tasks
+
+- [ ] Detectar órdenes nuevas
+- [ ] reproducir sonido solo si nuevas
+- [ ] debounce 2s
+
+---
+
+# 🎛 FASE 8 — DASHBOARD (YA AVANZADO)
+
+## 🎯 Objetivo
+Visualizar órdenes en tiempo real
+
+## 📌 Tasks
+
+- [ ] UI cocina optimizada (ya casi lista)
+- [ ] separar admin vs cocina
+- [ ] eliminar ruido visual
+- [ ] priorizar urgencia
+
+---
+
+# ⚠️ REGLAS CRÍTICAS
+
+- ❌ No inventar productos/precios
+- ❌ No múltiples preguntas
+- ❌ No lógica duplicada por canal
+
+- ✔ Siempre confirmar orden
+- ✔ Siempre usar tools reales
+- ✔ Siempre guardar datos
+
+---
+
+# 🚀 PRIORIDAD DE EJECUCIÓN (MAÑANA)
+
+1. runBot() orchestrator
+2. flujo completo de pedido
+3. webhook WhatsApp
+4. integración Supabase
+5. testing real
+
+---
+
+# 🧠 MÉTRICA FINAL DE ÉXITO
+
+"¿El usuario ordena en menos de 5 mensajes?"
+
+Si sí → vas bien  
+Si no → optimizar flujo
+
+---
+
+# 💥 FUTURO (POST MVP)
+
+- recomendaciones personalizadas
+- combos automáticos
+- promociones dinámicas
+- IA de precios
+- agente autónomo
+
+---
+
+# 🏁 CONCLUSIÓN
+
+Este sistema debe convertirse en:
+
+👉 Un vendedor automático  
+👉 Un operador de pedidos  
+👉 Un optimizador continuo  
+
+NO en un chatbot tradicional

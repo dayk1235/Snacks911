@@ -564,8 +564,17 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
   const submitOrderAndOpenWhatsApp = async () => {
     track('whatsapp_click', { items: items.length, total });
-    // Save order to Supabase with customer data
-    const orderId = await AdminStore.submitOrder(items, total, whatsappNumber, customerName, customerPhone).catch(() => '');
+    
+    console.log('[Frontend] Initiating order submission...', { items: items.length, total });
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, total, customerName, customerPhone, channel: 'WEB' }),
+    });
+    const result = await response.json();
+    console.log('Order submission result:', result);
+    
+    const orderId = result.orderId;
     setLastOrderId(orderId);
     track('order_placed', { value: total, currency: 'MXN', orderId, customerPhone: !!customerPhone });
 

@@ -7,11 +7,12 @@
  * Simplified for maximum focus on KPIs and critical operations.
  */
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDailyRevenue, getConversionRate, getUpsellRate } from '@/core/revenueMetrics';
 import { checkAlerts, type Alert } from '@/core/alertEngine';
 import { useStoreSettings } from '@/lib/storeSettingsStore';
+import { supabase } from '@/lib/supabase';
 
 const fmt = (n: number) => `$${n.toLocaleString()}`;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -23,9 +24,15 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState({ revenue: 0, conversion: 0, upsell: 0 });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
+  const isFetchingRef = useRef(false);
+  const realtimeDirtyRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    try {
       const now = new Date();
       const [revenue, conversion, upsell, activeAlerts] = await Promise.all([
         getDailyRevenue(now),
@@ -37,10 +44,42 @@ export default function AdminDashboard() {
       setMetrics({ revenue, conversion, upsell });
       setAlerts(activeAlerts);
       setLoading(false);
+    } finally {
+      isFetchingRef.current = false;
     }
+  }, []);
+
+  useEffect(() => {
     load();
     fetchSettings();
-  }, [fetchSettings]);
+  }, [fetchSettings, load]);
+
+  useEffect(() => {
+    const scheduleDebouncedRefresh = () => {
+      realtimeDirtyRef.current = true;
+      if (debounceTimerRef.current) return;
+
+      debounceTimerRef.current = setTimeout(async () => {
+        debounceTimerRef.current = null;
+        if (!realtimeDirtyRef.current) return;
+        realtimeDirtyRef.current = false;
+        await load();
+      }, 3000);
+    };
+
+    const channel = supabase
+      .channel('admin-kpi-event-logs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_logs' }, scheduleDebouncedRefresh)
+      .subscribe();
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#000', color: '#fff', fontFamily: 'system-ui, sans-serif', padding: '1.5rem' }}>

@@ -1,348 +1,464 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AdminStore } from '@/lib/adminStore';
-import { Order, OrderStatus, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/lib/adminTypes';
+import { supabase } from '@/lib/supabase';
+import type { Order, OrderStatus } from '@/lib/adminTypes';
 
 const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
-  pending:   'preparing',
+  pending: 'confirmed',
+  confirmed: 'preparing',
   preparing: 'ready',
-  ready:     'delivered',
+  ready: 'delivered',
   delivered: null,
+  cancelled: null,
 };
 
-const STATUS_BTN: Record<OrderStatus, string> = {
-  pending:   '🔥 Comenzar a preparar',
-  preparing: '✅ Marcar como listo',
-  ready:     '📦 Marcar como entregado',
-  delivered: '',
-};
+function minsSince(iso: string) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return 0;
+  return Math.max(0, Math.floor((Date.now() - t) / 60000));
+}
 
-const ALL_STATUSES: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered'];
+function urgency(m: number) {
+  // Kitchen pacing: keep it legible and decisive.
+  if (m >= 12) {
+    return {
+      ring: 'border-red-500/50 bg-red-500/5',
+      pill: 'bg-red-500 text-black',
+      time: 'text-red-200',
+    };
+  }
+  if (m >= 6) {
+    return {
+      ring: 'border-amber-400/50 bg-amber-400/5',
+      pill: 'bg-amber-400 text-black',
+      time: 'text-amber-200',
+    };
+  }
+  return {
+    ring: 'border-white/10 bg-white/[0.03]',
+    pill: 'bg-white/10 text-white',
+    time: 'text-white/80',
+  };
+}
 
-/* ── Receipt printer ──────────────────────────────────────────────────────── */
+function shortId(id: string) {
+  return id?.slice(-6)?.toUpperCase?.() ?? id;
+}
+
+function primaryActionFor(status: OrderStatus): { label: string; next: OrderStatus } | null {
+  const next = STATUS_FLOW[status];
+  if (!next) return null;
+  if (status === 'pending') return { label: 'Confirmar', next };
+  if (status === 'confirmed') return { label: 'Preparar', next };
+  if (status === 'preparing') return { label: 'Listo', next };
+  if (status === 'ready') return { label: 'Entregar', next };
+  return null;
+}
+
+function PrimaryButton({
+  kind,
+  disabled,
+  onClick,
+  children,
+}: {
+  kind: 'confirm' | 'progress' | 'deliver';
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const base =
+    'min-h-[44px] w-full rounded-xl px-4 py-3 text-sm font-extrabold tracking-wide ' +
+    'transition-[transform,background-color,box-shadow,opacity] duration-200 ease-out ' +
+    'active:scale-[0.99] disabled:opacity-50 disabled:active:scale-100';
+  const theme =
+    kind === 'confirm'
+      ? 'bg-amber-400 text-black shadow-[0_10px_30px_-14px_rgba(251,191,36,0.7)] hover:bg-amber-300'
+      : kind === 'deliver'
+        ? 'bg-emerald-400 text-black shadow-[0_10px_30px_-14px_rgba(52,211,153,0.7)] hover:bg-emerald-300'
+        : 'bg-white/10 text-white hover:bg-white/15';
+
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} className={`${base} ${theme}`}>
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({
+  disabled,
+  onClick,
+  children,
+}: {
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="min-h-[44px] w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition-colors duration-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ── Receipt printer (kept minimal, useful in ops) ───────────────────────── */
 function printReceipt(order: Order) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-  const itemsHTML = order.items.map(item =>
-    `<tr>
-      <td style="text-align:left;padding:2px 0">${item.quantity}x ${item.productName}</td>
-      <td style="text-align:right;padding:2px 0">$${(item.price * item.quantity).toLocaleString()}</td>
-    </tr>`
-  ).join('');
+  const itemsTxt = order.items
+    .map((i) => `${i.quantity}x ${i.productName}  $${(i.price * i.quantity).toLocaleString()}`)
+    .join('\n');
 
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Ticket ${order.id}</title>
   <style>
-    @page {
-      margin: 0;
-      size: 80mm auto;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 12px;
-      width: 80mm;
-      max-width: 80mm;
-      padding: 8mm 4mm;
-      color: #000;
-      background: #fff;
-    }
-    .center { text-align: center; }
-    .divider {
-      border: none;
-      border-top: 1px dashed #000;
-      margin: 6px 0;
-    }
-    .bold { font-weight: bold; }
-    table { width: 100%; border-collapse: collapse; }
-    .total-row td { 
-      font-weight: bold; 
-      font-size: 14px; 
-      padding-top: 6px;
-      border-top: 1px solid #000;
-    }
-    .header-logo {
-      font-size: 22px;
-      font-weight: bold;
-      letter-spacing: 2px;
-    }
+    @media print { @page { margin: 0; size: 58mm auto; } body { margin: 0; width: 58mm; } }
+    body { font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.1; padding: 4mm 2mm; }
+    .c { text-align: center; } .b { font-weight: 700; } .hr { border-top: 1px dashed #000; margin: 6px 0; }
+    pre { white-space: pre-wrap; margin: 0; font-family: inherit; }
   </style>
 </head>
 <body>
-  <div class="center">
-    <div class="header-logo">🚨 SNACKS 911</div>
-    <div style="font-size:10px;margin-top:2px">Cuando el antojo no puede esperar</div>
-    <hr class="divider">
-  </div>
-  
-  <div style="margin: 4px 0">
-    <div><strong>Pedido:</strong> ${order.id}</div>
-    <div><strong>Cliente:</strong> ${order.customerName}</div>
-    ${order.customerPhone ? `<div><strong>Tel:</strong> ${order.customerPhone}</div>` : ''}
-    <div><strong>Fecha:</strong> ${dateStr} ${timeStr}</div>
-    <div><strong>Estado:</strong> ${ORDER_STATUS_LABELS[order.status]}</div>
-  </div>
-  
-  <hr class="divider">
-  
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:left;padding:2px 0;font-size:11px">PRODUCTO</th>
-        <th style="text-align:right;padding:2px 0;font-size:11px">PRECIO</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsHTML}
-    </tbody>
-  </table>
-  
-  <hr class="divider">
-  
-  <table>
-    <tr class="total-row">
-      <td style="text-align:left">TOTAL</td>
-      <td style="text-align:right">$${order.total.toLocaleString()}</td>
-    </tr>
-  </table>
-  
-  ${order.notes ? `
-  <hr class="divider">
-  <div style="font-size:11px"><strong>Notas:</strong> ${order.notes}</div>
-  ` : ''}
-  
-  <hr class="divider">
-  
-  <div class="center" style="margin-top:4px;font-size:10px">
-    ¡Gracias por tu preferencia! 🔥<br>
-    Síguenos en redes: @snacks911<br>
-    <br>
-    --- SNACKS 911 ---
-  </div>
-
-  <script>
-    window.onload = function() {
-      window.print();
-      setTimeout(function() { window.close(); }, 500);
-    };
-  <\/script>
+  <div class="c b">SNACKS 911</div>
+  <div class="c">ANTOJO DE EMERGENCIA</div>
+  <div class="hr"></div>
+  <pre>ORDEN: #${String(order.id).slice(0, 8).toUpperCase()}
+FECHA: ${dateStr} ${timeStr}
+CLIENTE: ${String(order.customerName || '').toUpperCase()}
+TEL: ${order.customerPhone || 'N/A'}</pre>
+  <div class="hr"></div>
+  <pre>${itemsTxt}</pre>
+  <div class="hr"></div>
+  <pre class="b">TOTAL: $${order.total.toLocaleString()}</pre>
+  ${order.notes ? `<div class="hr"></div><pre>NOTAS: ${order.notes}</pre>` : ''}
 </body>
 </html>`;
 
-  const printWindow = window.open('', '_blank', 'width=350,height=600');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-  }
+  const w = window.open('', '_blank', 'width=400,height=600');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
+  w.close();
 }
 
-/* ── Orders Page ──────────────────────────────────────────────────────────── */
-export default function OrdersPage() {
-  const [orders, setOrders]     = useState<Order[]>([]);
-  const [filter, setFilter]     = useState<OrderStatus | 'all'>('all');
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [tick, setTick] = useState(0);
+  const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Unlock audio once via user gesture (required by most browsers).
+  useEffect(() => {
+    const unlock = () => {
+      if (audioRef.current) return;
+      const a = new Audio('/alert-cocina.mp3');
+      a.volume = 1;
+      a.play().catch(() => {});
+      a.pause();
+      a.currentTime = 0;
+      audioRef.current = a;
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+
+  const playAlert = useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    try {
+      a.currentTime = 0;
+      a.play().catch(() => {});
+    } catch {}
+  }, []);
 
   const reload = useCallback(async () => {
-    const o = (await AdminStore.getOrders())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setOrders(o);
-  }, []);
+    const next = (await AdminStore.getOrders()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Polling sound fallback.
+    setOrders((prev) => {
+      if (prev.length > 0) {
+        const prevIds = new Set(prev.map((o) => o.id));
+        const hasNew = next.some((o) => !prevIds.has(o.id));
+        if (hasNew) playAlert();
+      }
+      return next;
+    });
+  }, [playAlert]);
 
   useEffect(() => {
     reload();
-    const id = setInterval(reload, 8000); // live refresh every 8s
-    return () => clearInterval(id);
-  }, [reload]);
+    const id = setInterval(reload, 8000);
 
-  const advance = async (id: string, currentStatus: OrderStatus) => {
-    const next = STATUS_FLOW[currentStatus];
-    if (!next) return;
-    await AdminStore.updateOrderStatus(id, next);
-    reload();
+    const ch = supabase
+      .channel('admin-orders-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        playAlert();
+        reload();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(id);
+      supabase.removeChannel(ch);
+    };
+  }, [reload, playAlert]);
+
+  // Ticker for timers (keeps UI reactive without refetching).
+  useEffect(() => {
+    const iv = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const markBusy = useCallback((id: string, on: boolean) => {
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const markExiting = useCallback((id: string, on: boolean) => {
+    setExitingIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const advance = useCallback(
+    async (order: Order) => {
+      const action = primaryActionFor(order.status);
+      if (!action) return;
+
+      const { next } = action;
+      markBusy(order.id, true);
+
+      // Optimistic UI for speed.
+      if (next === 'delivered') {
+        markExiting(order.id, true);
+      } else {
+        setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: next } : o)));
+      }
+
+      try {
+        await AdminStore.updateOrderStatus(order.id, next);
+
+        if (next === 'delivered') {
+          // Smooth removal (150–300ms).
+          window.setTimeout(() => {
+            setOrders((prev) => prev.filter((o) => o.id !== order.id));
+            markExiting(order.id, false);
+          }, 220);
+        }
+      } catch {
+        // Roll back on failure.
+        markExiting(order.id, false);
+        await reload();
+      } finally {
+        markBusy(order.id, false);
+      }
+    },
+    [markBusy, markExiting, reload]
+  );
+
+  const activeOrders = useMemo(() => {
+    // Delivered should disappear from the dashboard automatically.
+    return orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
+  }, [orders]);
+
+  const pendingCol = useMemo(() => activeOrders.filter((o) => o.status === 'pending' || o.status === 'confirmed'), [activeOrders]);
+  const preparingCol = useMemo(() => activeOrders.filter((o) => o.status === 'preparing'), [activeOrders]);
+  const readyCol = useMemo(() => activeOrders.filter((o) => o.status === 'ready'), [activeOrders]);
+
+  // `tick` intentionally referenced to keep timers fresh.
+  void tick;
+
+  const Column = ({
+    title,
+    count,
+    children,
+    accent,
+  }: {
+    title: string;
+    count: number;
+    accent: 'amber' | 'orange' | 'emerald';
+    children: ReactNode;
+  }) => {
+    const accentCls =
+      accent === 'amber'
+        ? 'border-amber-400/30 bg-amber-400/5 text-amber-200'
+        : accent === 'orange'
+          ? 'border-orange-500/30 bg-orange-500/5 text-orange-200'
+          : 'border-emerald-400/30 bg-emerald-400/5 text-emerald-200';
+
+    return (
+      <section className="rounded-2xl border border-white/10 bg-black/20 p-3 md:p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-lg font-extrabold tracking-wide text-white">{title}</h2>
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums ${accentCls}`}>
+              {count}
+            </span>
+          </div>
+          <div className="text-xs font-semibold text-white/40">Touch</div>
+        </div>
+        <div className="space-y-3">{children}</div>
+      </section>
+    );
   };
 
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+  const OrderCard = ({ order }: { order: Order }) => {
+    const m = minsSince(order.createdAt);
+    const u = urgency(m);
+    const action = primaryActionFor(order.status);
+    const busy = busyIds.has(order.id);
+    const exiting = exitingIds.has(order.id);
 
-  const countFor = (s: OrderStatus) => orders.filter(o => o.status === s).length;
+    const kind: 'confirm' | 'progress' | 'deliver' =
+      order.status === 'pending' ? 'confirm' : order.status === 'ready' ? 'deliver' : 'progress';
 
-  const fmtTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    return (
+      <article
+        data-exiting={exiting ? 'true' : 'false'}
+        className={[
+          'min-h-[240px] rounded-2xl border p-6 md:p-7',
+          'transition-[transform,opacity,background-color,border-color] duration-200 ease-out',
+          'data-[exiting=true]:scale-[0.98] data-[exiting=true]:opacity-0',
+          u.ring,
+        ].join(' ')}
+      >
+        <header className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="text-lg font-extrabold tracking-wider text-white">
+                #{shortId(order.id)}
+              </div>
+              <div className="text-sm font-semibold text-white/50 tabular-nums">
+                {new Date(order.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <div className="mt-1 truncate text-base font-semibold text-white/80">
+              {order.customerName || 'Cliente'}
+            </div>
+          </div>
 
-  return (
-    <div style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>📦 Pedidos</h1>
-        <p style={{ margin: '0.3rem 0 0', color: '#555', fontSize: '0.875rem' }}>
-          Se actualiza cada 5 segundos · {orders.length} pedidos en total
-        </p>
-      </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className={`rounded-full px-3 py-1.5 text-sm font-extrabold tabular-nums ${u.pill}`}>
+              {m < 1 ? 'NOW' : `${m}m`}
+            </div>
+            <div className={`text-sm font-semibold tabular-nums ${u.time}`}>${Number(order.total || 0).toFixed(0)}</div>
+          </div>
+        </header>
 
-      {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setFilter('all')}
-          style={{
-            padding: '0.45rem 1rem', borderRadius: '20px',
-            background: filter === 'all' ? 'rgba(255,69,0,0.18)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${filter === 'all' ? '#FF4500' : 'rgba(255,255,255,0.08)'}`,
-            color: filter === 'all' ? '#FF4500' : '#666',
-            fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Todos ({orders.length})
-        </button>
-        {ALL_STATUSES.map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            style={{
-              padding: '0.45rem 1rem', borderRadius: '20px',
-              background: filter === s ? ORDER_STATUS_COLORS[s] + '22' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${filter === s ? ORDER_STATUS_COLORS[s] : 'rgba(255,255,255,0.08)'}`,
-              color: filter === s ? ORDER_STATUS_COLORS[s] : '#666',
-              fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            {ORDER_STATUS_LABELS[s]} ({countFor(s)})
-          </button>
-        ))}
-      </div>
+        <div className="mb-4 space-y-2">
+          {order.items.slice(0, 6).map((item, idx) => (
+            <div key={idx} className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-2">
+                <span className="text-base font-extrabold text-white tabular-nums">x{item.quantity}</span>
+                <span className="min-w-0 truncate text-base font-semibold text-white/80">{item.productName}</span>
+              </div>
+              <span className="text-base font-semibold text-white/40 tabular-nums">
+                ${(item.price * item.quantity).toFixed(0)}
+              </span>
+            </div>
+          ))}
+          {order.items.length > 6 && (
+            <div className="text-sm font-semibold text-white/40">+{order.items.length - 6} mas</div>
+          )}
+        </div>
 
-      {/* Orders list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#333' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-            <p>No hay pedidos en este estado</p>
+        {order.notes && (
+          <div className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-200">
+            {order.notes}
           </div>
         )}
 
-        {filtered.map(order => (
-          <div
-            key={order.id}
-            style={{
-              background: '#111', borderRadius: '16px',
-              border: `1px solid ${ORDER_STATUS_COLORS[order.status]}22`,
-              padding: '1.25rem 1.5rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr auto',
-              gap: '1rem',
-              alignItems: 'start',
-            }}
-          >
-            {/* Left: order info */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>{order.id}</span>
-                <span style={{
-                  padding: '0.2rem 0.65rem', borderRadius: '20px',
-                  background: ORDER_STATUS_COLORS[order.status] + '22',
-                  color: ORDER_STATUS_COLORS[order.status],
-                  fontSize: '0.72rem', fontWeight: 700,
-                }}>
-                  {ORDER_STATUS_LABELS[order.status]}
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#444' }}>⏱ {fmtTime(order.createdAt)}</span>
-              </div>
+        <footer className="mt-auto grid grid-cols-1 gap-2">
+          {action && (
+            <PrimaryButton
+              kind={kind}
+              disabled={busy}
+              onClick={() => advance(order)}
+            >
+              {action.label}
+            </PrimaryButton>
+          )}
+          <SecondaryButton disabled={busy} onClick={() => printReceipt(order)}>
+            Imprimir
+          </SecondaryButton>
+        </footer>
+      </article>
+    );
+  };
 
-              {/* Customer */}
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.82rem', color: '#888' }}>
-                  👤 {order.customerName}
-                </span>
-                {order.customerPhone && (
-                  <span style={{ fontSize: '0.82rem', color: '#555' }}>📱 {order.customerPhone}</span>
-                )}
-              </div>
-
-              {/* Items */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {order.items.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 600 }}>
-                      ×{item.quantity}
-                    </span>
-                    <span style={{ fontSize: '0.82rem', color: '#888' }}>{item.productName}</span>
-                    <span style={{ fontSize: '0.78rem', color: '#555', marginLeft: 'auto' }}>
-                      ${(item.price * item.quantity).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {order.notes && (
-                <p style={{ marginTop: '0.5rem', padding: '0.4rem 0.7rem', background: 'rgba(255,184,0,0.08)', borderRadius: '6px', fontSize: '0.78rem', color: '#FFB800', margin: '0.5rem 0 0' }}>
-                  📝 {order.notes}
-                </p>
-              )}
-            </div>
-
-            {/* Right: total + actions */}
-            <div style={{ textAlign: 'right', minWidth: '140px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#FFB800', marginBottom: '0.75rem' }}>
-                ${order.total.toLocaleString()}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {STATUS_FLOW[order.status] && (
-                  <button
-                    onClick={() => advance(order.id, order.status)}
-                    style={{
-                      padding: '0.6rem 1rem',
-                      background: `${ORDER_STATUS_COLORS[order.status]}22`,
-                      border: `1px solid ${ORDER_STATUS_COLORS[order.status]}55`,
-                      borderRadius: '10px',
-                      color: ORDER_STATUS_COLORS[order.status],
-                      fontSize: '0.8rem', fontWeight: 700,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                      transition: 'background 0.18s',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '44'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ORDER_STATUS_COLORS[order.status] + '22'; }}
-                  >
-                    {STATUS_BTN[order.status]}
-                  </button>
-                )}
-
-                {order.status === 'delivered' && (
-                  <span style={{ fontSize: '0.78rem', color: '#444' }}>Completado ✓</span>
-                )}
-
-                {/* Print receipt button */}
-                <button
-                  onClick={() => printReceipt(order)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '10px',
-                    color: '#888',
-                    fontSize: '0.78rem', fontWeight: 600,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                    transition: 'all 0.18s',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.color = '#fff';
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.25)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.color = '#888';
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.1)';
-                  }}
-                >
-                  🖨️ Imprimir ticket
-                </button>
-              </div>
-            </div>
+  return (
+    <div className="mx-auto max-w-[1600px] px-3 py-4 md:px-6 md:py-6">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-wide text-white">Pedidos</h1>
+          <div className="mt-1 text-sm font-semibold text-white/50">
+            Activos: <span className="tabular-nums text-white/80">{activeOrders.length}</span>
+            <span className="mx-2 text-white/20">|</span>
+            Auto refresh: <span className="text-white/80">8s</span>
           </div>
-        ))}
+        </div>
+        <button
+          type="button"
+          onClick={reload}
+          className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-extrabold text-white/80 transition-colors duration-200 hover:bg-white/10 hover:text-white active:scale-[0.99]"
+        >
+          Refrescar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Column title="Pending" count={pendingCol.length} accent="amber">
+          {pendingCol.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm font-semibold text-white/40">
+              Sin pedidos
+            </div>
+          ) : (
+            pendingCol.map((o) => <OrderCard key={o.id} order={o} />)
+          )}
+        </Column>
+
+        <Column title="Preparing" count={preparingCol.length} accent="orange">
+          {preparingCol.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm font-semibold text-white/40">
+              Sin pedidos
+            </div>
+          ) : (
+            preparingCol.map((o) => <OrderCard key={o.id} order={o} />)
+          )}
+        </Column>
+
+        <Column title="Ready" count={readyCol.length} accent="emerald">
+          {readyCol.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm font-semibold text-white/40">
+              Sin pedidos
+            </div>
+          ) : (
+            readyCol.map((o) => <OrderCard key={o.id} order={o} />)
+          )}
+        </Column>
       </div>
     </div>
   );

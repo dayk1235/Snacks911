@@ -91,10 +91,9 @@ function isUuid(value: string) {
 
 function mapOrderStatusFromDb(status: unknown): OrderStatus {
   const normalized = String(status ?? '').toLowerCase();
-  if (normalized === 'confirmed') return 'pending';
   if (normalized === 'draft') return 'pending';
-  if (normalized === 'cancelled') return 'delivered';
-  if (normalized === 'pending' || normalized === 'preparing' || normalized === 'ready' || normalized === 'delivered') {
+  if (normalized === 'cancelled') return 'cancelled';
+  if (normalized === 'pending' || normalized === 'confirmed' || normalized === 'preparing' || normalized === 'ready' || normalized === 'delivered') {
     return normalized;
   }
   return 'pending';
@@ -108,13 +107,19 @@ function createUuid() {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
   }
-  return `ord_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  // RFC4122 v4 compliant fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>[]): Order {
   return {
     id:            String(row.id),
     status:        mapOrderStatusFromDb(row.status),
+    channel:       (row.channel as any) || 'WEB',
     total:         Number(row.total),
     createdAt:     String(row.created_at),
     customerName:  String(row.customer_name),
@@ -125,8 +130,8 @@ function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>
     items: items.map(i => ({
       productId:   String(i.product_id ?? ''),
       productName: String(i.product_name ?? i.product_id ?? 'Producto'),
-      quantity:    Number(i.quantity ?? i.qty ?? 1),
-      price:       Number(i.price ?? i.unit_price ?? 0),
+      quantity:    Number(i.qty ?? i.quantity ?? 1),
+      price:       Number(i.unit_price ?? i.price ?? 0),
     })),
   };
 }
@@ -200,6 +205,7 @@ export async function dbSaveOrder(order: Order): Promise<string> {
   const orderRow = {
     id:             orderId,
     status:         mapOrderStatusToDb(order.status),
+    channel:        order.channel || 'WEB',
     total:          order.total,
     created_at:     order.createdAt,
     customer_name:  order.customerName,
@@ -213,26 +219,16 @@ export async function dbSaveOrder(order: Order): Promise<string> {
   // Delete existing items & re-insert
   await supabase.from('order_items').delete().eq('order_id', orderId);
   if (order.items.length > 0) {
-    const legacyRows = order.items.map(i => ({
+    const itemRows = order.items.map(i => ({
       order_id: orderId,
-      product_id: i.productId,
+      product_id: isUuid(i.productId) ? i.productId : null,
       product_name: i.productName,
-      quantity: i.quantity,
-      price: i.price,
+      qty: i.quantity,
+      unit_price: i.price,
+      selected_modifiers_json: [],
     }));
-    const { error: legacyErr } = await supabase.from('order_items').insert(legacyRows);
-
-    if (legacyErr) {
-      const botRows = order.items.map(i => ({
-        order_id: orderId,
-        product_id: isUuid(i.productId) ? i.productId : null,
-        qty: i.quantity,
-        unit_price: i.price,
-        selected_modifiers_json: [],
-      }));
-      const { error: botErr } = await supabase.from('order_items').insert(botRows);
-      if (botErr) throw botErr;
-    }
+    const { error: itemsErr } = await supabase.from('order_items').insert(itemRows);
+    if (itemsErr) throw itemsErr;
   }
 
   return orderId;

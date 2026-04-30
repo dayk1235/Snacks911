@@ -27,12 +27,13 @@ export type {
   UserPrefs,
 } from './types';
 
-// Intent detection
-export { detectIntent, getStage } from './intents';
+// Intent detection (Unified Agent)
+export { detectIntent } from './intentDetector';
 
-// Response engine (GOD MODE sales pipeline)
+// Response engine (GOD MODE & Modular Integration)
 export {
   handleMessage,
+  handleMessageModular,
   buildDeliveryPrompt,
   buildOrderConfirmation,
   INITIAL_STATE,
@@ -55,19 +56,14 @@ export {
   createEmptyCart,
 } from './cartEngine';
 
-// Recommendation engine
+// Offer Agent (Unified Recommendation & Upsell)
 export {
   getTopCombos,
   getBestsellers,
-  getFavorites,
   getCrossSell,
-  suggestUpgrade,
-  suggestExtras,
-  getPriceAnchor,
-  getMicroReward,
-  generateOrderSummary,
-  buildOrderWhatsAppUrl,
-} from './recommendationEngine';
+  getEntryRecommendation,
+  getBestUpsell,
+} from './offerAgent';
 
 // Antojo (desire-trigger phrases)
 export {
@@ -78,3 +74,6 @@ export {
   getNextStrategy,
   applyLoopStrategy,
 } from './antojo';
+
+// Orchestration
+export { runAgents } from './agentOrchestrator';

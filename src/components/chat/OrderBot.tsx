@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../ui/Button';
-import { handleMessage, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
+import { handleMessageModular, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
 import { products as allProducts } from '@/data/products';
+import { AdminStore } from '@/lib/adminStore';
+import { logEvent } from '@/core/eventLogger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Msg { id: number; text: string; sender: 'bot' | 'user'; actions?: { label: string; value: string }[]; }
@@ -15,16 +17,36 @@ const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded') ?? allPr
 const BEBIDA         = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
 const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
 
+function parseRolloutPercent(value: string | undefined): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 100;
+  return Math.max(0, Math.min(100, Math.floor(n)));
+}
+
+function hashToBucket(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0;
+  return Math.abs(hash) % 100;
+}
+
 export default function OrderBot() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [state, setState] = useState<ConversationState>(INITIAL_STATE);
+  const [useModular, setUseModular] = useState(true);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(1);
+  const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+
+  const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
+  const rolloutPercent = parseRolloutPercent(process.env.NEXT_PUBLIC_ENGINE_MODULAR_ROLLOUT_PERCENT);
+  const isSessionRoutedToModular = hashToBucket(rolloutSessionIdRef.current) < rolloutPercent;
+  const engineByRollout = forceLegacy ? false : isSessionRoutedToModular;
+  const effectiveUseModular = engineByRollout && useModular;
 
   const productRefs = useMemo(() => ({
     comboName: COMBO_911?.name ?? 'Combo 911', comboPrice: COMBO_911?.price ?? 149,
@@ -42,28 +64,72 @@ export default function OrderBot() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, thinking]);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 350); }, [open]);
 
-  // Greeting
+  // Greeting + Session Start
   useEffect(() => {
     if (open && msgs.length === 0) {
+      logEvent({
+        event_type: 'session_start',
+        payload_json: { engine_type: effectiveUseModular ? 'MODULAR' : 'LEGACY' }
+      });
       const g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
       setMsgs([{ id: idRef.current++, text: g, sender: 'bot' }]);
     }
-  }, [open, msgs.length]);
+  }, [open, msgs.length, effectiveUseModular]);
 
-  // WhatsApp confirmation
+  // WhatsApp confirmation + Checkout Completed
   useEffect(() => {
-    if (state.whatsappUrl && state.deliveryStep === 'done') {
+    if (state.whatsappUrl && state.deliveryStep === 'done' && state.orderConfirmed) {
+      logEvent({
+        event_type: 'checkout_completed',
+        payload_json: { 
+          engine_type: effectiveUseModular ? 'MODULAR' : 'LEGACY',
+          cart_total: state.cartTotal,
+          items_count: state.cart.length
+        }
+      });
+
+      const itemsToSubmit = state.cart.map(name => {
+        const cleanName = name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+        const product = allProducts.find(p => 
+          p.name === cleanName || 
+          p.name.includes(cleanName) || 
+          cleanName.includes(p.name)
+        );
+        return {
+          id: product?.id ?? 0,
+          name: name,
+          price: product?.price ?? 0,
+          quantity: 1,
+        };
+      });
+
+      if (itemsToSubmit.length > 0) {
+        AdminStore.submitOrder(
+          itemsToSubmit,
+          state.cartTotal,
+          undefined,
+          state.customerName,
+          undefined,
+          false,
+          'WEB'
+        ).catch(err => {
+          console.error('[OrderBot] Error saving order:', err);
+        });
+      }
       window.open(state.whatsappUrl, '_blank');
     }
-  }, [state.whatsappUrl, state.deliveryStep]);
+  }, [state.whatsappUrl, state.deliveryStep, state.orderConfirmed, state.cart, state.cartTotal, state.customerName, effectiveUseModular]);
 
   const processResponse = useCallback(async (text: string, action?: string) => {
     setThinking(true);
-    
-    // Artificial delay for realism
     await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
     
-    const output: ResponseOutput = handleMessage(text, state, productRefs, action);
+    const { handleMessage } = await import('@/core/responseEngine');
+    console.log('VISIBLE ENGINE:', effectiveUseModular ? 'MODULAR' : 'LEGACY');
+    
+    const output: ResponseOutput = effectiveUseModular 
+      ? await handleMessageModular(text, state, productRefs, action)
+      : handleMessage(text, state, productRefs, action);
     
     setThinking(false);
     setMsgs(p => [...p, { 
@@ -73,13 +139,12 @@ export default function OrderBot() {
       actions: output.actions 
     }]);
     setState(output.nextState);
-  }, [state, productRefs]);
+  }, [state, productRefs, effectiveUseModular]);
 
   const send = useCallback(async () => {
     const t = input.trim();
     if (!t || thinking) return;
     setInput('');
-
     setMsgs(p => [...p, { id: idRef.current++, text: t, sender: 'user' }]);
     await processResponse(t);
   }, [input, thinking, processResponse]);
@@ -92,7 +157,6 @@ export default function OrderBot() {
 
   return (
     <>
-      {/* Panel */}
       <div
         className="card-premium"
         style={{
@@ -121,11 +185,29 @@ export default function OrderBot() {
            }}>🔥</div>
            <div style={{ flex: 1 }}>
              <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
-             <div style={{ fontSize: '0.68rem', color: 'var(--status-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)', display: 'inline-block' }} />
-               En línea
+             <div style={{ fontSize: '0.68rem', color: effectiveUseModular ? 'var(--status-success)' : '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: effectiveUseModular ? 'var(--status-success)' : '#f59e0b', display: 'inline-block' }} />
+               {effectiveUseModular ? 'MODULAR ENGINE' : 'LEGACY ENGINE'}
              </div>
            </div>
+           
+           <button 
+             disabled={forceLegacy}
+             onClick={(e) => { e.stopPropagation(); setUseModular(!useModular); }}
+             style={{
+               background: 'rgba(255,255,255,0.05)',
+               border: '1px solid rgba(255,255,255,0.1)',
+               borderRadius: '6px',
+               padding: '4px 8px',
+               color: 'var(--text-secondary)',
+               fontSize: '0.6rem',
+               cursor: 'pointer',
+               transition: 'all 0.2s'
+             }}
+           >
+             SWITCH
+           </button>
+
            {/* 🟢 TOTAL EN VIVO */}
            {state.cartTotal > 0 && (
              <div style={{
@@ -198,11 +280,7 @@ export default function OrderBot() {
                 color: m.sender === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
                 fontSize: '0.88rem', lineHeight: 1.55, whiteSpace: 'pre-line',
                 boxShadow: m.sender === 'user' ? '0 3px 12px rgba(255,69,0,0.2)' : 'none',
-                transition: 'transform 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-              >{m.text}</div>
+              }}>{m.text}</div>
               
               {m.actions && m.actions.length > 0 && m.sender === 'bot' && (
                 <div style={{ 
@@ -222,20 +300,7 @@ export default function OrderBot() {
                         fontSize: '0.78rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
                         animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'var(--accent)';
-                        (e.currentTarget as HTMLElement).style.color = '#fff';
-                        (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.03)';
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(255,69,0,0.3)';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.1)';
-                        (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
-                        (e.currentTarget as HTMLElement).style.transform = 'translateY(0) scale(1)';
-                        (e.currentTarget as HTMLElement).style.boxShadow = 'none';
                       }}
                     >
                       {a.label}
@@ -320,23 +385,19 @@ export default function OrderBot() {
            0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
            40% { transform: scale(1.2); opacity: 1; }
          }
-
          @keyframes pulseTotal {
            0% { transform: scale(1); }
            50% { transform: scale(1.04); }
            100% { transform: scale(1); }
          }
-
          @keyframes msgSlideIn {
            from { opacity: 0; transform: translateY(14px) scale(0.95); }
            to   { opacity: 1; transform: translateY(0) scale(1); }
          }
-
          @keyframes actionsFadeIn {
            from { opacity: 0; transform: translateY(6px); }
            to   { opacity: 1; transform: translateY(0); }
          }
-
          @keyframes btnBounceIn {
            0% { opacity: 0; transform: scale(0.8); }
            60% { transform: scale(1.05); }

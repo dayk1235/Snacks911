@@ -24,7 +24,9 @@ export interface AdminProduct {
   applicableProductIds?: string[];
 }
 
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered';
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+
+export type OrderChannel = 'WEB' | 'POS' | 'WHATSAPP';
 
 export interface OrderItem {
   productId: string;
@@ -38,6 +40,7 @@ export interface Order {
   items: OrderItem[];
   total: number;
   status: OrderStatus;
+  channel?: OrderChannel;
   createdAt: string;       // ISO date string
   customerName: string;
   customerPhone?: string;
@@ -115,16 +118,20 @@ export interface CustomCategory {
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending:   '⏳ Pendiente',
+  confirmed: '🤝 Confirmado',
   preparing: '🔥 Preparando',
   ready:     '✅ Listo',
   delivered: '📦 Entregado',
+  cancelled: '❌ Cancelado',
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending:   '#FFB800',
+  confirmed: '#3B82F6',
   preparing: '#FF4500',
   ready:     '#22c55e',
   delivered: '#555555',
+  cancelled: '#ef4444',
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {

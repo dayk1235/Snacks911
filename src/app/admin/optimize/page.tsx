@@ -28,7 +28,7 @@ export default function SalesOptimizationPage() {
         AdminStore.getOrders(),
       ]);
       setProducts(p);
-      setOrders(o);
+      void o;
       setLoading(false);
     };
     load();

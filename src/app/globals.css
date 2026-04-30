@@ -131,7 +131,7 @@ body {
   body:not(:has([data-admin="true"])) *, 
   body:not(:has([data-admin="true"])) *::before, 
   body:not(:has([data-admin="true"])) *::after {
-    cursor: none !important;
+    cursor: auto !important;
   }
 }
 

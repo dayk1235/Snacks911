@@ -16,15 +16,22 @@ export type Intent =
   | 'pago_problema'
   | 'exploracion'
   | 'browsing'
-  | 'hambre'
-  | 'duda'
-  | 'precio'
-  | 'pedido'
+  | 'hungry_strong'
+  | 'hungry_light'
+  | 'undecided'
+  | 'pricing'
+  | 'ready_to_order'
+  | 'complaint'
   | 'gratitud'
   | 'despedida'
   | 'edicion'
   | 'urgencia'
-  | 'mixto';
+  | 'mixto'
+  | 'duda'
+  | 'pedido'
+  | 'hambre'
+  | 'precio'
+  | 'other';
 
 export type Stage = 'inicio' | 'explorando' | 'decidiendo' | 'ordenando' | 'post_venta';
 

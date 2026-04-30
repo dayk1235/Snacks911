@@ -5,7 +5,7 @@
  * Provides deterministic, hardcoded responses based on intent.
  */
 
-import { IntentType } from './intentDetector';
+import type { Intent } from './types';
 
 /**
  * Returns a static fallback response based on the detected intent.
@@ -13,7 +13,7 @@ import { IntentType } from './intentDetector';
  * @param intent - The detected user intent
  * @returns A hardcoded response string
  */
-export function getFallbackResponse(intent: IntentType): string {
+export function getFallbackResponse(intent: Intent): string {
   switch (intent) {
     case 'ready_to_order':
       return '¡Excelente! Estoy listo para procesar tu pedido. ¿Qué te gustaría ordenar hoy?';

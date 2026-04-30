@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminStore } from '@/lib/adminStore';
 import { supabase } from '@/lib/supabase';
@@ -15,10 +15,12 @@ const HIGH_LOAD_THRESHOLD = 4;    // active orders that trigger warning
 
 // ─── Status visual config ────────────────────────────────────────────────────
 const STATUS: Record<OrderStatus, { bg: string; border: string; text: string; nextLabel: string }> = {
-  pending:    { bg: '#1a1500', border: '#FFB800', text: '#FFB800', nextLabel: '🔥 Preparando' },
+  pending:    { bg: '#1a1500', border: '#FFB800', text: '#FFB800', nextLabel: '🤝 Confirmar' },
+  confirmed:  { bg: '#000a1a', border: '#3B82F6', text: '#3B82F6', nextLabel: '🔥 Preparar' },
   preparing:  { bg: '#1a0a00', border: '#FF4500', text: '#FF4500', nextLabel: '✅ Listo' },
   ready:      { bg: '#001a0a', border: '#22c55e', text: '#22c55e', nextLabel: '✓ Entregado' },
   delivered:  { bg: '#111',    border: '#333',     text: '#555',    nextLabel: '' },
+  cancelled:  { bg: '#000',    border: '#333',     text: '#444',    nextLabel: '' },
 };
 
 // ─── Priority: returns { border, timeColor, isOverdue } ─────────────────────
@@ -33,16 +35,6 @@ function elapsed(iso: string): { mins: number; label: string } {
   return { mins, label: mins < 1 ? 'Ahora' : `${mins}min` };
 }
 
-// ─── Sound cooldown: 3s between alerts ──────────────────────────────────────
-let lastSoundAt = 0;
-const SOUND_COOLDOWN_MS = 3000;
-
-function playAlertWithCooldown() {
-  const now = Date.now();
-  if (now - lastSoundAt < SOUND_COOLDOWN_MS) return;
-  lastSoundAt = now;
-  playOrderNotification();
-}
 
 // ─── Load assessment ─────────────────────────────────────────────────────────
 type LoadLevel = 'good' | 'high' | 'overloaded';
@@ -58,16 +50,27 @@ function assessLoad(activeCount: number, avgPrep: number): { level: LoadLevel; m
 }
 
 // ─── Metrics computation (pure, no re-renders) ──────────────────────────────
-function computeMetrics(allOrders: Order[], activeOrders: Order[]) {
+function computeMetrics(allOrders: Order[], activeOrders: Order[], manualDeliveredCount: number) {
   const today = new Date().toISOString().slice(0, 10);
-  const todayOrders = allOrders.filter(o => o.createdAt.slice(0, 10) === today);
-  const completedToday = todayOrders.filter(o => o.status === 'delivered').length;
+  const todayOrders = allOrders.filter(o => {
+    const dateStr = o.createdAt || (o as any).created_at || '';
+    return dateStr.slice(0, 10) === today;
+  });
+  
+  // Sumamos los que sigan en el estado local (si los hay) + el contador manual
+  const completedInState = todayOrders.filter(o => o.status === 'delivered').length;
+  const completedToday = completedInState + manualDeliveredCount;
+  
+  const pendingCount = todayOrders.filter(o => o.status === 'pending').length;
+  const confirmedCount = todayOrders.filter(o => o.status === 'confirmed').length;
 
   let prepSum = 0;
   let prepCount = 0;
   todayOrders.forEach(o => {
-    const mins = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
-    if (o.status === 'delivered' || o.status === 'ready' || o.status === 'preparing') {
+    const dateStr = o.createdAt || (o as any).created_at;
+    if (!dateStr) return;
+    const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+    if (['preparing', 'ready', 'delivered'].includes(o.status)) {
       prepSum += mins;
       prepCount++;
     }
@@ -81,33 +84,123 @@ function computeMetrics(allOrders: Order[], activeOrders: Order[]) {
   return {
     active: activeOrders.length,
     completedToday,
+    pendingCount,
+    confirmedCount,
     avgPrep,
     prepStatus,
     prepDelta,
+    totalToday: todayOrders.length,
   };
 }
 
-// ─── Main KDS Page ───────────────────────────────────────────────────────────
+function normalizeOrder(raw: any): Order {
+  const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  
+  // Si no tiene ID o no es UUID, generamos uno legacy para no romper el estado local
+  const id = raw.id && isUuid(String(raw.id)) 
+    ? String(raw.id) 
+    : (raw.id || `legacy-${Math.random().toString(36).substr(2, 9)}`);
+
+  return {
+    id,
+    customerName: String(raw.customer_name || raw.customerName || ''),
+    customerPhone: String(raw.customer_phone || raw.customerPhone || ''),
+    total: Number(raw.total || 0),
+    status: (String(raw.status || 'pending') as OrderStatus),
+    createdAt: String(raw.created_at || raw.createdAt || new Date().toISOString()),
+    items: Array.isArray(raw.items) ? raw.items : [],
+    handledBy: raw.handled_by || raw.handledBy || undefined,
+  };
+}
+
+/* ─── Main KDS Page ─────────────────────────────────────────────────────────── */
 export default function KitchenDisplay() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
-  const [employeeName] = useState(() => {
-    try { return typeof window !== 'undefined' ? localStorage.getItem('snacks911_employee_name') || '' : ''; } catch { return ''; }
-  });
+  const [employeeName, setEmployeeName] = useState('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // ── Audio Unlock (Browser Auto-play Policy) ────────────────────────────────
+  useEffect(() => {
+    const unlock = () => {
+      if (!audioRef.current) {
+        // Inicializamos con un Audio objeto para "desbloquear" el permiso del navegador
+        const a = new Audio('/alert-cocina.mp3'); 
+        a.volume = 1;
+        a.play().catch(() => { /* Silenciar error */ });
+        a.pause();
+        a.currentTime = 0;
+        audioRef.current = a;
+        console.log('[KDS AUDIO] unlocked');
+      }
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('snacks911_employee_name');
+      if (saved) setEmployeeName(saved);
+    } catch (err) {
+      console.error('Error reading employee name from localStorage:', err);
+    }
+  }, []);
   const [tick, setTick] = useState(0);
   const [rtConnected, setRtConnected] = useState(true);
+  const [deliveredCount, setDeliveredCount] = useState(0);
+  const [recentDelivered, setRecentDelivered] = useState<Order[]>([]);
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Double-tap tracking: { orderId, timestamp }
   const lastTap = useRef<{ id: string; ts: number }>({ id: '', ts: 0 });
+  const advancingIdsRef = useRef<Set<string>>(new Set());
+
+  // ── Play notification sound ──────────────────────────────────────────────
+  const playAlert = useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return console.warn('[KDS SOUND] locked');
+    
+    try {
+      a.currentTime = 0;
+      a.volume = 1;
+      a.play().then(() => console.log('[KDS SOUND] played'))
+              .catch(e => console.warn('[KDS SOUND] blocked', e));
+    } catch (e) {
+      console.warn('[KDS SOUND] error', e);
+    }
+  }, []);
 
   // ── Load orders ──────────────────────────────────────────────────────────
   const loadOrders = useCallback(async () => {
-    const o = await AdminStore.getOrders();
-    setOrders(o);
-  }, []);
+    try {
+      console.log('[Admin] Fetching orders from DB...');
+      const res = await fetch('/api/orders-list');
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error);
+
+      const rawData = Array.isArray(json.data) ? (json.data as any[]) : [];
+      const normalizedOrders = rawData.map(normalizeOrder);
+
+      // ── Polling Sound Fallback ──
+      // Si el realtime falla por RLS, el polling detectará la nueva orden aquí
+      setOrders(prev => {
+        if (prev.length > 0) {
+          const existingIds = new Set(prev.map(o => o.id));
+          const hasNew = normalizedOrders.some(o => !existingIds.has(o.id));
+          if (hasNew) {
+            console.log('[KDS POLL] Nueva orden detectada por polling');
+            playAlert();
+          }
+        }
+        return normalizedOrders;
+      });
+    } catch (err) {
+      console.error('[Orders] Fallo al cargar órdenes:', err);
+    }
+  }, [playAlert]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -123,42 +216,79 @@ export default function KitchenDisplay() {
     return () => clearInterval(iv);
   }, []);
 
+  // ── Reset delivered counter at local midnight ───────────────────────────
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    let dailyIntervalId: ReturnType<typeof setInterval> | null = null;
+
+    const timeoutId = setTimeout(() => {
+      setDeliveredCount(0);
+      dailyIntervalId = setInterval(() => setDeliveredCount(0), 24 * 60 * 60 * 1000);
+    }, msUntilMidnight);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (dailyIntervalId) clearInterval(dailyIntervalId);
+    };
+  }, []);
+
   // ── Supabase real-time with connection tracking ──────────────────────────
   useEffect(() => {
     const ch = supabase
       .channel('kds-orders')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
-        const newOrder = payload.new as Record<string, unknown>;
-        const orderId = String(newOrder.id);
+        // 1. Sonido primero (Prioridad absoluta)
+        playAlert();
 
-        // Fetch order with items immediately for the alert modal
-        const { data: fullOrder } = await supabase
-          .from('orders')
-          .select('*, order_items(*)')
-          .eq('id', orderId)
-          .single();
+        // 2. Normalizar y Loggear
+        const order = normalizeOrder(payload.new);
+        console.log('[KDS INSERT]', order.id);
 
-        const items = (fullOrder?.order_items as Record<string, unknown>[] | []) ?? [];
-
-        setPendingOrder({
-          id: orderId,
-          customerName: String(newOrder.customer_name || ''),
-          customerPhone: String(newOrder.customer_phone || ''),
-          total: Number(newOrder.total || 0),
-          items: items.map(i => ({
-            productName: String(i.product_name),
-            quantity: Number(i.quantity),
-            price: Number(i.price),
-          })),
-          createdAt: String(newOrder.created_at || new Date().toISOString()),
+        // 3. Dedupe e insertar al inicio
+        setOrders(prev => {
+          if (prev.some(o => o.id === order.id)) return prev;
+          return [order, ...prev];
         });
 
-        // Refresh full order list in background
-        loadOrders();
-        setNewIds(prev => new Set([...prev, orderId]));
-        playAlertWithCooldown();
+        // 4. Modal y Resaltado
+        setPendingOrder({
+          id: order.id,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          total: order.total,
+          items: order.items,
+          createdAt: order.createdAt,
+        });
+
+        setNewIds(prev => new Set([...prev, order.id]));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        const updated = normalizeOrder(payload.new);
+        console.log('[KDS UPDATE]', updated.id, updated.status);
+
+        if (updated.status === 'delivered' || updated.status === 'cancelled') {
+          // Si ya no es activa, la removemos del estado local
+          setOrders(prev => {
+            const removed = prev.find(o => o.id === updated.id);
+            if (updated.status === 'delivered' && removed) {
+              setRecentDelivered(prevDelivered => [removed, ...prevDelivered].slice(0, 10));
+            }
+            return prev.filter(o => o.id !== updated.id);
+          });
+          if (updated.status === 'delivered') {
+            setDeliveredCount(c => c + 1);
+          }
+          return;
+        }
+
+        // Si sigue activa, mergeamos (actualizar datos sin mover de lugar)
+        setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
       })
       .subscribe((status) => {
+        console.log('[KDS CHANNEL]', status);
         setRtConnected(status === 'SUBSCRIBED');
       });
 
@@ -182,14 +312,29 @@ export default function KitchenDisplay() {
 
   // ── Advance status with double-tap safety for "ready → delivered" ────────
   const advance = useCallback(async (order: Order) => {
+    if (advancingIdsRef.current.has(order.id)) return;
+    advancingIdsRef.current.add(order.id);
+
+    console.log('[KDS] id', order.id);
+
+    // 1. Validar UUID format (advertencia para legacy, no descarte)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(order.id);
+    if (!isUuid) {
+      console.warn('[KDS] Intentando avanzar orden legacy/no-UUID:', order.id);
+      // Nota: El backend podría rechazar esto si espera un UUID real.
+    }
+
     const next: Record<OrderStatus, OrderStatus> = {
-      pending: 'preparing',
+      pending: 'confirmed',
+      confirmed: 'preparing',
       preparing: 'ready',
       ready: 'delivered',
       delivered: 'delivered',
+      cancelled: 'cancelled',
     };
     const status = next[order.status];
 
+    // Double-tap safety for "ready → delivered"
     if (order.status === 'ready') {
       const now = Date.now();
       const last = lastTap.current;
@@ -200,30 +345,91 @@ export default function KitchenDisplay() {
       lastTap.current = { id: '', ts: 0 };
     }
 
-    const assignBy = (!order.handledBy && status === 'preparing') ? employeeName || undefined : undefined;
-    await AdminStore.updateOrderStatus(order.id, status, assignBy);
-    await loadOrders();
-  }, [employeeName, loadOrders]);
+    // 2. Optimistic Update
+    const prevOrder = { ...order };
+    if (status === 'delivered') {
+      setOrders(prev => prev.filter(o => o.id !== order.id));
+      setDeliveredCount(c => c + 1);
+    } else {
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
+    }
 
-  // ── Sort: priority-first, then oldest first ──────────────────────────────
-  const active = orders
-    .filter(o => o.status !== 'delivered')
-    .sort((a, b) => {
-      const aMins = Math.floor((Date.now() - new Date(a.createdAt).getTime()) / 60000);
-      const bMins = Math.floor((Date.now() - new Date(b.createdAt).getTime()) / 60000);
-      const aPrio = aMins >= 10 ? 0 : aMins >= 5 ? 1 : 2;
-      const bPrio = bMins >= 10 ? 0 : bMins >= 5 ? 1 : 2;
-      if (aPrio !== bPrio) return aPrio - bPrio;
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    try {
+      // 3. PATCH directo
+      const response = await fetch('/api/orders/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: order.id, status }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('[KDS] Fallo en actualización:', result.error);
+
+        // Rollback optimista: Reinsertar la orden previa
+        setOrders(prev => {
+          if (prev.some(o => o.id === prevOrder.id)) {
+            return prev.map(o => o.id === prevOrder.id ? prevOrder : o);
+          }
+          return [prevOrder, ...prev];
+        });
+        if (status === 'delivered') setDeliveredCount(c => Math.max(0, c - 1));
+        return;
+      }
+
+      // Éxito: No llamar a loadOrders(), el estado local ya es correcto.
+    } catch (err) {
+      console.error('[KDS] Error de red, revirtiendo estado:', err);
+      setOrders(prev => [prevOrder, ...prev.filter(o => o.id !== prevOrder.id)]);
+      if (status === 'delivered') setDeliveredCount(c => Math.max(0, c - 1));
+    } finally {
+      advancingIdsRef.current.delete(order.id);
+    }
+  }, [loadOrders]);
+
+  // ── Column grouping: active only, single pass ───────────────────────────
+  const groups = useMemo(() => {
+    const res = orders.reduce((acc, o) => {
+      if (o.status === 'delivered' || o.status === 'cancelled') return acc;
+      const s = o.status as keyof typeof acc;
+      if (acc[s]) acc[s].push(o);
+      return acc;
+    }, {
+      pending: [] as Order[],
+      confirmed: [] as Order[],
+      preparing: [] as Order[],
+      ready: [] as Order[]
     });
+
+    // Ordenar cada columna: Antiguas primero, empate por Total desc
+    const sortFn = (a: Order, b: Order) => {
+      const ta = new Date(a.createdAt).getTime();
+      const tb = new Date(b.createdAt).getTime();
+      if (ta !== tb) return ta - tb;
+      return b.total - a.total;
+    };
+
+    res.pending.sort(sortFn);
+    res.confirmed.sort(sortFn);
+    res.preparing.sort(sortFn);
+    res.ready.sort(sortFn);
+
+    return res;
+  }, [orders]);
+
+  // Derived list for metrics
+  const active = useMemo(() => [
+    ...groups.pending, ...groups.confirmed, ...groups.preparing, ...groups.ready
+  ], [groups]);
 
   // ── High volume mode: active > 5 ─────────────────────────────────────────
   const highVolume = active.length > 5;
 
   // ── Metrics (computed from derived values, no extra state) ───────────────
-  const metrics = computeMetrics(orders, active);
+  const metrics = computeMetrics(orders, active, deliveredCount);
   const load = assessLoad(metrics.active, metrics.avgPrep);
   const pendingCount = active.filter(o => o.status === 'pending').length;
+  const confirmedCount = active.filter(o => o.status === 'confirmed').length;
   const preparingCount = active.filter(o => o.status === 'preparing').length;
   const readyCount = active.filter(o => o.status === 'ready').length;
 
@@ -275,9 +481,36 @@ export default function KitchenDisplay() {
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', fontWeight: 700 }}>
           {pendingCount > 0 && <span style={{ color: '#FFB800' }}>⏳ {pendingCount}</span>}
+          {confirmedCount > 0 && <span style={{ color: '#3B82F6' }}>🤝 {confirmedCount}</span>}
           {preparingCount > 0 && <span style={{ color: '#FF4500' }}>🔥 {preparingCount}</span>}
           {readyCount > 0 && <span style={{ color: '#22c55e' }}>✅ {readyCount}</span>}
         </div>
+        <button
+          onClick={() => {
+            console.log('[KDS] Test sound trigger');
+            playAlert();
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.35rem',
+            padding: '0.35rem 0.75rem',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '8px',
+            color: '#888', fontSize: '0.72rem',
+            fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { 
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; 
+            (e.currentTarget as HTMLElement).style.color = '#fff';
+          }}
+          onMouseLeave={e => { 
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; 
+            (e.currentTarget as HTMLElement).style.color = '#888';
+          }}
+        >
+          🔊 Test Sonido
+        </button>
         <button
           onClick={async () => {
             localStorage.removeItem('snacks911_employee_name');
@@ -320,7 +553,13 @@ export default function KitchenDisplay() {
           📊 Activos: <b style={{ color: load.color }}>{metrics.active}</b>
         </span>
         <span>
-          ✅ Completados: <b style={{ color: '#22c55e' }}>{metrics.completedToday}</b>
+          ✅ Entregadas hoy: <b style={{ color: '#22c55e' }}>{deliveredCount}</b>
+        </span>
+        <span>
+          🤝 Confirmados: <b style={{ color: '#3B82F6' }}>{metrics.confirmedCount}</b>
+        </span>
+        <span>
+          ⏳ Pendientes: <b style={{ color: '#FFB800' }}>{metrics.pendingCount}</b>
         </span>
         <span>
           ⏱ Prep prom: <b style={{ color:
@@ -378,6 +617,38 @@ export default function KitchenDisplay() {
         </div>
       )}
 
+      {/* ── Recent delivered (collapsible) ─────────────────────────────── */}
+      <details style={{
+        margin: '0.5rem 0.75rem 0',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '8px',
+        background: 'rgba(255,255,255,0.02)',
+      }}>
+        <summary style={{
+          cursor: 'pointer',
+          padding: '0.5rem 0.75rem',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+          color: '#ddd',
+          listStyle: 'none',
+        }}>
+          Últimas entregadas ({recentDelivered.length})
+        </summary>
+        <div style={{ padding: '0 0.75rem 0.6rem', display: 'grid', gap: '0.35rem' }}>
+          {recentDelivered.length === 0 ? (
+            <span style={{ fontSize: '0.72rem', color: '#666' }}>Sin entregas recientes</span>
+          ) : recentDelivered.map(order => (
+            <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.72rem' }}>
+              <span style={{ color: '#22c55e', fontWeight: 700 }}>#{order.id.slice(-6).toUpperCase()}</span>
+              <span style={{ color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {order.customerName || 'Cliente'}
+              </span>
+              <span style={{ color: '#bbb' }}>${Number(order.total || 0).toFixed(0)}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+
       {/* ── Order Grid ──────────────────────────────────────────────────── */}
       <div
         ref={containerRef}
@@ -401,7 +672,6 @@ export default function KitchenDisplay() {
             <p style={{ fontSize: '0.9rem' }}>Sin pedidos activos</p>
           </div>
         )}
-
         {active.map(order => {
           const s = STATUS[order.status];
           const { mins, label } = elapsed(order.createdAt);
