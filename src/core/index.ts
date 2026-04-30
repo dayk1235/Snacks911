@@ -77,3 +77,5 @@ export {
 
 // Orchestration
 export { runAgents } from './agentOrchestrator';
+export { agentOrchestrator } from './agentOrchestratorApi';
+export { runBot } from './runBot';

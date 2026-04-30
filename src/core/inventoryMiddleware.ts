@@ -25,7 +25,7 @@ export async function checkStock(itemIds: string[]): Promise<StockCheck[]> {
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, available, stock_quantity, low_stock_threshold')
+    .select('id, is_available')
     .in('id', itemIds);
 
   if (error) {
@@ -54,9 +54,9 @@ export async function checkStock(itemIds: string[]): Promise<StockCheck[]> {
 
     return {
       itemId: product.id,
-      available: product.available,
-      quantity: product.stock_quantity ?? 0,
-      lowStockThreshold: product.low_stock_threshold ?? 0
+      available: product.is_available ?? true,
+      quantity: 0,
+      lowStockThreshold: 0
     };
   });
 }

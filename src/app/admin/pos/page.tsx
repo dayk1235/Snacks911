@@ -218,7 +218,7 @@ export default function POSPage() {
                       product_id: String(p.id),
                       product_name: p.name,
                       category: p.category,
-                      unit_price: p.price,
+                      unit_price: (deliveryType === 'DELIVERY' ? (p as any).delivery_price : undefined) ?? p.price,
                       selected_modifiers_json: []
                     })}
                     style={{ 
@@ -227,7 +227,7 @@ export default function POSPage() {
                     }}
                   >
                     <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '4px' }}>{p.name}</div>
-                    <div style={{ color: '#FF4500', fontWeight: 900 }}>${p.price}</div>
+                    <div style={{ color: '#FF4500', fontWeight: 900 }}>${((deliveryType === 'DELIVERY' ? (p as any).delivery_price : undefined) ?? p.price)}</div>
                   </button>
                 ))}
               </div>

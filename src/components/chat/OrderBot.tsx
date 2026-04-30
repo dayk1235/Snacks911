@@ -113,7 +113,7 @@ export default function OrderBot() {
           false,
           'WEB'
         ).catch(err => {
-          console.error('[OrderBot] Error saving order:', err);
+          console.error('[OrderBot] Error saving order:', err?.message || err);
         });
       }
       window.open(state.whatsappUrl, '_blank');

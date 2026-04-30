@@ -11,13 +11,10 @@ CREATE TABLE IF NOT EXISTS products (
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name       text NOT NULL,
     price      numeric(10, 2) NOT NULL CHECK (price >= 0),
+    delivery_price numeric(10, 2),
     category   text NOT NULL,
-    image_url  text NOT NULL DEFAULT '',
-    available  boolean NOT NULL DEFAULT true,
-    description text NOT NULL DEFAULT '',
-    applicable_product_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    is_available  boolean NOT NULL DEFAULT true,
+    description text NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -121,11 +118,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-CREATE TRIGGER set_products_updated_at
-    BEFORE UPDATE ON products
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_set_updated_at();
 
 CREATE TRIGGER set_business_settings_updated_at
     BEFORE UPDATE ON business_settings
@@ -246,7 +238,7 @@ CREATE POLICY profiles_read
 -- Atomic toggle product availability (avoids read-then-write race)
 CREATE OR REPLACE FUNCTION toggle_product_available(p_id uuid)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
-    UPDATE products SET available = NOT available, updated_at = now()
+    UPDATE products SET is_available = NOT is_available
     WHERE id = p_id;
 $$;
 

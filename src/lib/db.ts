@@ -10,7 +10,7 @@ import type {
   Customer, AuditLog,
 } from './adminTypes';
 
-// ─── Seed defaults (used when table is empty) ─────────────────────────────────
+// ─── Development Seed Defaults (used ONLY for local dev fallback) ─────────────
 const SEED_PRODUCTS: AdminProduct[] = [
   { id: 'p1', name: 'Alitas BBQ',              price: 120, category: 'alitas',   available: true,  description: '8 alitas bañadas en salsa BBQ ahumada',          imageUrl: '' },
   { id: 'p2', name: 'Alitas Buffalo',           price: 120, category: 'alitas',   available: true,  description: '8 alitas en salsa buffalo picante clásica',      imageUrl: '' },
@@ -58,8 +58,8 @@ const DEFAULT_SETTINGS: BusinessSettings = {
 
 // ─── Row mapping helpers ──────────────────────────────────────────────────────
 
-function rowToProduct(row: Record<string, unknown>): AdminProduct {
-  const availabilityRaw = row.available ?? row.is_available ?? row.is_active;
+export function rowToProduct(row: Record<string, unknown>): AdminProduct {
+  const availabilityRaw = row.is_available ?? row.available;
   return {
     id:                   String(row.id),
     name:                 String(row.name),
@@ -69,19 +69,23 @@ function rowToProduct(row: Record<string, unknown>): AdminProduct {
     available:            availabilityRaw === undefined ? true : Boolean(availabilityRaw),
     description:          String(row.description ?? ''),
     applicableProductIds: (row.applicable_product_ids as string[]) ?? [],
+    deliveryPrice:        row.delivery_price ? Number(row.delivery_price) : undefined,
+    priceToShow:          row.delivery_price ? Number(row.delivery_price) : Number(row.price),
   };
 }
 
-function productToRow(p: AdminProduct) {
+export function productToRow(p: AdminProduct) {
+  const avail = (p as any).is_available ?? p.available ?? true;
   return {
     id:                    p.id,
     name:                  p.name,
     price:                 p.price,
     category:              p.category,
     image_url:             p.imageUrl,
-    available:             p.available,
+    is_available:          avail,
     description:           p.description,
     applicable_product_ids: p.applicableProductIds ?? [],
+    delivery_price:        p.deliveryPrice ?? null,
   };
 }
 
@@ -155,18 +159,16 @@ function rowToSettings(row: Record<string, unknown>): BusinessSettings {
 export async function dbGetProducts(): Promise<AdminProduct[]> {
   const { data, error } = await supabase.from('products').select('*').order('created_at');
   if (error) throw error;
+  
   if (!data || data.length === 0) {
-    // Seed on first use
-    await dbSeedProducts();
+    // Return dev fallback if table is empty (useful for rapid dev, but not for prod)
     return SEED_PRODUCTS;
   }
+  
   return (data as Record<string, unknown>[]).map(rowToProduct);
 }
 
-async function dbSeedProducts() {
-  const rows = SEED_PRODUCTS.map(productToRow);
-  await supabase.from('products').upsert(rows);
-}
+
 
 export async function dbSaveProduct(product: AdminProduct): Promise<void> {
   const { error } = await supabase.from('products').upsert(productToRow(product));
@@ -216,16 +218,20 @@ export async function dbSaveOrder(order: Order): Promise<string> {
   const { error } = await supabase.from('orders').upsert(orderRow);
   if (error) throw error;
 
-  // Delete existing items & re-insert
-  await supabase.from('order_items').delete().eq('order_id', orderId);
+  // Delete existing items & re-insert (ignore error if RLS prevents delete, e.g. for public users)
+  try {
+    await supabase.from('order_items').delete().eq('order_id', orderId);
+  } catch (e) {
+    console.warn('[db] Could not delete order_items (expected for new public orders)', e);
+  }
+
   if (order.items.length > 0) {
     const itemRows = order.items.map(i => ({
       order_id: orderId,
-      product_id: isUuid(i.productId) ? i.productId : null,
+      product_id: i.productId || '0', // fallback to '0' as text NOT NULL
       product_name: i.productName,
-      qty: i.quantity,
-      unit_price: i.price,
-      selected_modifiers_json: [],
+      quantity: i.quantity,
+      price: i.price,
     }));
     const { error: itemsErr } = await supabase.from('order_items').insert(itemRows);
     if (itemsErr) throw itemsErr;

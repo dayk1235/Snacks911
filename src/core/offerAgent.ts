@@ -111,9 +111,9 @@ export async function getBestUpsell(
   // 3. Fetch candidate from database (Bestseller in category)
   const { data: candidates, error } = await supabase
     .from('products')
-    .select('id, name, price, available')
+    .select('id, name, price, is_available')
     .eq('category', targetCategory)
-    .eq('available', true)
+    .eq('is_available', true)
     .order('price', { ascending: false })
     .limit(1);
 

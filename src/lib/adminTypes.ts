@@ -22,6 +22,8 @@ export interface AdminProduct {
   description: string;
   /** Only for extras: which product IDs this extra applies to. Empty = applies to all. */
   applicableProductIds?: string[];
+  deliveryPrice?: number;
+  priceToShow?: number;
 }
 
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
