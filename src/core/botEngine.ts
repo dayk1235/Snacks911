@@ -5,5 +5,17 @@ export async function getBotResponse({ message, phone }: { message: string; phon
 
   console.log("PRODUCTS FROM DB:", products);
 
-  return "DB_OK_" + (products?.length || 0);
+  if (!products || products.length === 0) {
+    return "Ahorita no tengo productos disponibles 😔";
+  }
+
+  let text = "🔥 MENÚ Snacks 911 🔥\n\n";
+
+  for (const p of products) {
+    text += `🍗 ${p.name} - $${p.price}\n`;
+  }
+
+  text += "\n¿Qué te gustaría ordenar? 😏";
+
+  return text;
 }
