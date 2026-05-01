@@ -24,6 +24,11 @@ export async function GET(req: Request) {
 
   const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
+  console.log({
+    expected: process.env.WHATSAPP_VERIFY_TOKEN,
+    received: token
+  });
+
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return new Response(challenge, { status: 200 });
   }
