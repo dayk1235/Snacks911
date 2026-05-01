@@ -88,8 +88,12 @@ export async function POST(req: NextRequest) {
 
           console.log('[WA] Processing:', { from, text });
 
+          console.log("STEP 1: CALLING RUNBOT");
+
           // Deterministic response + AI fallback
           const response = await getDeterministicResponse(text, from);
+
+          console.log("STEP 2: RUNBOT CALLED");
 
           // Send reply
           await sendWhatsAppMessage(from, response);
