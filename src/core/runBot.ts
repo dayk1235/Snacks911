@@ -3,6 +3,7 @@ import { dbSaveOrderServer } from '@/lib/dbServer';
 import { supabase } from '@/lib/supabase';
 import { validateOrderItems } from '@/core/validationService';
 import { getCustomerProfile, updateCustomerFromOrder } from '@/core/customerProfileStore';
+import { getBotResponse } from "@/core/botEngine";
 
 
 
@@ -99,20 +100,17 @@ export async function runBot({ channel, message, phone }: BotInput) {
   const state = session.state;
 
 
-  switch (state) {
-    case STATES.IDLE:
-      return await handleIdle(ctx, session);
-    case STATES.BROWSING:
-      return await handleBrowsing(ctx, session);
-    case STATES.ORDERING:
-      return await handleOrdering(ctx, session);
-    case STATES.UPSELL:
-      return handleUpsell(ctx, session);
-    case STATES.CONFIRMING:
-      return await handleConfirming(ctx, session);
-    default:
-      return await handleIdle(ctx, session);
-  }
+  // Usar getBotResponse para generar la respuesta
+  const reply = await getBotResponse({
+    message: message,
+    phone: phone
+  });
+
+  // Por ahora, devolver respuesta simple
+  return {
+    text: reply,
+    type: "text" as const
+  };
 }
 
 async function handleIdle(ctx: any, session: any) {
