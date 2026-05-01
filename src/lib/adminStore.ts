@@ -151,10 +151,27 @@ export const AdminStore = {
 
   async saveOrder(order: Order): Promise<void> {
     try {
-      const savedId = await dbSaveOrder(order);
-      order.id = savedId;
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: order.items,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          channel: order.channel,
+          notes: order.notes,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unknown API error' }));
+        throw new Error(err.error || 'Failed to save order via API');
+      }
+
+      const result = await response.json();
+      order.id = result.orderId;
     } catch (e) {
-      console.warn('[AdminStore] saveOrder failed', e);
+      console.error('[AdminStore] saveOrder failed', e);
       throw e;
     }
   },

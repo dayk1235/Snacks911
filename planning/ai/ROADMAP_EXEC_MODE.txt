@@ -1,23 +1,79 @@
-ROADMAP_EXEC_MODE
+phase:A
+task:0
 
-cuando recibas:
-fase:X tarea:Y
+OBJ:
+habilitar type products sin romper sistema
 
-hacer:
-1. buscar fase
-2. buscar tarea exacta
-3. implementar SOLO esa tarea
-4. devolver:
-   FILE / PATCH / SQL
+---
 
-prohibido:
-- explicar
-- agregar features extra
-- tocar otras tareas
-- refactor grande
+STEP 1
+editar ResponseOutput
 
-si falta contexto:
-- asumir implementación simple
+agregar:
+type?: 'text' | 'buttons' | 'products'
+actions soporta image, price
 
-prioridad:
-funcionalidad > perfección
+---
+
+STEP 2
+en responseEngine
+
+reemplazar returns por:
+
+return {
+  text,
+  type: actions ? 'buttons' : 'text',
+  actions,
+  nextState
+}
+
+---
+
+STEP 3
+agregar products response
+
+if intent === 'exploracion':
+
+return {
+  text: "elige 👇",
+  type: 'products',
+  actions: [
+    { label, value, image, price }
+  ],
+  nextState
+}
+
+---
+
+STEP 4
+en OrderBot.tsx
+
+Msg:
+agregar type
+
+---
+
+STEP 5
+setMsgs:
+
+agregar type: output.type
+
+---
+
+STEP 6
+render:
+
+if m.type === 'products':
+render cards horizontales
+usar image + label + price
+
+---
+
+REGLAS:
+no tocar runBot
+no romper flujo
+no eliminar text
+
+---
+
+END

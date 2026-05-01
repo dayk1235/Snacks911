@@ -8,7 +8,13 @@ import { AdminStore } from '@/lib/adminStore';
 import { logEvent } from '@/core/eventLogger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-interface Msg { id: number; text: string; sender: 'bot' | 'user'; actions?: { label: string; value: string }[]; }
+interface Msg { 
+  id: number; 
+  text: string; 
+  sender: 'bot' | 'user'; 
+  type?: 'text' | 'buttons' | 'products';
+  actions?: { label: string; value: string; image?: string; price?: number; }[]; 
+}
 
 // ─── Product refs for the engine ─────────────────────────────────────────────
 const COMBO_911      = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
@@ -16,18 +22,6 @@ const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless') ?
 const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded') ?? allProducts.find(p => p.category === 'extras') ?? { name: 'Papas Loaded', price: 49 };
 const BEBIDA         = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
 const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
-
-function parseRolloutPercent(value: string | undefined): number {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 100;
-  return Math.max(0, Math.min(100, Math.floor(n)));
-}
-
-function hashToBucket(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0;
-  return Math.abs(hash) % 100;
-}
 
 export default function OrderBot() {
   const [open, setOpen] = useState(false);
@@ -43,10 +37,7 @@ export default function OrderBot() {
   const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
-  const rolloutPercent = parseRolloutPercent(process.env.NEXT_PUBLIC_ENGINE_MODULAR_ROLLOUT_PERCENT);
-  const isSessionRoutedToModular = hashToBucket(rolloutSessionIdRef.current) < rolloutPercent;
-  const engineByRollout = forceLegacy ? false : isSessionRoutedToModular;
-  const effectiveUseModular = engineByRollout && useModular;
+  const effectiveUseModular = forceLegacy ? false : useModular;
 
   const productRefs = useMemo(() => ({
     comboName: COMBO_911?.name ?? 'Combo 911', comboPrice: COMBO_911?.price ?? 149,
@@ -136,6 +127,7 @@ export default function OrderBot() {
       id: idRef.current++, 
       text: output.text, 
       sender: 'bot', 
+      type: output.type,
       actions: output.actions 
     }]);
     setState(output.nextState);
@@ -282,12 +274,41 @@ export default function OrderBot() {
                 boxShadow: m.sender === 'user' ? '0 3px 12px rgba(255,69,0,0.2)' : 'none',
               }}>{m.text}</div>
               
-              {m.actions && m.actions.length > 0 && m.sender === 'bot' && (
-                <div style={{ 
-                  display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
+              {/* STEP 6: Render Product Cards if type is products */}
+              {m.type === 'products' && m.actions && (
+                <div style={{
+                  display: 'flex', gap: '12px', overflowX: 'auto', padding: '8px 0',
+                  msOverflowStyle: 'none', scrollbarWidth: 'none',
                   animation: 'actionsFadeIn 0.3s ease 0.3s both'
                 }}>
-                  {m.actions.map((a, ai) => (
+                  {m.actions.map((a: any) => (
+                    <div 
+                      key={a.value}
+                      onClick={() => handleAction(a.value, a.label)}
+                      style={{
+                        minWidth: '160px', background: 'var(--bg-secondary)',
+                        borderRadius: '12px', border: '1px solid var(--border-subtle)',
+                        overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s',
+                      }}
+                      className="hover:scale-105"
+                    >
+                      {a.image && <img src={a.image} alt={a.label} style={{ width: '100%', height: '90px', objectFit: 'cover' }} />}
+                      <div style={{ padding: '8px' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>{a.label}</div>
+                        {a.price && <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>${a.price}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
+                <div style={{ 
+                  display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
+                  justifyContent: 'center',
+                  animation: 'actionsFadeIn 0.3s ease 0.3s both'
+                }}>
+                  {m.actions.map((a: any, ai: number) => (
                     <button
                       key={a.value}
                       onClick={() => handleAction(a.value, a.label)}

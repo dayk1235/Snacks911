@@ -41,6 +41,11 @@ export function validateResponseOutput(
     actions = undefined;
   }
 
-  return { text, actions, nextState: output.nextState };
+  return { 
+    text, 
+    actions, 
+    type: output.type,
+    nextState: output.nextState 
+  };
 }
 

@@ -42,6 +42,7 @@ export const INITIAL_STATE: ConversationState = {
   cart: [],
   cartTotal: 0,
   whatsappUrl: null,
+  orderTimestamp: undefined,
   reset: false,
 };
 
@@ -75,6 +76,7 @@ function finalizeOrder(next: ConversationState) {
   next.deliveryStep = 'done';
   next.orderConfirmed = true;
   next.stage = 'post_venta';
+  next.orderTimestamp = Date.now();
 
   if (next.cart.length > 0 && next.customerName && next.customerAddress) {
     const items = next.cart.map(i => `• ${i}`).join('\n');
@@ -147,7 +149,7 @@ function getPromptByStage(
   intent: Intent,
   stage: Stage,
   upsellStep: ConversationState['upsellStep'],
-): { text: (ctx: PromptContext) => string; actions?: QuickAction[] } {
+): { text: (ctx: PromptContext) => string; actions?: QuickAction[] | ((ctx: PromptContext) => QuickAction[]); type?: 'text' | 'buttons' | 'products' } {
 
   // ── rechazo_fuerte: soft reset, zero pressure ────────────────────────────
   if (intent === 'rechazo_fuerte') {
@@ -275,9 +277,10 @@ function getPromptByStage(
       if (upsellStep === 'none' || upsellStep === 'papas') {
         return {
           text: (ctx) =>
-            `🍟 Excelente elección. \n\nLos ${ctx.comboName} van perfectos con unas papas loaded extra crujientes con queso derretido. \n\n🔥 Solo +$${ctx.papasPrice}. Es el complemento que todos agregan.\n\n¿Se las pongo?`,
-          actions: [
-            { label: '🍟 Por supuesto', value: 'add_papas' },
+            `🍟 ¡Excelente elección! \n\nAcompaña tus ${ctx.comboName} con unas papas loaded extra crujientes. \n\n🔥 Solo +$${ctx.papasPrice}.`,
+          type: 'products',
+          actions: (ctx) => [
+            { label: '🍟 Sí, agrégalas', value: 'add_papas', price: ctx.papasPrice, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
             { label: '🤔 Por ahora no', value: 'skip_papas' },
           ],
         };
@@ -286,9 +289,10 @@ function getPromptByStage(
       if (upsellStep === 'bebida') {
         return {
           text: (ctx) =>
-            `🥤 Perfecto. \n\nPara acompañar, un refresco bien frio. \n\n💡 Casi todo el mundo lo agrega. +$${ctx.bebidaPrice}. No hay nada peor que comer algo picante sin nada para tomar.\n\n¿Va uno?`,
-          actions: [
-            { label: '🥤 Claro que si', value: 'add_bebida' },
+            `🥤 ¡Refrescante! \n\nUn refresco bien frío para acompañar. Casi todo el mundo lo agrega.\n\n💡 +$${ctx.bebidaPrice}.`,
+          type: 'products',
+          actions: (ctx) => [
+            { label: '🥤 Sí, dámelo', value: 'add_bebida', price: ctx.bebidaPrice, image: 'https://images.unsplash.com/photo-1596803244618-5d346399c390?auto=format&fit=crop&w=400' },
             { label: '🤔 Paso', value: 'skip_bebida' },
           ],
         };
@@ -297,10 +301,11 @@ function getPromptByStage(
       if (upsellStep === 'postre') {
         return {
           text: (ctx) =>
-            `🍫 Último. \n\nUn brownie caliente con helado para cerrar con broche de oro. \n\n✨ Es el favorito de la casa. +$${ctx.postrePrice}. Te va a encantar.\n\n¿Le metemos uno?`,
-          actions: [
-            { label: '🍫 Obvio', value: 'add_postre' },
-            { label: '🤔 Así esta bien', value: 'skip_postre' },
+            `🍫 ¡El toque final! \n\nUn brownie caliente con helado para cerrar con broche de oro. \n\n✨ +$${ctx.postrePrice}.`,
+          type: 'products',
+          actions: (ctx) => [
+            { label: '🍫 ¡SÍ, QUIERO!', value: 'add_postre', price: ctx.postrePrice, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' },
+            { label: '🤔 Por ahora no', value: 'skip_postre' },
           ],
         };
       }
@@ -347,6 +352,9 @@ function getPromptByStage(
 
     // ── POST_VENTA ────────────────────────────────────────────────────────────
     case 'post_venta':
+      if (intent === 'edicion') {
+        return { text: (ctx) => `¡Claro! Todavía estamos a tiempo. Agregamos lo que faltó a tu pedido actual de $${ctx.currentTotal}. ¿Qué más le ponemos?` };
+      }
       if (intent === 'gratitud') {
         return { text: () => `¡De nada! 🔥 Buen provecho. 🍗` };
       }
@@ -423,6 +431,20 @@ function updateState(
   next.reset = false;
 
   next.stage = updateStage(intent, next.stage);
+
+  // ── Handling Post-Order Modification (10min window) ──────────────────────
+  const TEN_MINUTES = 10 * 60 * 1000;
+  if (state.orderConfirmed && intent === 'edicion' && state.orderTimestamp) {
+    const elapsed = Date.now() - state.orderTimestamp;
+    if (elapsed < TEN_MINUTES) {
+      // Re-open order
+      next.orderConfirmed = false;
+      next.deliveryStep = 'none';
+      next.stage = 'ordenando';
+      next.upsellStep = 'done'; // Go to confirmation/editing
+    }
+  }
+
   if (!resolvedAction && !action && intent === 'pedido' && !next.comboSelected && next.cart.length === 0) {
     next.stage = 'decidiendo';
   }
@@ -568,7 +590,12 @@ export function handleMessage(
     const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
     if (deliveryPrompt) {
       nextState.lastResponse = deliveryPrompt.text;
-      return validateResponseOutput({ text: deliveryPrompt.text, actions: deliveryPrompt.actions, nextState }, state);
+      return validateResponseOutput({ 
+        text: deliveryPrompt.text, 
+        type: deliveryPrompt.actions ? 'buttons' : 'text',
+        actions: deliveryPrompt.actions, 
+        nextState 
+      }, state);
     }
   }
 
@@ -594,9 +621,26 @@ export function handleMessage(
   // 7. Store last response
   nextState.lastResponse = responseText;
 
+  // STEP 3: Handle Exploracion intent for Products UI (Legacy Fallback)
+  if (intent === 'exploracion') {
+    return validateResponseOutput({
+      text: "¡Chécate estos favoritos! 👇",
+      type: 'products',
+      actions: [
+        { id: 'p1', label: 'Combo Mixto', value: 'add_combo_mixto', price: 120, image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400' },
+        { id: 'p5', label: 'Papas Gajo', value: 'add_papas_gajo', price: 80, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
+        { id: 'p3', label: 'Boneless Mango', value: 'add_boneless_mango', price: 130, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' }
+      ],
+      nextState,
+    }, state);
+  }
+
+  const resolvedActions = typeof promptFn.actions === 'function' ? promptFn.actions(ctx) : promptFn.actions;
+
   return validateResponseOutput({
     text: responseText,
-    actions: promptFn.actions,
+    type: promptFn.type || (resolvedActions ? 'buttons' : 'text'),
+    actions: resolvedActions,
     nextState,
   }, state);
 }
@@ -650,6 +694,21 @@ export async function handleMessageModular(
 
   const modularTime = Date.now() - startTime;
 
+  // STEP 3: Handle Exploracion intent for Products UI (High Priority)
+  if (agentResponse.intent === 'exploracion') {
+    const nextState = updateState(state, 'exploracion', action, text);
+    return validateResponseOutput({
+      text: "¡Chécate estos favoritos! 👇",
+      type: 'products',
+      actions: [
+        { id: 'p1', label: 'Combo Mixto', value: 'add_combo_mixto', price: 120, image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400' },
+        { id: 'p5', label: 'Papas Gajo', value: 'add_papas_gajo', price: 80, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
+        { id: 'p3', label: 'Boneless Mango', value: 'add_boneless_mango', price: 130, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' }
+      ],
+      nextState,
+    }, state);
+  }
+
   // 2. SHADOW EXECUTION: Run Legacy in background
   const legacyStartTime = Date.now();
   const legacyResponse = handleMessage(text, state, products, action);
@@ -663,18 +722,13 @@ export async function handleMessageModular(
     const handoffMsg = "Ups, parece que necesito ayuda de un humano para esto. Un momento... ✋";
     nextState.lastResponse = handoffMsg;
     
-    // Log Shadow Metrics even on handoff
-    logEvent({
-      event_type: 'shadow_engine_log',
-      payload_json: {
-        modular: { intent: agentResponse.intent, latency: modularTime, handoff: true },
-        legacy: { intent: legacyResponse.nextState.lastIntent, latency: legacyTime },
-        message: text,
-        cart_total: state.cartTotal
-      }
-    });
-
-    return validateResponseOutput({ text: handoffMsg, nextState }, state);
+    // ...
+    
+    return validateResponseOutput({ 
+      text: handoffMsg, 
+      type: 'text',
+      nextState 
+    }, state);
   }
 
   // 5. Build prompt context
@@ -701,7 +755,12 @@ export async function handleMessageModular(
     const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
     if (deliveryPrompt) {
       nextState.lastResponse = deliveryPrompt.text;
-      return validateResponseOutput({ text: deliveryPrompt.text, actions: deliveryPrompt.actions, nextState }, state);
+      return validateResponseOutput({ 
+        text: deliveryPrompt.text, 
+        type: deliveryPrompt.actions ? 'buttons' : 'text',
+        actions: deliveryPrompt.actions, 
+        nextState 
+      }, state);
     }
   }
 
@@ -739,34 +798,12 @@ export async function handleMessageModular(
   // 12. Store last response
   nextState.lastResponse = responseText;
 
-  // 13. TELEMETRY: Log Shadow Comparison
-  logEvent({
-    event_type: 'shadow_engine_log',
-    payload_json: {
-      modular: { 
-        intent: agentResponse.intent, 
-        text: responseText, 
-        latency: modularTime,
-        stage: nextState.stage
-      },
-      legacy: { 
-        intent: legacyResponse.nextState.lastIntent, 
-        text: legacyResponse.text, 
-        latency: legacyTime,
-        stage: legacyResponse.nextState.stage
-      },
-      input: text,
-      cart_total: nextState.cartTotal,
-      diff: {
-        intent_match: agentResponse.intent === legacyResponse.nextState.lastIntent,
-        stage_match: nextState.stage === legacyResponse.nextState.stage
-      }
-    }
-  });
+  const resolvedActions = typeof promptFn.actions === 'function' ? promptFn.actions(ctx) : promptFn.actions;
 
   return validateResponseOutput({
     text: responseText,
-    actions: promptFn.actions,
+    type: promptFn.type || (resolvedActions ? 'buttons' : 'text'),
+    actions: resolvedActions,
     nextState,
   }, state);
 }

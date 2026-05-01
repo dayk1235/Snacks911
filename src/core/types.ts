@@ -54,12 +54,16 @@ export interface ConversationState {
   cart: string[];
   cartTotal: number;
   whatsappUrl: string | null;
+  orderTimestamp?: number;
   reset: boolean;
 }
 
 export interface QuickAction {
   label: string;
   value: string;
+  id?: string | number;
+  image?: string;
+  price?: number;
 }
 
 export interface ChatMessage {
@@ -175,6 +179,7 @@ export interface PromptContext {
 
 export interface ResponseOutput {
   text: string;
+  type?: 'text' | 'buttons' | 'products';
   actions?: QuickAction[];
   nextState: ConversationState;
 }

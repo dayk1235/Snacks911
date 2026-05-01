@@ -115,21 +115,26 @@ export async function runBot({ channel, message, phone }: BotInput) {
 }
 
 async function handleIdle(ctx: any, session: any) {
-  const profile = await getCustomerProfile(ctx.phone);
-  
+  let profile = undefined;
+  try {
+    profile = await getCustomerProfile(ctx.phone);
+  } catch (e) {
+    console.error("[runBot] getCustomerProfile failed:", e);
+  }
+
   if (ctx.text.includes("menu")) {
     session.state = STATES.BROWSING;
-    return { 
+    return {
       text: "¡Claro! Te muestro el menú 🍔\n¿Qué se te antoja hoy?",
       type: "text" as const
     };
   }
 
-  const welcomeMsg = profile && profile.totalOrders > 0 
+  const welcomeMsg = profile && profile.totalOrders > 0
     ? `¡Hola de nuevo ${profile.name || ''}! 👋\n¿Te gustaría tu favorito: ${profile.favoriteProduct}? o ¿ver el menú?`
     : `¡Hola! Bienvenido a Snacks 911 🍔\n¿Qué te gustaría pedir hoy?`;
 
-  return { 
+  return {
     text: welcomeMsg,
     type: "buttons" as const,
     data: [
