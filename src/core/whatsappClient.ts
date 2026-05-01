@@ -87,7 +87,7 @@ export async function setWebhook(url: string): Promise<boolean> {
       body: JSON.stringify({
         object: 'whatsapp_business_account',
         callback_url: url,
-        verify_token: process.env.WHATSAPP_VERIFY_TOKEN,
+         verify_token: process.env.VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || '',
         fields: ['messages'],
       }),
     });

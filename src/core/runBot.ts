@@ -1,4 +1,5 @@
-import { dbGetCustomer, dbGetProducts, dbSaveOrder } from '@/lib/db';
+import { dbGetCustomer, dbGetProducts } from '@/lib/db';
+import { dbSaveOrderServer } from '@/lib/dbServer';
 import { supabase } from '@/lib/supabase';
 import { validateOrderItems } from '@/core/validationService';
 import { getCustomerProfile, updateCustomerFromOrder } from '@/core/customerProfileStore';
@@ -265,7 +266,7 @@ async function handleConfirming(ctx: any, session: any) {
 
       const total = validItems.reduce((sum, i) => sum + i.quantity * i.price, 0);
 
-      await dbSaveOrder({
+      await dbSaveOrderServer({
         id: '', // uuid auto
         status: 'pending',
         channel: 'WHATSAPP',

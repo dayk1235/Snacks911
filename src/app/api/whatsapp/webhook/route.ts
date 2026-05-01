@@ -1,245 +1,236 @@
-import { NextResponse } from 'next/server';
-import { dbSaveOrder, dbGetProducts } from '@/lib/db';
-import { getSession } from '@/lib/whatsappSession';
-import { agentOrchestrator, runBot } from '@/core';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
+import { dbGetProductsServer } from '@/lib/dbServer';
+
 /* =========================
-   CONFIG / HELPERS
+   CONFIG
 ========================= */
-const UPSELLS: Record<string, any[]> = {
-  boneless: [
-    { id: "papas", name: "Papas", price: 45 },
-    { id: "refresco", name: "Refresco", price: 25 }
-  ],
-  alitas: [
-    { id: "papas", name: "Papas", price: 45 }
-  ]
-};
-const PROMOS: Record<string, string> = {
-  new: "🎉 10% OFF en tu primer pedido",
-  casual: "🔥 Agrega papas gratis en tu pedido",
-  vip: "💎 15% OFF + bebida gratis"
-};
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-async function getCustomerData(phone: string) {
-  return {
-    type: 'new' as string,
-    name: 'Hector',
-    favorite_product: 'boneless' as string
-  };
-}
-function getPhoneId() {
-  return process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.WHATSAPP_PHONE_ID || '';
-}
-async function sendToWhatsApp(phone: string, payload: Record<string, unknown>) {
-  const phoneId = getPhoneId();
-  const response = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const body = await response.text();
-  if (!response.ok) {
-    console.error('❌ WhatsApp send FAILED:', { status: response.status, body });
-  } else {
-    console.log('✅ WhatsApp send OK:', { status: response.status });
-  }
-  return { ok: response.ok, body };
-}
+
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
+const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+const API_VERSION = 'v19.0';
+
 /* =========================
-   UI MESSAGES (LIST / BUTTONS)
+   GET — Webhook Verification
 ========================= */
-async function sendWhatsAppMessage(phone: string, text: string) {
-  return sendToWhatsApp(phone, {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'text',
-    text: { body: text },
-  });
-}
-export async function sendMenuList(phone: string) {
-  const products = await dbGetProducts();
-  const payload = {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'interactive',
-    interactive: {
-      type: 'list',
-      header: { type: 'text', text: 'Menú Snacks 911 🍔' },
-      body: { text: 'Selecciona un producto' },
-      action: {
-        button: 'Ver Menú',
-        sections: [
-          {
-            title: 'Productos',
-            rows: products.map(p => ({
-              id: p.id,
-              title: p.name,
-              description: `$${p.price}`
-            }))
-          }
-        ]
-      }
-    }
-  };
-  return sendToWhatsApp(phone, payload);
-}
-export async function sendConfirmButtons(phone: string) {
-  return sendToWhatsApp(phone, {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'interactive',
-    interactive: {
-      type: 'button',
-      body: { text: '¿Confirmar pedido?' },
-      action: {
-        buttons: [
-          { type: 'reply', reply: { id: 'confirm_yes', title: 'Confirmar' } },
-          { type: 'reply', reply: { id: 'confirm_no', title: 'Cancelar' } }
-        ]
-      }
-    }
-  });
-}
-export async function sendUpsellButtons(phone: string, items: any[]) {
-  const buttons = items.slice(0, 2).map(item => ({
-    type: 'reply',
-    reply: { id: `upsell_${item.id}`, title: item.name }
-  }));
-  buttons.push({ type: 'reply', reply: { id: 'upsell_skip', title: 'No gracias' } });
-  return sendToWhatsApp(phone, {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'interactive',
-    interactive: {
-      type: 'button',
-      body: { text: '¿Quieres agregar algo más? 🔥' },
-      action: { buttons }
-    }
-  });
-}
-export async function sendListMessage(phone: string, items: any[]) {
-  return sendToWhatsApp(phone, {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'interactive',
-    interactive: {
-      type: 'list',
-      body: { text: 'Selecciona un producto 🍔' },
-      action: {
-        button: 'Ver menú',
-        sections: [
-          {
-            title: 'Menú',
-            rows: items.map(i => ({
-              id: i.id,
-              title: i.title,
-              description: i.description
-            }))
-          }
-        ]
-      }
-    }
-  });
-}
-export async function sendButtons(phone: string, text: string, buttons: any[]) {
-  return sendToWhatsApp(phone, {
-    messaging_product: 'whatsapp',
-    to: phone,
-    type: 'interactive',
-    interactive: {
-      type: 'button',
-      body: { text },
-      action: {
-        buttons: buttons.map(b => ({
-          type: 'reply',
-          reply: { id: b.id, title: b.title }
-        }))
-      }
-    }
-  });
-}
-/* =========================
-   WEBHOOK VERIFICATION (GET)
-========================= */
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
-  console.log('WHATSAPP VERIFY:', { mode, token, expected: process.env.VERIFY_TOKEN });
-  if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
-    console.log('✅ WEBHOOK VERIFIED');
-    return new Response(challenge ?? '', { status: 200 });
+
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
+
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200 });
   }
-  console.log('❌ WEBHOOK FAILED');
-  return new Response('Forbidden', { status: 403 });
+
+  return new Response("Forbidden", { status: 403 });
 }
+
 /* =========================
-   INCOMING MESSAGES (POST)
+   POST — Incoming Messages
 ========================= */
-export async function POST(req: Request) {
+
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('📩 INCOMING WA BODY:', JSON.stringify(body, null, 2));
+    console.log('[WA] POST body:', JSON.stringify(body, null, 2));
+
     if (!body.entry) {
-      console.log('ℹ️ No entry in body');
       return NextResponse.json({ status: 'ok' });
     }
-    if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) {
-      console.error('❌ WHATSAPP: Missing credentials!', {
-        hasToken: !!process.env.WHATSAPP_TOKEN,
-        hasPhoneId: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
-        hasPhoneIdAlt: !!process.env.WHATSAPP_PHONE_ID,
-      });
-    }
-    const processedIds = new Set<string>();
+
     for (const entry of body.entry) {
+      // Handle status updates (delivered, read, etc.)
       const statuses = entry.changes?.[0]?.value?.statuses || [];
       for (const status of statuses) {
-        console.log('📊 STATUS UPDATE:', { id: status.id, status: status.status, recipient: status.recipient_id });
+        console.log('[WA] Status:', { id: status.id, status: status.status });
       }
 
       for (const change of entry.changes || []) {
         const messages = change.value?.messages || [];
+
         for (const msg of messages) {
-          if (msg.id && processedIds.has(msg.id)) continue;
-          if (msg.id) processedIds.add(msg.id);
-          if (msg.type === 'reaction' || msg.type === 'system' || msg.type === 'unsupported') {
-            console.log('⏭️ IGNORED:', { type: msg.type, from: msg.from });
+          // Skip non-text messages
+          if (msg.type !== 'text') {
+            console.log('[WA] Skipping non-text:', msg.type);
             continue;
           }
+
+          const messageId = msg.id;
           const from = msg.from;
-          const session = getSession(from);
-          let text = msg.text?.body;
-          if (msg.interactive?.list_reply?.id) {
-            text = "__SELECT__:" + msg.interactive.list_reply.id;
-          } else if (msg.interactive?.button_reply?.id) {
-            text = "__BTN__:" + msg.interactive.button_reply.id;
+          const text = msg.text?.body;
+
+          if (!text || !from) continue;
+
+          // DB-level deduplication
+          const deduped = await deduplicateMessage(messageId, from, text);
+          if (!deduped) {
+            console.log('[WA] Duplicate message, skipping:', messageId);
+            continue;
           }
-          if (!text) continue;
-          console.log('📨 MESSAGE:', { from, text });
-          const result = await runBot({
-            channel: "WHATSAPP",
-            message: text,
-            phone: from
-          });
-          console.log('🤖 BOT RESULT:', result);
-          if (result.type === "list") {
-            await sendListMessage(from, result.data);
-          } else if (result.type === "buttons") {
-            await sendButtons(from, result.text, result.data);
-          } else {
-            await sendWhatsAppMessage(from, result.text);
-          }
+
+          console.log('[WA] Processing:', { from, text });
+
+          // Deterministic response + AI fallback
+          const response = await getDeterministicResponse(text, from);
+
+          // Send reply
+          await sendWhatsAppMessage(from, response);
         }
       }
     }
+
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
-    console.error('❌ Webhook error:', error);
+    console.error('[WA] Error:', error);
     return NextResponse.json({ status: 'error' }, { status: 200 });
+  }
+}
+
+/* =========================
+   Deduplication (DB Unique)
+========================= */
+
+async function deduplicateMessage(messageId: string, phone: string, content: string): Promise<boolean> {
+  if (!supabaseAdmin) {
+    console.error('[WA] No supabaseAdmin client');
+    return false;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('wa_messages')
+    .insert({
+      wa_message_id: messageId,
+      phone_number: phone,
+      direction: 'inbound',
+      message_type: 'text',
+      content: content,
+    });
+
+  if (error) {
+    // Unique violation = duplicate
+    if (error.code === '23505') {
+      return false;
+    }
+    console.error('[WA] Dedup error:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/* =========================
+   Deterministic Response + AI Fallback
+========================= */
+
+async function getDeterministicResponse(text: string, from: string): Promise<string> {
+  const lower = text.toLowerCase();
+
+  // Rule 1: Menu
+  if (lower.includes('menu') || lower.includes('menú')) {
+    return '¡Te muestro nuestro menú! 🍔\n\nAlitas BBQ - $120\nBoneless Mango Habanero - $130\nPapas Gajo Loaded - $80\nCombo 911 - $220\n\n¿Qué te gustaría ordenar?';
+  }
+
+  // Rule 2: Greeting
+  if (lower.includes('hola') || lower.includes('buenas') || lower.includes('buen dia')) {
+    return '¡Hola! Bienvenido a Snacks 911 🍔\n¿Qué te gustaría pedir hoy?';
+  }
+
+  // Rule 3: Order intent
+  if (lower.includes('pedido') || lower.includes('ordenar') || lower.includes('quiero') || lower.includes('me das')) {
+    return '¡Excelente elección! 🔥\n¿Qué productos te gustaría ordenar?\n\nEscribe "menú" para ver nuestras opciones.';
+  }
+
+  // Rule 4: Help / Location / Hours
+  if (lower.includes('ubicacion') || lower.includes('direccion') || lower.includes('donde')) {
+    return 'Estamos en Av. Principal #123. 📍\nHorario: 1pm - 10pm todos los días.';
+  }
+
+  if (lower.includes('horario') || lower.includes('abierto') || lower.includes('cierran')) {
+    return 'Abierto de 1pm a 10pm todos los días. 🕐\n¡Haz tu pedido ahora!';
+  }
+
+  // NO RULE MATCHED → AI Fallback (short prompt, max 240 chars)
+  console.log('[WA] No rule matched, calling AI fallback...');
+  try {
+    const products = await dbGetProductsServer();
+    const menuItems: MenuItemContext[] = products.map(p => ({
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+    }));
+
+    const context = buildContextPayload(
+      menuItems,
+      [], // modifiers
+      [], // announcements
+      [], // promos
+      [], // cart
+      text
+    );
+
+    const aiResult = await getAIResponse(context);
+
+    // Limit response to 240 characters max
+    let message = aiResult.message_to_user || '¡Te ayudo! 🍔\nEscribe "menú" para ver nuestro catálogo.';
+    if (message.length > 240) {
+      message = message.substring(0, 237) + '...';
+    }
+
+    console.log('[WA] AI response:', message);
+    return message;
+
+  } catch (aiError) {
+    console.error('[WA] AI fallback failed:', aiError);
+    return '¡Gracias por escribirnos! 🍔\nEscribe "menú" para ver nuestro catálogo o "pedido" para hacer una orden.';
+  }
+}
+
+/* =========================
+   Send WhatsApp Message
+========================= */
+
+async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
+  if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+    console.error('[WA] Missing credentials');
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: phone,
+          type: 'text',
+          text: { body: text },
+        }),
+      }
+    );
+
+    const body = await response.text();
+
+    if (!response.ok) {
+      console.error('[WA] Send failed:', { status: response.status, body });
+      return false;
+    }
+
+    console.log('[WA] ✅ Message sent:', response.status);
+    return true;
+  } catch (error) {
+    console.error('[WA] Send error:', error);
+    return false;
   }
 }
