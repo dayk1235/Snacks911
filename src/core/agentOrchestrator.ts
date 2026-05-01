@@ -7,7 +7,7 @@
 import { detectIntent } from './intentDetector';
 import { getEntryRecommendation, getBestUpsell } from './offerAgent';
 import { shouldHandoff } from './humanHandoff';
-import { getProfile } from './customerProfileStore';
+import { getCustomerProfile } from './customerProfileStore';
 import { Intent } from './types';
 
 export interface ConversationContext {
@@ -33,7 +33,7 @@ export async function runAgents(context: ConversationContext): Promise<AgentResp
   const lastMessage = context.messageHistory[context.messageHistory.length - 1] || '';
   
   // 1. Memory Agent
-  const profile = context.customerPhone ? await getProfile(context.customerPhone) : undefined;
+  const profile = context.customerPhone ? await getCustomerProfile(context.customerPhone) : undefined;
 
   // 2. NLU Agent
   const { intent } = detectIntent(lastMessage);

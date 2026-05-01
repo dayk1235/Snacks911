@@ -1,5 +1,9 @@
 import { dbGetCustomer, dbGetProducts, dbSaveOrder } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { validateOrderItems } from '@/core/validationService';
+import { getCustomerProfile, updateCustomerFromOrder } from '@/core/customerProfileStore';
+
+
 
 const sessions: Record<string, any> = {};
 
@@ -82,11 +86,21 @@ export async function runBot({ channel, message, phone }: BotInput) {
     }
   }
 
+  // Detectar frustración / pedir humano (Human Handoff)
+  if (ctx.text.match(/(humano|asesor|persona|ayuda|problema|error|no entiendo)/)) {
+    session.state = STATES.IDLE;
+    return {
+      text: "Entiendo. 🛡️ Un asesor humano se conectará en un momento para ayudarte con tu pedido.",
+      type: "text" as const
+    };
+  }
+
   const state = session.state;
+
 
   switch (state) {
     case STATES.IDLE:
-      return handleIdle(ctx, session);
+      return await handleIdle(ctx, session);
     case STATES.BROWSING:
       return await handleBrowsing(ctx, session);
     case STATES.ORDERING:
@@ -96,11 +110,13 @@ export async function runBot({ channel, message, phone }: BotInput) {
     case STATES.CONFIRMING:
       return await handleConfirming(ctx, session);
     default:
-      return handleIdle(ctx, session);
+      return await handleIdle(ctx, session);
   }
 }
 
-function handleIdle(ctx: any, session: any) {
+async function handleIdle(ctx: any, session: any) {
+  const profile = await getCustomerProfile(ctx.phone);
+  
   if (ctx.text.includes("menu")) {
     session.state = STATES.BROWSING;
     return { 
@@ -109,8 +125,12 @@ function handleIdle(ctx: any, session: any) {
     };
   }
 
+  const welcomeMsg = profile && profile.totalOrders > 0 
+    ? `¡Hola de nuevo ${profile.name || ''}! 👋\n¿Te gustaría tu favorito: ${profile.favoriteProduct}? o ¿ver el menú?`
+    : `¡Hola! Bienvenido a Snacks 911 🍔\n¿Qué te gustaría pedir hoy?`;
+
   return { 
-    text: "¡Hola! Bienvenido a Snacks 911 🍔\n¿Qué te gustaría pedir hoy?",
+    text: welcomeMsg,
     type: "buttons" as const,
     data: [
       { id: "more", title: "Ver Menú 📋" }
@@ -230,35 +250,50 @@ function handleUpsell(ctx: any, session: any) {
 
 async function handleConfirming(ctx: any, session: any) {
   if (ctx.text.includes("ok") || ctx.text.includes("si") || ctx.text.includes("confirmar")) {
-    const total = getTotal(session.cart);
-
-    await dbSaveOrder({
-      id: '', // uuid auto
-      status: 'pending',
-      channel: 'WHATSAPP',
-      total,
-      createdAt: new Date().toISOString(),
-      customerName: 'WhatsApp User',
-      customerPhone: ctx.phone,
-      items: session.cart.map((item: any) => ({
+    try {
+      const validItems = await validateOrderItems(session.cart.map((item: any) => ({
         productId: item.id,
         productName: item.name,
         quantity: item.qty,
         price: item.price
-      }))
-    });
+      })));
 
-    const confirmationText = 
-      "✅ Pedido confirmado\n\n" +
-      session.cart.map((i: any) => `${i.name} x${i.qty}`).join("\n") +
-      `\n\nTotal: $${total}\n\n🔥 En preparación`;
+      const total = validItems.reduce((sum, i) => sum + i.quantity * i.price, 0);
 
-    session.state = STATES.IDLE;
-    session.cart = []; // Limpiar carrito post orden
-    return { 
-      text: confirmationText,
-      type: "text" as const
-    };
+      await dbSaveOrder({
+        id: '', // uuid auto
+        status: 'pending',
+        channel: 'WHATSAPP',
+        total,
+        createdAt: new Date().toISOString(),
+        customerName: 'WhatsApp User',
+        customerPhone: ctx.phone,
+        items: validItems
+      });
+
+      // Phase B: Memoria - Actualizar perfil del cliente
+      await updateCustomerFromOrder(ctx.phone, 'WhatsApp User', total, validItems);
+
+      const confirmationText = 
+        "🚨 ¡Oído Cocina! Tu orden está en la lumbre.\n\n" +
+        session.cart.map((i: any) => `${i.name} x${i.qty}`).join("\n") +
+        `\n\nTotal: $${total}\n\n🔥 Prepárate, el rescate va en camino.`;
+
+      session.state = STATES.IDLE;
+      session.cart = []; // Limpiar carrito post orden
+      return { 
+        text: confirmationText,
+        type: "text" as const
+      };
+
+    } catch (e: any) {
+      console.error("[runBot] Error validating/saving order:", e);
+      // Fallback seguro (error controlado)
+      return {
+        text: "Lo siento, hubo un problema procesando tu pedido. 😔\nPor favor intenta de nuevo o espera a ser atendido.",
+        type: "text" as const
+      };
+    }
   }
 
   if (ctx.text.includes("cancelar")) {

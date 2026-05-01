@@ -143,6 +143,7 @@ export interface CustomerProfile {
   totalSpent: number;
   lastOrderAt: Date | null;
   createdAt: Date;
+  favoriteProduct?: string;
   favoriteItems?: Array<{ itemId: string; orderCount: number }>;
   preferredUpsellType?: 'value' | 'premium' | 'bundle' | null;
 }

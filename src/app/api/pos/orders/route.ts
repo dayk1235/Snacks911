@@ -7,6 +7,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
+import { validateOrderItems } from '@/core/validationService';
+
 
 const getDb = () => supabaseAdmin || supabaseAnon;
 
@@ -31,11 +33,12 @@ async function requireStaff(req: Request) {
 
 // ── GET — Órdenes de hoy ────────────────────────────────────────────────────
 export async function GET(req: Request) {
-  const session = await requireStaff(req);
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  try {
+    const session = await requireStaff(req);
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const db = getDb();
-  console.log('[API/POS/ORDERS] Using DB Client:', db === supabaseAdmin ? 'ADMIN' : 'ANON');
+    const db = getDb();
+    console.log('[API/Orders/GET] Init. Client:', db === supabaseAdmin ? 'ADMIN' : 'ANON');
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
   const today = new Date();
@@ -73,14 +76,20 @@ export async function GET(req: Request) {
     order_items: (allItems || []).filter(item => item.order_id === order.id)
   }));
 
-  console.log('POS_ORDERS:', ordersWithItems);
-  return NextResponse.json({ orders: ordersWithItems });
+    console.log('[API/Orders/GET] Success:', ordersWithItems?.length, 'orders');
+    return NextResponse.json({ orders: ordersWithItems });
+  } catch (error: any) {
+    console.error('[API/Orders/GET] Global Error:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }
 
 // ── POST — Crear orden POS ─────────────────────────────────────────────────
 export async function POST(req: Request) {
-  const session = await requireStaff(req);
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  try {
+    const session = await requireStaff(req);
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
@@ -100,7 +109,14 @@ export async function POST(req: Request) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
-  const total = items.reduce(
+  let validItems;
+  try {
+    validItems = await validateOrderItems(items);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Error validando productos' }, { status: 400 });
+  }
+
+  const total = validItems.reduce(
     (sum: number, i: { qty: number; unit_price: number }) => sum + i.qty * i.unit_price, 0
   );
 
@@ -124,9 +140,9 @@ export async function POST(req: Request) {
   }
 
   // 2. Insert order items with proper product_id UUID handling and product_name
-  const orderItems = items.map((item: any) => ({
+  const orderItems = validItems.map((item: any) => ({
     order_id: order.id,
-    product_id: isUuid(item.product_id) ? item.product_id : null,
+    product_id: isUuid(item.product_id) ? item.product_id : '0',
     product_name: item.product_name || 'Producto',
     qty: item.qty,
     unit_price: item.unit_price,
@@ -141,13 +157,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: itemsErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ order: { ...order, status: 'pending', total } });
+    console.log('[API/Orders/POST] Success:', order.id);
+    return NextResponse.json({ order: { ...order, status: 'pending', total } });
+  } catch (error: any) {
+    console.error('[API/Orders/POST] Global Error:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }
 
 // ── PATCH — Actualizar estado ──────────────────────────────────────────────
 export async function PATCH(req: Request) {
-  const session = await requireStaff(req);
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  try {
+    const session = await requireStaff(req);
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
 
   const body = await req.json().catch(() => null);
   if (!body?.id || !body?.status) {
@@ -176,6 +199,15 @@ export async function PATCH(req: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ order: data });
+  if (error) {
+      console.error('[API/Orders/PATCH] DB Error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    console.log('[API/Orders/PATCH] Success:', data);
+    return NextResponse.json({ success: true, order: data });
+  } catch (error: any) {
+    console.error('[API/Orders/PATCH] Global Error:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }

@@ -1,0 +1,23 @@
+ROADMAP_EXEC_MODE
+
+cuando recibas:
+fase:X tarea:Y
+
+hacer:
+1. buscar fase
+2. buscar tarea exacta
+3. implementar SOLO esa tarea
+4. devolver:
+   FILE / PATCH / SQL
+
+prohibido:
+- explicar
+- agregar features extra
+- tocar otras tareas
+- refactor grande
+
+si falta contexto:
+- asumir implementación simple
+
+prioridad:
+funcionalidad > perfección

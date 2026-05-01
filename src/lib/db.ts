@@ -10,6 +10,8 @@ import type {
   Customer, AuditLog,
 } from './adminTypes';
 
+export type { Customer };
+
 // ─── Development Seed Defaults (used ONLY for local dev fallback) ─────────────
 const SEED_PRODUCTS: AdminProduct[] = [
   { id: 'p1', name: 'Alitas BBQ',              price: 120, category: 'alitas',   available: true,  description: '8 alitas bañadas en salsa BBQ ahumada',          imageUrl: '' },

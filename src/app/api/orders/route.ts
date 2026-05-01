@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { validateOrderItems } from '@/core/validationService';
+
 
 // Force dynamic behavior to prevent unwanted caching of GET requests
 // This ensures that GET /api/orders always returns the latest data from Supabase
@@ -75,6 +77,21 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     console.log('[API POST] Order request received:', body);
+
+    // 0. Validate items before anything else
+    if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json({ success: false, error: 'No items provided' }, { status: 400 });
+    }
+
+    let validItems;
+    try {
+      validItems = await validateOrderItems(body.items);
+    } catch (ve: any) {
+      return NextResponse.json({ success: false, error: ve.message }, { status: 400 });
+    }
+
+    // Recalculate total with authoritative prices
+    const total = validItems.reduce((sum: number, i: any) => sum + i.quantity * i.price, 0);
     
     // 1. Insert the main order record
     const { data: orderData, error: orderError } = await supabaseAdmin
@@ -82,7 +99,7 @@ export async function POST(req: Request) {
       .insert({
         customer_name: body.customerName || '',
         customer_phone: body.customerPhone || '',
-        total: body.total || 0,
+        total: total,
         channel: body.channel || 'WEB',
         status: 'pending'
       })
@@ -99,25 +116,23 @@ export async function POST(req: Request) {
 
     const orderId = orderData.id;
 
-    // 2. Insert items into order_items if present
-    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
-      console.log('[API POST] Inserting items for order:', orderId);
-      const itemsToInsert = body.items.map((item: any) => ({
-        order_id: orderId,
-        product_id: String(item.id),
-        product_name: item.name,
-        quantity: item.quantity,
-        price: item.price
-      }));
+    // 2. Insert items into order_items
+    console.log('[API POST] Inserting items for order:', orderId);
+    const itemsToInsert = validItems.map((item: any) => ({
+      order_id: orderId,
+      product_id: item.productId,
+      product_name: item.productName,
+      quantity: item.quantity,
+      price: item.price
+    }));
 
-      const { error: itemsError } = await supabaseAdmin
-        .from('order_items')
-        .insert(itemsToInsert);
+    const { error: itemsError } = await supabaseAdmin
+      .from('order_items')
+      .insert(itemsToInsert);
 
-      if (itemsError) {
-        console.error('[API POST] Order items insert error:', itemsError);
-        // We log the error but don't fail the whole request
-      }
+    if (itemsError) {
+      console.error('[API POST] Order items insert error:', itemsError);
+      // We log the error but don't fail the whole request
     }
 
     return NextResponse.json({ success: true, orderId });
