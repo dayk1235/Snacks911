@@ -9,6 +9,16 @@ export async function getBotResponse({ message, phone }: { message: string; phon
     return "Ahorita no tengo productos disponibles 😔";
   }
 
+  const lower = message.toLowerCase();
+
+  const found = products.find(p =>
+    lower.includes(p.name.toLowerCase())
+  );
+
+  if (found) {
+    return `🔥 ${found.name}\nPrecio: $${found.price}\n\n¿Cuántas quieres?`;
+  }
+
   let text = "🔥 MENÚ Snacks 911 🔥\n\n";
 
   for (const p of products) {
