@@ -22,6 +22,8 @@ export async function getBotResponse({ message, phone }: { message: string; phon
       await dbSaveOrder({
         id: '',
         status: 'pending',
+        channel: 'WHATSAPP',
+        whatsappConfirmed: true,
         items: [
           {
             productId: '',
