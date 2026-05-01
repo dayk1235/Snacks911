@@ -1,6 +1,6 @@
 import { dbGetProducts, dbSaveOrder } from "@/lib/db";
 
-let pendingOrder: { name: string; price: number; qty: number } | null = null;
+const memory = new Map<string, { product: any; qty: number }>();
 
 function extractQty(text: string) {
   const match = text.match(/\d+/);
@@ -11,38 +11,41 @@ export async function getBotResponse({ message, phone }: { message: string; phon
   const lower = message.toLowerCase();
 
   // Confirmación de pedido
-  if (lower.includes("si") || lower.includes("sí")) {
-    if (pendingOrder) {
-      try {
-        await dbSaveOrder({
-          id: '',
-          status: 'pending',
-          items: [
-            {
-              productId: '',
-              productName: pendingOrder.name,
-              quantity: pendingOrder.qty,
-              price: pendingOrder.price
-            }
-          ],
-          total: pendingOrder.price * pendingOrder.qty,
-          createdAt: new Date().toISOString(),
-          customerName: 'WhatsApp',
-          customerPhone: phone || ''
-        });
-        pendingOrder = null;
-        return "✅ Pedido confirmado. En breve te contactamos 🙌";
-      } catch (e) {
-        console.error("Error saving order:", e);
-        return "Tuve un problema guardando tu pedido. Por favor intenta de nuevo 😔";
-      }
+  if ((lower.includes("si") || lower.includes("sí")) && phone) {
+    const order = memory.get(phone);
+
+    if (!order) {
+      return "No tengo tu pedido 😅 inténtalo otra vez";
     }
-    return "No tengo ningún pedido pendiente. ¿Qué te gustaría ordenar?";
+
+    try {
+      await dbSaveOrder({
+        id: '',
+        status: 'pending',
+        items: [
+          {
+            productId: '',
+            productName: order.product.name,
+            quantity: order.qty,
+            price: order.product.price
+          }
+        ],
+        total: order.product.price * order.qty,
+        createdAt: new Date().toISOString(),
+        customerName: 'WhatsApp',
+        customerPhone: phone
+      });
+
+      memory.delete(phone);
+
+      return "✅ Pedido confirmado. En breve te contactamos 🙌";
+    } catch (e) {
+      console.error("Error saving order:", e);
+      return "Tuve un problema guardando tu pedido 😔";
+    }
   }
 
   const products = await dbGetProducts();
-
-  console.log("PRODUCTS FROM DB:", products);
 
   if (!products || products.length === 0) {
     return "Ahorita no tengo productos disponibles 😔";
@@ -55,9 +58,9 @@ export async function getBotResponse({ message, phone }: { message: string; phon
   if (found) {
     const qty = extractQty(message);
 
-    if (found && qty) {
+    if (found && qty && phone) {
       const total = found.price * qty;
-      pendingOrder = { name: found.name, price: found.price, qty };
+      memory.set(phone, { product: found, qty });
 
       return `🧾 Pedido:\n${qty} x ${found.name}\n\nTotal: $${total}\n\n¿Confirmas? (sí/no)`;
     }
