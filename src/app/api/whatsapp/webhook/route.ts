@@ -125,11 +125,16 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
     });
 
   if (error) {
+    console.error('[WA] Dedup error FULL:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     // Unique violation = duplicate
     if (error.code === '23505') {
       return false;
     }
-    console.error('[WA] Dedup error:', error);
     return false;
   }
 
