@@ -6,6 +6,12 @@ function extractQty(text: string) {
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("si") || lower.includes("sí")) {
+    return "✅ Pedido confirmado. En breve te contactamos 🙌";
+  }
+
   const products = await dbGetProducts();
 
   console.log("PRODUCTS FROM DB:", products);
