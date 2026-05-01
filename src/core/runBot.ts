@@ -5,6 +5,8 @@ import { validateOrderItems } from '@/core/validationService';
 import { getCustomerProfile, updateCustomerFromOrder } from '@/core/customerProfileStore';
 import { getBotResponse } from "@/core/botEngine";
 
+console.log("STEP 3: RUNBOT FILE LOADED");
+
 
 
 const sessions: Record<string, any> = {};
@@ -53,6 +55,8 @@ export interface BotInput {
 }
 
 export async function runBot({ channel, message, phone }: BotInput) {
+  console.log("STEP 4: RUNBOT FUNCTION EXECUTED");
+
   const session = getSession(phone);
 
   const ctx = {
@@ -105,6 +109,8 @@ export async function runBot({ channel, message, phone }: BotInput) {
     message: message,
     phone: phone
   });
+
+  console.log("STEP 5: BOT RESPONSE:", reply);
 
   // Por ahora, devolver respuesta simple
   return {
