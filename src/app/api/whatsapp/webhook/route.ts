@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+console.log("WEBHOOK FILE LOADED");
+
 import { supabaseAdmin } from '@/lib/server/supabaseServer';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
 import { dbGetProductsServer } from '@/lib/dbServer';
@@ -16,6 +19,8 @@ const API_VERSION = 'v19.0';
 ========================= */
 
 export async function GET(req: Request) {
+  console.log("WEBHOOK HIT GET");
+
   const { searchParams } = new URL(req.url);
 
   const mode = searchParams.get("hub.mode");
@@ -41,6 +46,8 @@ export async function GET(req: Request) {
 ========================= */
 
 export async function POST(req: NextRequest) {
+  console.log("WEBHOOK HIT POST");
+
   try {
     const body = await req.json();
     console.log('[WA] POST body:', JSON.stringify(body, null, 2));
