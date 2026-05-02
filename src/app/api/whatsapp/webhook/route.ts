@@ -15,7 +15,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
 const API_VERSION = 'v19.0';
 
-/* =========================
+/* =========================|
    GET — Webhook Verification
 ========================= */
 
