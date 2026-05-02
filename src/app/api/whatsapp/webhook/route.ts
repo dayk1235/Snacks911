@@ -5,6 +5,7 @@ console.log("WEBHOOK FILE LOADED");
 import { supabaseAdmin } from '@/lib/server/supabaseServer';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
 import { dbGetProductsServer } from '@/lib/dbServer';
+import { getBotResponse } from '@/core/botEngine';
 
 /* =========================
    CONFIG
@@ -91,9 +92,14 @@ export async function POST(req: NextRequest) {
           console.log("STEP 1: CALLING RUNBOT");
 
           // Deterministic response + AI fallback
-          const response = await getDeterministicResponse(text, from);
+          const response = await getBotResponse({
+            message: text,
+            phone: from
+          });
 
           console.log("STEP 2: RUNBOT CALLED");
+
+          console.log("[WA FINAL RESPONSE]:", response);
 
           // Send reply
           await sendWhatsAppMessage(from, response);

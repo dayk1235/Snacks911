@@ -1,4 +1,5 @@
 import { dbGetProducts, dbSaveOrder } from "@/lib/db";
+import { getAIResponse } from "@/lib/whatsapp/aiService";
 
 const memory = new Map<string, { product: any; qty: number }>();
 
@@ -9,6 +10,40 @@ function extractQty(text: string) {
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
   const lower = message.toLowerCase();
+
+  const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
+  const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
+  
+  // Existing logic check...
+  const products = await dbGetProducts();
+  const foundProduct = products.find(p => lower.includes(p.name.toLowerCase()));
+
+  console.log("DEBUG:", {
+    message,
+    isConfirming,
+    foundProduct,
+    isOrderIntent
+  });
+
+  const shouldUseAI =
+    !isConfirming &&
+    !foundProduct &&
+    !isOrderIntent;
+
+  console.log("[Gemini USED]:", shouldUseAI);
+
+  const context = {
+    menu_items: products.map(p => ({
+      name: p.name,
+      price: p.price,
+      category: p.category
+    })),
+    modifiers: [],
+    announcements_active: [],
+    promos_active: [],
+    cart_state: [],
+    customer_message: message
+  };
 
   // Confirmación de pedido
   if ((lower.includes("si") || lower.includes("sí")) && phone) {
@@ -47,8 +82,6 @@ export async function getBotResponse({ message, phone }: { message: string; phon
     }
   }
 
-  const products = await dbGetProducts();
-
   if (!products || products.length === 0) {
     return "Ahorita no tengo productos disponibles 😔";
   }
@@ -77,6 +110,15 @@ export async function getBotResponse({ message, phone }: { message: string; phon
   }
 
   text += "\n¿Qué te gustaría ordenar? 😏";
+
+  if (shouldUseAI) {
+    try {
+      const ai = await getAIResponse(context);
+      if (ai?.message_to_user) {
+        return ai.message_to_user;
+      }
+    } catch {}
+  }
 
   return text;
 }
