@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 console.log("WEBHOOK FILE LOADED");
 
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
 import { dbGetProductsServer } from '@/lib/dbServer';
+import { logConversation } from '@/lib/logger';
 import { getBotResponse } from '@/core/botEngine';
 
 /* =========================
@@ -68,33 +69,43 @@ export async function POST(req: NextRequest) {
         const messages = change.value?.messages || [];
 
         for (const msg of messages) {
-          // Skip non-text messages
-          if (msg.type !== 'text') {
+          const messageId = msg.id;
+          const from = msg.from;
+          const text = msg.text?.body;
+          const buttonId = msg?.interactive?.button_reply?.id;
+          const listId = msg?.interactive?.list_reply?.id;
+
+          if (!text && !buttonId && !listId) {
             console.log('[WA] Skipping non-text:', msg.type);
             continue;
           }
 
-          const messageId = msg.id;
-          const from = msg.from;
-          const text = msg.text?.body;
+          const userInput = text || buttonId || listId;
 
-          if (!text || !from) continue;
+          if (!userInput || !from) continue;
 
           // DB-level deduplication
-          const deduped = await deduplicateMessage(messageId, from, text);
+          const deduped = await deduplicateMessage(messageId, from, userInput);
           if (!deduped) {
             console.log('[WA] Duplicate message, skipping:', messageId);
             continue;
           }
 
-          console.log('[WA] Processing:', { from, text });
+          console.log('[WA] Processing:', { from, text: userInput });
 
           console.log("STEP 1: CALLING RUNBOT");
 
           // Deterministic response + AI fallback
           const response = await getBotResponse({
-            message: text,
+            message: userInput,
             phone: from
+          });
+
+          await logConversation({
+            phone: from,
+            user_message: userInput,
+            bot_response: response,
+            intent: "unknown"
           });
 
           console.log("STEP 2: RUNBOT CALLED");
@@ -119,12 +130,13 @@ export async function POST(req: NextRequest) {
 ========================= */
 
 async function deduplicateMessage(messageId: string, phone: string, content: string): Promise<boolean> {
-  if (!supabaseAdmin) {
-    console.error('[WA] No supabaseAdmin client');
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    console.error('[WA] No getSupabaseAdmin() client');
     return false;
   }
-
-  const { error } = await supabaseAdmin
+  
+  const { error } = await supabase
     .from('wa_messages')
     .insert({
       wa_message_id: messageId,
