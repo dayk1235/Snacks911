@@ -5,7 +5,7 @@ export async function getBotAnalytics() {
   const { data: orders, error: ordersErr } = await supabase
     .from('orders')
     .select('total, created_at, channel, customer_phone');
-    
+
   const { data: events, error: eventsErr } = await supabase
     .from('wa_events')
     .select('action, timestamp, phone');
@@ -30,7 +30,7 @@ export async function getBotAnalytics() {
   // Definimos conversión como: Usuarios que iniciaron chat vs Usuarios que crearon orden
   const uniqueChatUsers = new Set(events?.map(e => e.phone)).size;
   const uniqueOrderUsers = new Set(orders?.filter(o => o.channel === 'WHATSAPP').map(o => o.customer_phone)).size;
-  
+
   const conversionRate = uniqueChatUsers > 0 ? (uniqueOrderUsers / uniqueChatUsers) * 100 : 0;
 
   return {

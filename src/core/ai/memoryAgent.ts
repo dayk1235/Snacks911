@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
 
 async function callGemini(prompt: string) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -74,12 +74,31 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
 
     if (!insights) return;
 
-    // 3. Update customers table
+    // 3. Merge with existing profile
+    const currentProfile = await getCustomerProfileFromDB(phone);
     const updateData: any = {};
-    if (insights.preferences) updateData.preferences = insights.preferences;
-    if (insights.restrictions) updateData.restrictions = insights.restrictions;
-    if (insights.favorite_product) updateData.favorite_product = insights.favorite_product;
-    if (insights.name) updateData.name = insights.name;
+
+    if (insights.preferences || currentProfile?.preferences) {
+      updateData.preferences = Array.from(new Set([
+        ...(currentProfile?.preferences || []),
+        ...(insights.preferences || [])
+      ]));
+    }
+
+    if (insights.restrictions || currentProfile?.restrictions) {
+      updateData.restrictions = Array.from(new Set([
+        ...(currentProfile?.restrictions || []),
+        ...(insights.restrictions || [])
+      ]));
+    }
+
+    if (insights.favorite_product) {
+      updateData.favorite_product = insights.favorite_product;
+    }
+
+    if (insights.name) {
+      updateData.name = insights.name;
+    }
 
     if (Object.keys(updateData).length === 0) return;
 
