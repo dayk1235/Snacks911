@@ -81,10 +81,47 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 1. ALERGIAS
   if (/alergi|alérgi/i.test(message)) {
-    if (profile?.restrictions?.length) {
-      return `${greeting}Tienes registradas las siguientes alergias: ${profile.restrictions.join(', ')}. Tomamos todas las precauciones.`;
+    // Extract allergen from current message
+    let currentAllergen = '';
+    const match = message.match(/a\s+(.+)/i);
+    if (match) {
+      currentAllergen = match[1]
+        .toLowerCase()
+        .replace(/^la\s+|^el\s+|^los\s+|^las\s+/gi, '')
+        .replace(/(soy|tengo|sufro de)/gi, '')
+        .replace(/(alergia a|alergico a|alérgico a)/gi, '')
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .trim();
     }
-    return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
+
+    // Build response
+    let response = greeting;
+
+    if (profile?.restrictions?.length) {
+      response += `Tienes registradas las siguientes alergias: ${profile.restrictions.join(', ')}. Tomamos todas las precauciones.`;
+    } else if (currentAllergen) {
+      response += `¡Entendido! Eres alérgico a "${currentAllergen}". Lo anotamos para tu seguridad. 🛡️`;
+    }
+
+    // Filter safe products using all restrictions
+    const allRestrictions = [...(profile?.restrictions || [])];
+    if (currentAllergen && !allRestrictions.includes(currentAllergen)) {
+      allRestrictions.push(currentAllergen);
+    }
+
+    const safeProducts = products.filter(p => isCompatible(p, allRestrictions)).slice(0, 5);
+
+    if (safeProducts.length > 0) {
+      response += `\n\nTe recomendamos estos productos seguros:\n\n`;
+      for (const p of safeProducts) {
+        response += `🍗 ${p.name} - $${p.price}\n`;
+      }
+      response += `\n¿Cuál te gustaría ordenar? 😏`;
+    } else {
+      response += `\n\nNo tenemos opciones compatibles con tus restricciones 😔`;
+    }
+
+    return response;
   }
 
   // 2. FAVORITO
