@@ -35,6 +35,11 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const lower = message.toLowerCase();
   const { intent } = detectIntent(message);
 
+  let currentProducts = products;
+  if (/(muéstrame|quiero ver|ver|muestra|dame)\\s*(solo\\s+)?(los\\s+)?combos/i.test(message)) {
+    currentProducts = products.filter(p => p.category === 'combos');
+  }
+
   const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
 
@@ -65,14 +70,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       return `${greeting}Tienes registradas las siguientes alergias: ${profile.restrictions.join(', ')}. Tomamos todas las precauciones.`;
     }
     return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
-  }
-
-  let currentProducts = products;
-  if (/(muéstrame|quiero ver|ver|muestra|dame)\s*(solo\s+)?(los\s+)?combos/i.test(message)) {
-    currentProducts = products.filter(p => p.category === 'combos');
-  }
-
-  if (isConfirming && phone) {
+  }  if (isConfirming && phone) {
     const order = memory.get(phone);
     if (!order) return "No tengo tu pedido 😅 inténtalo otra vez";
 
