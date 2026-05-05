@@ -70,6 +70,7 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
     `;
 
     const insights = await callGemini(prompt);
+    console.log('[memoryAgent] Gemini insights:', JSON.stringify(insights));
 
     if (!insights) return;
 
