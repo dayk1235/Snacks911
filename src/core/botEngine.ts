@@ -37,9 +37,18 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const lower = message.toLowerCase();
   const { intent } = detectIntent(message);
   
-  // Greeting intent handling (no AI)
-  if (intent === 'greeting' && profile?.name) {
-    return `¡Hola ${profile.name}! 👋 ¿Quieres ver el menú o te recomiendo algo? 🔥`;
+  const isGreeting =
+    lower === 'hola' ||
+    lower.includes('hola') ||
+    lower.includes('buenas') ||
+    lower.includes('hey');
+
+  if (isGreeting) {
+    if (profile?.name) {
+      return `¡Hola ${profile.name}! 👋\n¿Quieres ver el menú o te recomiendo algo? 🔥`;
+    } else {
+      return `¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo? 🔥`;
+    }
   }
   
   // Greeting
