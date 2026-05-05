@@ -18,7 +18,15 @@ function isCompatible(product: any, restrictions: string[] = []) {
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
-  const profile = await getCustomerProfileFromDB(phone).catch(() => null);
+  let profile = null;
+
+  if (phone) {
+    try {
+      profile = await getCustomerProfileFromDB(phone);
+    } catch {
+      profile = null;
+    }
+  }
   console.log('[botEngine] PROFILE:', profile);
 
   const products = await dbGetProducts();
