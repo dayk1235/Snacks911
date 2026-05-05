@@ -1,7 +1,8 @@
-import { supabaseAdmin } from './src/lib/server/supabaseServer';
-
 async function fixConstraint() {
-  if (!supabaseAdmin) return;
+  const { getSupabaseAdmin } = await import('./src/lib/server/supabaseServer');
+  const supabase = getSupabaseAdmin();
+  
+  if (!supabase) return;
   
   console.log('Attempting to update orders_status_check constraint...');
   

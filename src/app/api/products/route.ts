@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
-function getDb() { return supabaseAdmin || supabaseAnon; }
+function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
 // GET: Fetch products
 export async function GET(req: Request) {

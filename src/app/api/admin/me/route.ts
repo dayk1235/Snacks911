@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 
-function getDb() { return supabaseAdmin || supabaseAnon; }
+function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
 export async function GET(request: NextRequest) {
   const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 import { validateOrderItems } from '@/core/validationService';
 
 
@@ -12,14 +12,15 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    if (!supabaseAdmin) {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
       return NextResponse.json(
         { success: false, error: 'Database configuration error' },
         { status: 500 }
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('orders')
       .select('*, order_items(*)')
       .order('created_at', { ascending: false })
@@ -66,18 +67,19 @@ export async function GET() {
  * POST: Create a new order with its items
  */
 export async function POST(req: Request) {
-  if (!supabaseAdmin) {
-    console.error('[API POST] supabaseAdmin is not initialized');
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    console.error('[API POST] getSupabaseAdmin() is not initialized');
     return NextResponse.json(
       { success: false, error: 'Database configuration error' },
       { status: 500 }
     );
   }
-
+  
   try {
     const body = await req.json();
     console.log('[API POST] Order request received:', body);
-
+    
     // 0. Validate items before anything else
     if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
       return NextResponse.json({ success: false, error: 'No items provided' }, { status: 400 });
@@ -94,7 +96,7 @@ export async function POST(req: Request) {
     const total = validItems.reduce((sum: number, i: any) => sum + i.quantity * i.price, 0);
     
     // 1. Insert the main order record
-    const { data: orderData, error: orderError } = await supabaseAdmin
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         customer_name: body.customerName || '',
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
       price: item.price
     }));
 
-    const { error: itemsError } = await supabaseAdmin
+    const { error: itemsError } = await supabase
       .from('order_items')
       .insert(itemsToInsert);
 

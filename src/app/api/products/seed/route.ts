@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 import { products } from '@/data/products';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
@@ -7,10 +7,11 @@ export async function GET(req: Request) {
   const auth = await requireApiRole(req, ['admin']);
   if (!auth.ok) return auth.response;
 
-  if (!supabaseAdmin) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
     return NextResponse.json({ error: 'Supabase Admin is not configured.' }, { status: 500 });
   }
-
+  
   try {
     const formattedProducts = products.map(p => ({
       id: p.id,
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
       is_available: true
     }));
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('products')
       .upsert(formattedProducts, { onConflict: 'id' });
 

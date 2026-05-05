@@ -148,6 +148,8 @@ export interface CustomerProfile {
   lastOrderAt: Date | null;
   createdAt: Date;
   favoriteProduct?: string;
+  preferences?: string[];
+  restrictions?: string[];
   favoriteItems?: Array<{ itemId: string; orderCount: number }>;
   preferredUpsellType?: 'value' | 'premium' | 'bundle' | null;
 }

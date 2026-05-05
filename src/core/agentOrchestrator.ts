@@ -7,7 +7,7 @@
 import { detectIntent } from './intentDetector';
 import { getEntryRecommendation, getBestUpsell } from './offerAgent';
 import { shouldHandoff } from './humanHandoff';
-import { getCustomerProfile } from './customerProfileStore';
+import { getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
 import { Intent } from './types';
 
 export interface ConversationContext {
@@ -31,9 +31,9 @@ export interface AgentResponse {
  */
 export async function runAgents(context: ConversationContext): Promise<AgentResponse> {
   const lastMessage = context.messageHistory[context.messageHistory.length - 1] || '';
-  
+
   // 1. Memory Agent
-  const profile = context.customerPhone ? await getCustomerProfile(context.customerPhone) : undefined;
+   const profile = context.customerPhone ? (await getCustomerProfileFromDB(context.customerPhone)) ?? undefined : undefined;
 
   // 2. NLU Agent
   const { intent } = detectIntent(lastMessage);

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 
 /**
  * GET /api/whatsapp/health
@@ -60,9 +60,9 @@ export async function GET() {
   let supabaseStatus = 'not_checked';
   let supabaseError = null;
 
-  if (supabaseAdmin) {
+  if (getSupabaseAdmin()) {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await getSupabaseAdmin()
         .from('products')
         .select('count', { count: 'exact', head: true });
 

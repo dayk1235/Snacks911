@@ -3,9 +3,9 @@
  * Reads and writes WhatsApp bot sessions (cart + state) in Supabase.
  */
 
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 
-const db = () => supabaseAdmin || supabaseAnon;
+const db = () => getSupabaseAdmin() || supabaseAnon;
 
 export type BotState =
   | 'S0_IDLE'

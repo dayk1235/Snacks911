@@ -5,10 +5,10 @@
  */
 
 import crypto from 'crypto';
-import { supabaseAdmin, supabaseAnon } from './supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from './supabaseServer';
 
 function getDb() {
-  return supabaseAdmin || supabaseAnon;
+  return getSupabaseAdmin() || supabaseAnon;
 }
 
 // ── Types ──

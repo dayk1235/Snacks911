@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 
 export async function POST(req: Request) {
-  if (!supabaseAdmin) {
-    console.error('[API] supabaseAdmin is not initialized');
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    console.error('[API] getSupabaseAdmin() is not initialized');
     return NextResponse.json({ success: false, error: 'Database configuration error' }, { status: 500 });
   }
-
+  
   try {
     const body = await req.json();
     const { id, whatsappConfirmed } = body as { id?: string; whatsappConfirmed?: boolean };
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Order id is required' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('orders')
       .update({ whatsapp_confirmed: whatsappConfirmed ?? false })
       .eq('id', id);

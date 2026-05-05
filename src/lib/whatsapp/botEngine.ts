@@ -17,9 +17,9 @@ import {
   sendUpsellOffer, sendHandoffMessage, sendButtons
 } from './metaClient';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from './aiService';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 
-const db = () => supabaseAdmin ?? supabaseAnon ?? null;
+const db = () => getSupabaseAdmin() ?? supabaseAnon ?? null;
 
 // ── Fetch live DB context for AI calls ────────────────────────────────────
 async function fetchMenuContext(): Promise<MenuItemContext[]> {

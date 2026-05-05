@@ -1,12 +1,13 @@
-import { supabaseAdmin } from './src/lib/server/supabaseServer';
-
 async function diagnose() {
-  if (!supabaseAdmin) {
+  const { getSupabaseAdmin } = await import('./src/lib/server/supabaseServer');
+  const supabase = getSupabaseAdmin();
+  
+  if (!supabase) {
     console.error('supabaseAdmin not initialized');
     return;
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('orders')
     .select('id, status, created_at')
     .limit(10);

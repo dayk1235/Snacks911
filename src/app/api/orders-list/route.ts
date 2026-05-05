@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 
 // Force dynamic behavior to prevent unwanted caching of GET requests
 export const dynamic = 'force-dynamic';
@@ -10,14 +10,15 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    if (!supabaseAdmin) {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
       return NextResponse.json(
         { success: false, error: 'Database configuration error' },
         { status: 500 }
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('orders')
       .select('*, order_items(*)')
       .order('created_at', { ascending: false })

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 
 const VALID_STATUSES = new Set([
   'pending',
@@ -24,15 +24,16 @@ function isUuid(value: string): boolean {
 }
 
 export async function PATCH(req: Request) {
-  if (!supabaseAdmin) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
     return NextResponse.json({ success: false, error: 'Database configuration error' }, { status: 500 });
   }
-
+  
   try {
     const body = await req.json();
     const id = String(body.id).trim();
     const status = body.status;
-
+    
     if (!id) {
       return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 });
     }
@@ -42,15 +43,15 @@ export async function PATCH(req: Request) {
     if (!status || typeof status !== 'string' || !VALID_STATUSES.has(status)) {
       return NextResponse.json({ success: false, error: 'invalid status' }, { status: 400 });
     }
-
+    
     console.log('[API]', id, status);
-
-    const { data: existingOrder, error: fetchError } = await supabaseAdmin
+    
+    const { data: existingOrder, error: fetchError } = await supabase
       .from('orders')
       .select('id,status')
       .eq('id', id)
       .single();
-
+    
     if (fetchError) {
       if (fetchError.code === 'PGRST116') {
         console.log('[API STATUS] not found select result:', { id, existingOrder: null });
@@ -62,7 +63,7 @@ export async function PATCH(req: Request) {
       console.error('[API Status Update] fetch current status error:', fetchError);
       return NextResponse.json({ success: false, error: fetchError.message }, { status: 500 });
     }
-
+    
     const currentStatus = String(existingOrder.status || '');
     const allowedNext = ALLOWED_TRANSITIONS[currentStatus];
     if (!allowedNext || !allowedNext.has(status)) {
@@ -71,15 +72,15 @@ export async function PATCH(req: Request) {
         { status: 400 }
       );
     }
-
-    const { data, error } = await supabaseAdmin
+    
+    const { data, error } = await supabase
       .from('orders')
       .update({ status })
       .eq('id', id)
       .eq('status', currentStatus)
       .select('*')
       .single();
-
+    
     if (error) {
       if (error.code === 'PGRST116') {
         return NextResponse.json(
@@ -93,7 +94,7 @@ export async function PATCH(req: Request) {
       console.error('[API Status Update] error:', error);
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-
+    
     return NextResponse.json({ success: true, data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unexpected error';

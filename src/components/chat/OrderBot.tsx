@@ -8,20 +8,20 @@ import { AdminStore } from '@/lib/adminStore';
 import { logEvent } from '@/core/eventLogger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-interface Msg { 
-  id: number; 
-  text: string; 
-  sender: 'bot' | 'user'; 
+interface Msg {
+  id: number;
+  text: string;
+  sender: 'bot' | 'user';
   type?: 'text' | 'buttons' | 'products';
-  actions?: { label: string; value: string; image?: string; price?: number; }[]; 
+  actions?: { label: string; value: string; image?: string; price?: number; }[];
 }
 
 // ─── Product refs for the engine ─────────────────────────────────────────────
-const COMBO_911      = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
+const COMBO_911 = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
 const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
-const PAPAS_LOADED   = allProducts.find(p => p.name === 'Papas Loaded') ?? allProducts.find(p => p.category === 'extras') ?? { name: 'Papas Loaded', price: 49 };
-const BEBIDA         = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
-const POSTRE         = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
+const PAPAS_LOADED = allProducts.find(p => p.name === 'Papas Loaded') ?? allProducts.find(p => p.category === 'extras') ?? { name: 'Papas Loaded', price: 49 };
+const BEBIDA = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
+const POSTRE = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
 
 export default function OrderBot() {
   const [open, setOpen] = useState(false);
@@ -29,7 +29,18 @@ export default function OrderBot() {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [state, setState] = useState<ConversationState>(INITIAL_STATE);
-  const [useModular, setUseModular] = useState(true);
+  const [engine, setEngine] = useState<"legacy" | "modular" | "ai">("modular");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("snacks911_engine");
+      if (saved === "legacy" || saved === "modular" || saved === "ai") setEngine(saved);
+    } catch { }
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem("snacks911_engine", engine); } catch { }
+  }, [engine]);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +48,7 @@ export default function OrderBot() {
   const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
-  const effectiveUseModular = forceLegacy ? false : useModular;
+  console.log("DEBUG switch:", { forceLegacy, env: process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY, engine });
 
   const productRefs = useMemo(() => ({
     comboName: COMBO_911?.name ?? 'Combo 911', comboPrice: COMBO_911?.price ?? 149,
@@ -60,20 +71,20 @@ export default function OrderBot() {
     if (open && msgs.length === 0) {
       logEvent({
         event_type: 'session_start',
-        payload_json: { engine_type: effectiveUseModular ? 'MODULAR' : 'LEGACY' }
+        payload_json: { engine_type: engine.toUpperCase() }
       });
       const g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
       setMsgs([{ id: idRef.current++, text: g, sender: 'bot' }]);
     }
-  }, [open, msgs.length, effectiveUseModular]);
+  }, [open, msgs.length, engine]);
 
   // WhatsApp confirmation + Checkout Completed
   useEffect(() => {
     if (state.whatsappUrl && state.deliveryStep === 'done' && state.orderConfirmed) {
       logEvent({
         event_type: 'checkout_completed',
-        payload_json: { 
-          engine_type: effectiveUseModular ? 'MODULAR' : 'LEGACY',
+        payload_json: {
+          engine_type: engine.toUpperCase(),
           cart_total: state.cartTotal,
           items_count: state.cart.length
         }
@@ -81,9 +92,9 @@ export default function OrderBot() {
 
       const itemsToSubmit = state.cart.map(name => {
         const cleanName = name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-        const product = allProducts.find(p => 
-          p.name === cleanName || 
-          p.name.includes(cleanName) || 
+        const product = allProducts.find(p =>
+          p.name === cleanName ||
+          p.name.includes(cleanName) ||
           cleanName.includes(p.name)
         );
         return {
@@ -109,29 +120,44 @@ export default function OrderBot() {
       }
       window.open(state.whatsappUrl, '_blank');
     }
-  }, [state.whatsappUrl, state.deliveryStep, state.orderConfirmed, state.cart, state.cartTotal, state.customerName, effectiveUseModular]);
+  }, [state.whatsappUrl, state.deliveryStep, state.orderConfirmed, state.cart, state.cartTotal, state.customerName, engine]);
 
   const processResponse = useCallback(async (text: string, action?: string) => {
     setThinking(true);
     await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
-    
-    const { handleMessage } = await import('@/core/responseEngine');
-    console.log('VISIBLE ENGINE:', effectiveUseModular ? 'MODULAR' : 'LEGACY');
-    
-    const output: ResponseOutput = effectiveUseModular 
-      ? await handleMessageModular(text, state, productRefs, action)
-      : handleMessage(text, state, productRefs, action);
-    
+
+    console.log("ENGINE:", engine);
+
+    let output: ResponseOutput;
+
+    if (engine === "ai") {
+      const r = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+      const d = await r.json();
+      output = { text: d.reply, type: "text", actions: [], nextState: state };
+    }
+    else if (engine === "modular") {
+      output = await handleMessageModular(text, state, productRefs, action);
+    }
+    else {
+      const { handleMessage } = await import('@/core/responseEngine');
+      output = handleMessage(text, state, productRefs, action);
+    }
+
+
     setThinking(false);
-    setMsgs(p => [...p, { 
-      id: idRef.current++, 
-      text: output.text, 
-      sender: 'bot', 
+    setMsgs(p => [...p, {
+      id: idRef.current++,
+      text: output.text,
+      sender: 'bot',
       type: output.type,
-      actions: output.actions 
+      actions: output.actions
     }]);
     setState(output.nextState);
-  }, [state, productRefs, effectiveUseModular]);
+  }, [state, productRefs, engine]);
 
   const send = useCallback(async () => {
     const t = input.trim();
@@ -163,60 +189,67 @@ export default function OrderBot() {
           fontFamily: 'var(--font-inter), sans-serif',
         }}
       >
-         {/* Header */}
-         <div style={{
-           padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-           borderBottom: '1px solid rgba(255,255,255,0.08)',
-           background: 'rgba(255,69,0,0.06)',
-         }}>
-           <div style={{
-             width: '36px', height: '36px', borderRadius: '12px',
-             background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-             display: 'flex', alignItems: 'center', justifyContent: 'center',
-             fontSize: '1rem', flexShrink: 0,
-           }}>🔥</div>
-           <div style={{ flex: 1 }}>
-             <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
-             <div style={{ fontSize: '0.68rem', color: effectiveUseModular ? 'var(--status-success)' : '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: effectiveUseModular ? 'var(--status-success)' : '#f59e0b', display: 'inline-block' }} />
-               {effectiveUseModular ? 'MODULAR ENGINE' : 'LEGACY ENGINE'}
-             </div>
-           </div>
-           
-           <button 
-             disabled={forceLegacy}
-             onClick={(e) => { e.stopPropagation(); setUseModular(!useModular); }}
-             style={{
-               background: 'rgba(255,255,255,0.05)',
-               border: '1px solid rgba(255,255,255,0.1)',
-               borderRadius: '6px',
-               padding: '4px 8px',
-               color: 'var(--text-secondary)',
-               fontSize: '0.6rem',
-               cursor: 'pointer',
-               transition: 'all 0.2s'
-             }}
-           >
-             SWITCH
-           </button>
+        {/* Header */}
+        <div style={{
+          padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,69,0,0.06)',
+        }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1rem', flexShrink: 0,
+          }}>🔥</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
+            <div style={{ fontSize: '0.68rem', color: engine === 'ai' || engine === 'modular' ? 'var(--status-success)' : '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: engine === 'ai' || engine === 'modular' ? 'var(--status-success)' : '#f59e0b', display: 'inline-block' }} />
+              {engine.toUpperCase() + " ENGINE"}
+            </div>
+          </div>
 
-           {/* 🟢 TOTAL EN VIVO */}
-           {state.cartTotal > 0 && (
-             <div style={{
-               padding: '0.4rem 0.75rem', borderRadius: '10px',
-               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-               color: '#fff', fontWeight: 900, fontSize: '0.85rem',
-               boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
-               animation: 'pulseTotal 1.5s ease-in-out infinite',
-             }}>
-               ${state.cartTotal}
-             </div>
-           )}
-           <button onClick={() => setOpen(false)} style={{
-             background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
-             cursor: 'pointer', padding: '4px', lineHeight: 1,
-           }}>×</button>
-         </div>
+          <button
+            disabled={forceLegacy}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEngine(prev => {
+                const next = prev === "legacy" ? "modular" : prev === "modular" ? "ai" : "legacy";
+                console.log("SWITCH:", prev, "→", next);
+                return next;
+              });
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              color: 'var(--text-secondary)',
+              fontSize: '0.6rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            SWITCH
+          </button>
+
+          {/* 🟢 TOTAL EN VIVO */}
+          {state.cartTotal > 0 && (
+            <div style={{
+              padding: '0.4rem 0.75rem', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: '#fff', fontWeight: 900, fontSize: '0.85rem',
+              boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
+              animation: 'pulseTotal 1.5s ease-in-out infinite',
+            }}>
+              ${state.cartTotal}
+            </div>
+          )}
+          <button onClick={() => setOpen(false)} style={{
+            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
+            cursor: 'pointer', padding: '4px', lineHeight: 1,
+          }}>×</button>
+        </div>
 
         {/* PROGRESS BAR */}
         {state.comboSelected && (
@@ -273,7 +306,7 @@ export default function OrderBot() {
                 fontSize: '0.88rem', lineHeight: 1.55, whiteSpace: 'pre-line',
                 boxShadow: m.sender === 'user' ? '0 3px 12px rgba(255,69,0,0.2)' : 'none',
               }}>{m.text}</div>
-              
+
               {/* STEP 6: Render Product Cards if type is products */}
               {m.type === 'products' && m.actions && (
                 <div style={{
@@ -282,7 +315,7 @@ export default function OrderBot() {
                   animation: 'actionsFadeIn 0.3s ease 0.3s both'
                 }}>
                   {m.actions.map((a: any) => (
-                    <div 
+                    <div
                       key={a.value}
                       onClick={() => handleAction(a.value, a.label)}
                       style={{
@@ -303,7 +336,7 @@ export default function OrderBot() {
               )}
 
               {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
-                <div style={{ 
+                <div style={{
                   display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
                   justifyContent: 'center',
                   animation: 'actionsFadeIn 0.3s ease 0.3s both'
@@ -389,19 +422,19 @@ export default function OrderBot() {
       >
         {open ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         ) : (
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95"/>
-            <circle cx="12" cy="12" r="1.2" fill="#FF4500"/>
-            <circle cx="8" cy="12" r="1.2" fill="#FF4500"/>
-            <circle cx="16" cy="12" r="1.2" fill="#FF4500"/>
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95" />
+            <circle cx="12" cy="12" r="1.2" fill="#FF4500" />
+            <circle cx="8" cy="12" r="1.2" fill="#FF4500" />
+            <circle cx="16" cy="12" r="1.2" fill="#FF4500" />
           </svg>
         )}
       </Button>
 
-       <style>{`
+      <style>{`
          @keyframes dot {
            0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
            40% { transform: scale(1.2); opacity: 1; }

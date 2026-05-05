@@ -5,12 +5,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
 import { validateOrderItems } from '@/core/validationService';
 
-
-const getDb = () => supabaseAdmin || supabaseAnon;
+const getDb = () => getSupabaseAdmin() || supabaseAnon;
 
 function isUuid(v: any) {
   if (typeof v !== 'string') return false;
@@ -38,7 +37,7 @@ export async function GET(req: Request) {
     if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const db = getDb();
-    console.log('[API/Orders/GET] Init. Client:', db === supabaseAdmin ? 'ADMIN' : 'ANON');
+    console.log('[API/Orders/GET] Init. Client:', db === getSupabaseAdmin() ? 'ADMIN' : 'ANON');
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
   const today = new Date();

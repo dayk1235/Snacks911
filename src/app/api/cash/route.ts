@@ -4,10 +4,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
 
-const db = () => supabaseAdmin || supabaseAnon;
+const db = () => getSupabaseAdmin() || supabaseAnon;
 
 function parseCookie(req: Request, name: string) {
   const cookie = req.headers.get('cookie') || '';

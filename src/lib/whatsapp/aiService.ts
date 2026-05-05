@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { loadApprovedExamples } from '@/lib/aiExamples';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const MODEL  = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
@@ -180,6 +181,9 @@ ${JSON.stringify({
   promos_active: context.promos_active,
   cart_state: context.cart_state,
 }, null, 2)}
+
+EXAMPLES OF SUCCESSFUL RESPONSES:
+${(await loadApprovedExamples()).map(ex => `Ejemplo: "${ex.suggested_response}"`).join('\n')}
 
 MENSAJE DEL CLIENTE:
 "${context.customer_message}"

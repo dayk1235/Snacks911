@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
 import { dbGetProductsServer } from '@/lib/dbServer';
 import { logConversation } from '@/lib/logger';
+import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
 
 /* =========================
@@ -108,6 +109,8 @@ export async function POST(req: NextRequest) {
             intent: "unknown"
           });
 
+          extractAndSaveInsights(from, userInput, response).catch(() => { });
+
           console.log("STEP 2: RUNBOT CALLED");
 
           console.log("[WA FINAL RESPONSE]:", response);
@@ -135,7 +138,7 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
     console.error('[WA] No getSupabaseAdmin() client');
     return false;
   }
-  
+
   const { error } = await supabase
     .from('wa_messages')
     .insert({

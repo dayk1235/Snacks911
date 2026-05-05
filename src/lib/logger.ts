@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/server/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/server/supabaseServer";
 
 export async function logConversation({
   phone,
@@ -12,7 +12,7 @@ export async function logConversation({
   intent?: string | null;
 }) {
   try {
-    if (!supabaseAdmin) return;
+    const supabaseAdmin = getSupabaseAdmin();
 
     await supabaseAdmin.from("conversations").insert({
       phone: phone || null,

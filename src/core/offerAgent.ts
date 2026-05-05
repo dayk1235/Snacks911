@@ -29,12 +29,16 @@ export interface UpsellOption {
  * Returns the best product to start the conversation.
  */
 export async function getEntryRecommendation(
-  intent: Intent, 
+  intent: Intent,
   profile?: CustomerProfile
 ): Promise<Product | null> {
-  // 1. Recurring Customer Rule (Priority)
+  // 1. Personalized Recommendation (Priority)
+  if (profile?.favoriteProduct) {
+    const fav = allProducts.find(p => p.name.toLowerCase() === profile.favoriteProduct?.toLowerCase());
+    if (fav) return fav;
+  }
+
   if (profile && profile.totalOrders > 0) {
-    // Recommendation based on "memory" (Placeholder for specific last item)
     return allProducts.find(p => p.id === 1) || allProducts[0]; // Combo Mixto 911
   }
 
@@ -84,7 +88,14 @@ export async function getBestUpsell(
   let reason = '';
 
   // 2. Decision Matrix (AOV Optimization)
-  if (hasProteins && !hasCombos && !hasSides) {
+
+  // Priority Override based on preferences
+  if (!hasDrinks && customerProfile?.preferences?.includes('bebidas')) {
+    targetCategory = 'bebidas';
+    type = 'value';
+    reason = 'preferred_drinks';
+    message = '¡Sabemos que te gustan las bebidas! 🥤 ¿Agregamos un refresco frío?';
+  } else if (hasProteins && !hasCombos && !hasSides) {
     targetCategory = 'combos';
     type = 'premium';
     reason = 'upgrade_to_combo';
@@ -94,7 +105,7 @@ export async function getBestUpsell(
     type = 'value';
     reason = 'missing_sides';
     message = '¿Unas papas para acompañar? 🍟 Son el complemento perfecto.';
-  } else if (!hasDrinks) {
+  } else if (!hasDrinks && !(customerProfile?.restrictions?.includes('sin refresco'))) {
     targetCategory = 'bebidas';
     type = 'value';
     reason = 'missing_drinks';
@@ -104,6 +115,26 @@ export async function getBestUpsell(
     type = 'bundle';
     reason = 'add_extras';
     message = '¿Un aderezo extra o postre para cerrar con broche de oro? 🍰';
+  }
+
+  // 3. Preferred Upsell Type Override
+  if (customerProfile?.preferredUpsellType && targetCategory) {
+    const prefType = customerProfile.preferredUpsellType;
+
+    // If they prefer 'premium' and we have proteins but no combo, override to premium
+    if (prefType === 'premium' && hasProteins && !hasCombos) {
+      targetCategory = 'combos';
+      type = 'premium';
+      reason = 'preferred_premium';
+      message = '¡Sube de nivel! 🔥 Hazlo combo para la experiencia completa.';
+    }
+    // If they prefer 'bundle' and we have combos, override to extras
+    else if (prefType === 'bundle' && hasCombos && !currentCart.some(i => i.category === 'extras')) {
+      targetCategory = 'extras';
+      type = 'bundle';
+      reason = 'preferred_bundle';
+      message = '¡Completa tu festín! 🍰 Agrega un postre o aderezo extra.';
+    }
   }
 
   if (!targetCategory) return null;

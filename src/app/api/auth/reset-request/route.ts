@@ -6,9 +6,9 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { supabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 
-function getDb() { return supabaseAdmin || supabaseAnon; }
+function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { employeeId?: string } | null;
