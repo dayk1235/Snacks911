@@ -84,8 +84,7 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
 
     const { error: updateError } = await supabase
       .from('customers')
-      .update(updateData)
-      .eq('phone_number', phone);
+      .upsert({ phone_number: phone, ...updateData }, { onConflict: 'phone_number' });
 
     if (updateError) throw updateError;
 
