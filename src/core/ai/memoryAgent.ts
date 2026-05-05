@@ -33,8 +33,28 @@ async function callGemini(prompt: string) {
 function normalizeInsight(text: string): string {
   return text
     .toLowerCase()
-    .replace(/alergico a|alergia a|soy|no me gusta/gi, '')
+    .replace(/(soy|tengo|sufro de)/gi, '')
+    .replace(/(alergia a|alergico a|alérgico a)/gi, '')
+    .replace(/(no me gusta|no consumo)/gi, '')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
     .trim();
+}
+
+function isValidRestriction(text: string): boolean {
+  if (!text) return false;
+
+  const invalidPatterns = [
+    'no especificada',
+    'desconocida',
+    'ninguna',
+    'no sé',
+    'nada',
+    'general',
+  ];
+
+  const clean = text.toLowerCase().trim();
+
+  return !invalidPatterns.some(p => clean.includes(p));
 }
 
 export async function extractAndSaveInsights(phone: string, userMessage: string, botResponse: string) {
@@ -94,8 +114,8 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
 
     if (insights.restrictions && insights.restrictions.length > 0) {
       updateData.restrictions = Array.from(new Set([
-        ...(currentProfile?.restrictions || []).map(normalizeInsight),
-        ...insights.restrictions.map(normalizeInsight)
+        ...(currentProfile?.restrictions || []).map(normalizeInsight).filter(isValidRestriction),
+        ...insights.restrictions.map(normalizeInsight).filter(isValidRestriction)
       ]));
     }
 
