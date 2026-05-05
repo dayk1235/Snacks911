@@ -129,6 +129,18 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   text += "\n¿Qué te gustaría ordenar? 😏";
 
   if (shouldUseAI) {
+    const context = {
+      menu_items: products.map(p => ({
+        name: p.name,
+        price: p.price,
+        category: p.category
+      })),
+      modifiers: [],
+      announcements_active: [],
+      promos_active: [],
+      cart_state: [],
+      customer_message: message
+    };
     try {
       const ai = await getAIResponse(context);
       if (ai?.message_to_user) return `${greeting}${ai.message_to_user}`;
