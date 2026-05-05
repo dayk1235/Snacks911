@@ -1,5 +1,8 @@
 import { dbGetProducts, dbSaveOrder } from "@/lib/db";
+import { getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
+import { getEntryRecommendation } from './offerAgent';
 import { getAIResponse } from "@/lib/whatsapp/aiService";
+import { detectIntent } from './intentDetector';
 
 const memory = new Map<string, { product: any; qty: number }>();
 
@@ -8,29 +11,35 @@ function extractQty(text: string) {
   return match ? parseInt(match[0], 10) : null;
 }
 
+function isCompatible(product: any, restrictions: string[] = []) {
+  if (!restrictions.length) return true;
+  const productText = `${product.name} ${product.description || ''}`.toLowerCase();
+  return !restrictions.some(r => productText.includes(r.toLowerCase()));
+}
+
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
+  let profile;
+  if (phone) {
+    try {
+      profile = await getCustomerProfileFromDB(phone);
+    } catch (e) {
+      console.error("[getBotResponse] Error fetching profile:", e);
+    }
+  }
+
+  const products = await dbGetProducts();
+  return buildPersonalizedResponse(message, phone, products, profile);
+}
+
+async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
   const lower = message.toLowerCase();
+  const { intent } = detectIntent(message);
 
   const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
-  
-  // Existing logic check...
-  const products = await dbGetProducts();
+
   const foundProduct = products.find(p => lower.includes(p.name.toLowerCase()));
-
-  console.log("DEBUG:", {
-    message,
-    isConfirming,
-    foundProduct,
-    isOrderIntent
-  });
-
-  const shouldUseAI =
-    !isConfirming &&
-    !foundProduct &&
-    !isOrderIntent;
-
-  console.log("[Gemini USED]:", shouldUseAI);
+  const shouldUseAI = !isConfirming && !foundProduct && !isOrderIntent && intent === 'other';
 
   const context = {
     menu_items: products.map(p => ({
@@ -45,13 +54,15 @@ export async function getBotResponse({ message, phone }: { message: string; phon
     customer_message: message
   };
 
-  // Confirmación de pedido
-  if ((lower.includes("si") || lower.includes("sí")) && phone) {
-    const order = memory.get(phone);
+  // 1. Greeting
+  let greeting = '';
+  if (profile?.name) {
+    greeting = `¡Hola ${profile.name}! 👋\n\n`;
+  }
 
-    if (!order) {
-      return "No tengo tu pedido 😅 inténtalo otra vez";
-    }
+  if (isConfirming && phone) {
+    const order = memory.get(phone);
+    if (!order) return "No tengo tu pedido 😅 inténtalo otra vez";
 
     try {
       await dbSaveOrder({
@@ -59,22 +70,13 @@ export async function getBotResponse({ message, phone }: { message: string; phon
         status: 'pending',
         channel: 'WHATSAPP',
         whatsappConfirmed: true,
-        items: [
-          {
-            productId: '',
-            productName: order.product.name,
-            quantity: order.qty,
-            price: order.product.price
-          }
-        ],
+        items: [{ productId: '', productName: order.product.name, quantity: order.qty, price: order.product.price }],
         total: order.product.price * order.qty,
         createdAt: new Date().toISOString(),
-        customerName: 'WhatsApp',
+        customerName: profile?.name || 'WhatsApp',
         customerPhone: phone
       });
-
       memory.delete(phone);
-
       return "✅ Pedido confirmado. En breve te contactamos 🙌";
     } catch (e) {
       console.error("Error saving order:", e);
@@ -82,42 +84,43 @@ export async function getBotResponse({ message, phone }: { message: string; phon
     }
   }
 
-  if (!products || products.length === 0) {
-    return "Ahorita no tengo productos disponibles 😔";
-  }
+  if (!products || products.length === 0) return "Ahorita no tengo productos disponibles 😔";
 
-  const found = products.find(p =>
-    lower.includes(p.name.toLowerCase())
-  );
-
-  if (found) {
+  if (foundProduct) {
     const qty = extractQty(message);
-
-    if (found && qty && phone) {
-      const total = found.price * qty;
-      memory.set(phone, { product: found, qty });
-
-      return `🧾 Pedido:\n${qty} x ${found.name}\n\nTotal: $${total}\n\n¿Confirmas? (sí/no)`;
+    if (qty && phone) {
+      const total = foundProduct.price * qty;
+      memory.set(phone, { product: foundProduct, qty });
+      return `${greeting}🧾 Pedido:\n${qty} x ${foundProduct.name}\n\nTotal: $${total}\n\n¿Confirmas? (sí/no)`;
     }
-
-    return `🔥 ${found.name}\nPrecio: $${found.price}\n\n¿CUántas quieres?`;
+    return `${greeting}🔥 ${foundProduct.name}\nPrecio: $${foundProduct.price}\n\n¿Cuántas quieres?`;
   }
 
-  let text = "🔥 MENÚ Snacks 911 🔥\n\n";
+  // 2. Recommendations
+  if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
+    const rec = await getEntryRecommendation(intent, profile);
+    if (rec && isCompatible(rec, profile?.restrictions)) {
+      const isFav = profile?.favoriteProduct?.toLowerCase() === rec.name.toLowerCase();
+      return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
+    }
+  }
+
+  // 3. Default Menu
+  let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
+  if (profile?.favoriteProduct) text += `Te recomendamos tu favorito: ${profile.favoriteProduct} 🌟\n\n`;
 
   for (const p of products) {
-    text += `🍗 ${p.name} - $${p.price}\n`;
+    if (isCompatible(p, profile?.restrictions)) {
+      text += `🍗 ${p.name} - $${p.price}\n`;
+    }
   }
-
   text += "\n¿Qué te gustaría ordenar? 😏";
 
   if (shouldUseAI) {
     try {
       const ai = await getAIResponse(context);
-      if (ai?.message_to_user) {
-        return ai.message_to_user;
-      }
-    } catch {}
+      if (ai?.message_to_user) return `${greeting}${ai.message_to_user}`;
+    } catch { }
   }
 
   return text;
