@@ -92,10 +92,10 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
       ]));
     }
 
-    if (insights.restrictions || currentProfile?.restrictions) {
+    if (insights.restrictions && insights.restrictions.length > 0) {
       updateData.restrictions = Array.from(new Set([
         ...(currentProfile?.restrictions || []).map(normalizeInsight),
-        ...(insights.restrictions || []).map(normalizeInsight)
+        ...insights.restrictions.map(normalizeInsight)
       ]));
     }
 

@@ -18,6 +18,10 @@ function normalize(text: string) {
     .trim();
 }
 
+function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, '');
+}
+
 function isCompatible(productOrName: any, restrictions: string[] = []) {
   if (!restrictions?.length) return true;
 
@@ -32,19 +36,21 @@ function isCompatible(productOrName: any, restrictions: string[] = []) {
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
+  const cleanPhone = phone ? normalizePhone(phone) : undefined;
   let profile = null;
 
-  if (phone) {
+  if (cleanPhone) {
     try {
-      profile = await getCustomerProfileFromDB(phone);
+      profile = await getCustomerProfileFromDB(cleanPhone);
     } catch {
       profile = null;
     }
   }
   console.log('[botEngine] PROFILE:', profile);
+  console.log('[DEBUG PROFILE]', profile);
 
   const products = await dbGetProducts();
-  return buildPersonalizedResponse(message, phone, products, profile);
+  return buildPersonalizedResponse(message, cleanPhone, products, profile);
 }
 
 async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
@@ -173,23 +179,21 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 4. RECOMENDACIONES Y MENÚ
   if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
-    const rec = await getEntryRecommendation(intent, profile);
-    
-    if (!rec) {
-      // No recommendation found, continue to menu
-    } else if (isCompatible(rec, profile?.restrictions)) {
+    let rec = await getEntryRecommendation(intent, profile);
+
+    if (rec && !isCompatible(rec.name, profile?.restrictions)) {
+      console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
+
+      const safeProducts = products.filter(p =>
+        isCompatible(p.name, profile?.restrictions)
+      );
+
+      rec = safeProducts[0] || null;
+    }
+
+    if (rec) {
       const isFav = profile?.favorite_product?.toLowerCase() === rec.name.toLowerCase();
       return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
-    } else {
-      console.log('[botEngine] BLOCKED incompatible recommendation:', rec.name);
-      
-      const safe = products.find(p => isCompatible(p.name, profile?.restrictions));
-      
-      if (safe) {
-        return `${greeting}💡 Te recomiendo:\n\n${safe.name} - $${safe.price}\n\n¿Te gustaría ordenar este?`;
-      }
-      
-      return 'No tengo opciones compatibles con tus restricciones 😔';
     }
   }
 
