@@ -12,6 +12,7 @@ export interface Product {
   /** Para combos: suma de items individuales antes del descuento */
   originalPrice?: number;
   available?: boolean;
+  ingredients?: string[];
 }
 
 export const products: Product[] = [
@@ -28,6 +29,7 @@ export const products: Product[] = [
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $90', '🔥 Bestia'],
+    ingredients: ['boneless', 'alitas', 'papas', 'bebida'],
   },
   {
     id: 2,
@@ -40,6 +42,7 @@ export const products: Product[] = [
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $54'],
+    ingredients: ['boneless', 'papas', 'bebida', 'salsa'],
   },
   {
     id: 3,
@@ -51,6 +54,7 @@ export const products: Product[] = [
     image: '/images/alitas.webp',
     spicy: 2,
     badges: ['💰 Ahorra $60', '🍗 12 piezas'],
+    ingredients: ['alitas', 'papas', 'bebida', 'salsa'],
   },
   {
     id: 4,
@@ -62,6 +66,7 @@ export const products: Product[] = [
     image: '/images/combo.webp',
     spicy: 0,
     badges: ['🌭 Callejero', '💰 Ahorra $39'],
+    ingredients: ['salchicha', 'papa', 'bebida'],
   },
   {
     id: 5,
@@ -73,6 +78,7 @@ export const products: Product[] = [
     image: '/images/combo.webp',
     spicy: 0,
     badges: ['💰 Ahorra $35'],
+    ingredients: ['salchicha', 'masa', 'papas', 'queso', 'bebida'],
   },
   {
     id: 6,
@@ -84,6 +90,7 @@ export const products: Product[] = [
     image: '/images/papas.webp',
     spicy: 0,
     badges: ['💰 Ahorra $36'],
+    ingredients: ['queso', 'papas', 'bebida'],
   },
   {
     id: 7,
@@ -96,6 +103,7 @@ export const products: Product[] = [
     spicy: 1,
     popular: true,
     badges: ['⭐ Más vendido', '💰 Ahorra $45', '🔥 Loaded'],
+    ingredients: ['papas', 'queso', 'tocino', 'jalapeños', 'bebida'],
   },
 
   // ─── PROTEÍNA 🍗 ─────────────────────────────────────────────────────────
@@ -149,6 +157,7 @@ export const products: Product[] = [
     image: '/images/papas.webp',
     spicy: 0,
     badge: '🌭 Callejero',
+    ingredients: ['salchicha', 'papa'],
   },
 
   // ─── BANDERILLAS Y DEDOS 🍡 ───────────────────────────────────────────────
@@ -162,6 +171,7 @@ export const products: Product[] = [
     spicy: 0,
     popular: true,
     badge: '🇰🇷 Trending',
+    ingredients: ['salchicha', 'masa'],
   },
   {
     id: 14,

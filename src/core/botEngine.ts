@@ -22,16 +22,18 @@ function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
 }
 
-function isCompatible(productOrName: any, restrictions: string[] = []) {
-  if (!restrictions?.length) return true;
+function isCompatible(product: any, restrictions: string[] = []) {
+  if (!restrictions.length) return true;
 
-  const productText = normalize(typeof productOrName === 'string' 
-    ? productOrName 
-    : `${productOrName.name} ${productOrName.description || ''}`);
+  const ingredients = product.ingredients || [];
+  const text = `${product.name} ${product.description || ''}`.toLowerCase();
 
   return !restrictions.some(r => {
-    const clean = normalize(r);
-    return productText.includes(clean);
+    const clean = r.toLowerCase();
+    return (
+      text.includes(clean) ||
+      ingredients.some((i: string) => i.toLowerCase().includes(clean))
+    );
   });
 }
 
@@ -87,7 +89,9 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 2. FAVORITO
   if (/favorito|preferido/i.test(message)) {
-    return `${greeting}${profile?.favorite_product && isCompatible(profile.favorite_product, profile.restrictions) ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
+    const favProduct = products.find(p => p.name === profile?.favorite_product);
+    const isCompatibleFav = favProduct && isCompatible(favProduct, profile?.restrictions || []);
+    return `${greeting}${profile?.favorite_product && isCompatibleFav ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
   }
 
   const wantsCombos =
@@ -105,7 +109,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     );
 
     const filtered = combos.filter(p =>
-      isCompatible(p.name, profile?.restrictions)
+      isCompatible(p, profile?.restrictions)
     );
 
     let comboText = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
@@ -181,11 +185,11 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
     let rec = await getEntryRecommendation(intent, profile);
 
-    if (rec && !isCompatible(rec.name, profile?.restrictions)) {
+    if (rec && !isCompatible(rec, profile?.restrictions)) {
       console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
 
       const safeProducts = products.filter(p =>
-        isCompatible(p.name, profile?.restrictions)
+        isCompatible(p, profile?.restrictions)
       );
 
       rec = safeProducts[0] || null;
@@ -198,7 +202,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
-  if (profile?.favorite_product && isCompatible(profile.favorite_product, profile.restrictions)) text += `Te recomendamos tu favorito: ${profile.favorite_product} 🌟\n\n`;
+  const favProduct = products.find(p => p.name === profile?.favorite_product);
+  if (favProduct && isCompatible(favProduct, profile?.restrictions || [])) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
 
   for (const p of currentProducts) {
     if (isCompatible(p, profile?.restrictions) && p.name !== profile?.favorite_product) {
