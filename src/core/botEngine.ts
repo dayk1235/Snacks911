@@ -11,12 +11,24 @@ function extractQty(text: string) {
   return match ? parseInt(match[0], 10) : null;
 }
 
+function normalize(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/la |el |los |las |un |una /g, '')
+    .trim();
+}
+
 function isCompatible(productOrName: any, restrictions: string[] = []) {
   if (!restrictions?.length) return true;
-  const text = typeof productOrName === 'string' 
+
+  const productText = normalize(typeof productOrName === 'string' 
     ? productOrName 
-    : `${productOrName.name} ${productOrName.description || ''}`;
-  return !restrictions.some(r => text.toLowerCase().includes(r.toLowerCase()));
+    : `${productOrName.name} ${productOrName.description || ''}`);
+
+  return !restrictions.some(r => {
+    const clean = normalize(r);
+    return productText.includes(clean);
+  });
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
@@ -78,7 +90,13 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     lower.includes('solo combos');
 
   if (wantsCombos) {
-    const combos = products.filter(p => p.category === 'combos');
+    const combos = Array.from(
+      new Map(
+        products
+          .filter(p => p.category === 'combos')
+          .map(p => [p.name, p])
+      ).values()
+    );
 
     const filtered = combos.filter(p =>
       isCompatible(p.name, profile?.restrictions)
@@ -156,9 +174,22 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   // 4. RECOMENDACIONES Y MENÚ
   if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
     const rec = await getEntryRecommendation(intent, profile);
-    if (rec && isCompatible(rec, profile?.restrictions)) {
+    
+    if (!rec) {
+      // No recommendation found, continue to menu
+    } else if (isCompatible(rec, profile?.restrictions)) {
       const isFav = profile?.favorite_product?.toLowerCase() === rec.name.toLowerCase();
       return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
+    } else {
+      console.log('[botEngine] BLOCKED incompatible recommendation:', rec.name);
+      
+      const safe = products.find(p => isCompatible(p.name, profile?.restrictions));
+      
+      if (safe) {
+        return `${greeting}💡 Te recomiendo:\n\n${safe.name} - $${safe.price}\n\n¿Te gustaría ordenar este?`;
+      }
+      
+      return 'No tengo opciones compatibles con tus restricciones 😔';
     }
   }
 
@@ -166,7 +197,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (profile?.favorite_product && isCompatible(profile.favorite_product, profile.restrictions)) text += `Te recomendamos tu favorito: ${profile.favorite_product} 🌟\n\n`;
 
   for (const p of currentProducts) {
-    if (isCompatible(p, profile?.restrictions)) {
+    if (isCompatible(p, profile?.restrictions) && p.name !== profile?.favorite_product) {
       text += `🍗 ${p.name} - $${p.price}\n`;
     }
   }
