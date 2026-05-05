@@ -38,7 +38,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
 
-  const foundProduct = products.find(p => lower.includes(p.name.toLowerCase()));
+  const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
   const shouldUseAI = !isConfirming && !foundProduct && !isOrderIntent && intent === 'other';
 
   const context = {
@@ -67,12 +67,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
   }
 
-  if (/favorito|preferido/i.test(message)) {
-    return `${greeting}${profile?.favoriteProduct ? `Tu combo favorito es: ${profile.favoriteProduct} 🌟` : 'Aún no tengo tu favorito registrado 😔'}`;
-  }
-
   let currentProducts = products;
-  if (/solo los combos|todos los combos/i.test(message) || /combo/i.test(message)) {
+  if (/(muéstrame|quiero ver|ver|muestra|dame)\s*(solo\s+)?(los\s+)?combos/i.test(message)) {
     currentProducts = products.filter(p => p.category === 'combos');
   }
 
