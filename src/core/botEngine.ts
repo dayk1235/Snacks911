@@ -70,7 +70,9 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       return `${greeting}Tienes registradas las siguientes alergias: ${profile.restrictions.join(', ')}. Tomamos todas las precauciones.`;
     }
     return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
-  }  if (isConfirming && phone) {
+  }
+  
+  if (isConfirming && phone) {
     const order = memory.get(phone);
     if (!order) return "No tengo tu pedido 😅 inténtalo otra vez";
 
