@@ -11,10 +11,12 @@ function extractQty(text: string) {
   return match ? parseInt(match[0], 10) : null;
 }
 
-function isCompatible(product: any, restrictions: string[] = []) {
-  if (!restrictions.length) return true;
-  const productText = `${product.name} ${product.description || ''}`.toLowerCase();
-  return !restrictions.some(r => productText.includes(r.toLowerCase()));
+function isCompatible(productOrName: any, restrictions: string[] = []) {
+  if (!restrictions?.length) return true;
+  const text = typeof productOrName === 'string' 
+    ? productOrName 
+    : `${productOrName.name} ${productOrName.description || ''}`;
+  return !restrictions.some(r => text.toLowerCase().includes(r.toLowerCase()));
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
@@ -67,24 +69,34 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 2. FAVORITO
   if (/favorito|preferido/i.test(message)) {
-    return `${greeting}${profile?.favorite_product ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
+    return `${greeting}${profile?.favorite_product && isCompatible(profile.favorite_product, profile.restrictions) ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
+  }
+
+  const wantsCombos =
+    lower.includes('combo') ||
+    lower.includes('combos') ||
+    lower.includes('solo combos');
+
+  if (wantsCombos) {
+    const combos = products.filter(p => p.category === 'combos');
+
+    const filtered = combos.filter(p =>
+      isCompatible(p.name, profile?.restrictions)
+    );
+
+    let comboText = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
+
+    for (const p of filtered) {
+      comboText += `🍗 ${p.name} - $${p.price}\n`;
+    }
+
+    comboText += "\n¿Cuál quieres?";
+
+    return comboText;
   }
 
   // 3. SOLO COMBOS
   let currentProducts = products;
-  if (/(?:mostr|ver|muestra|dame|quiero)\s*(?:solo\s+)?(?:los\s+)?combos/i.test(message)) {
-    currentProducts = products.filter(p => p.category === 'combos');
-    if (!currentProducts.length) return `${greeting}No hay combos disponibles en este momento.`;
-    
-    let comboText = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
-    for (const p of currentProducts) {
-      if (isCompatible(p, profile?.restrictions)) {
-        comboText += `🍗 ${p.name} - $${p.price}\n`;
-      }
-    }
-    comboText += "\n¿Cuál de estos te gustaría ordenar? 😏";
-    return comboText;
-  }
 
   const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
@@ -151,7 +163,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
-  if (profile?.favorite_product) text += `Te recomendamos tu favorito: ${profile.favorite_product} 🌟\n\n`;
+  if (profile?.favorite_product && isCompatible(profile.favorite_product, profile.restrictions)) text += `Te recomendamos tu favorito: ${profile.favorite_product} 🌟\n\n`;
 
   for (const p of currentProducts) {
     if (isCompatible(p, profile?.restrictions)) {
