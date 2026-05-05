@@ -34,43 +34,43 @@ export async function getBotResponse({ message, phone }: { message: string; phon
 async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
   const lower = message.toLowerCase();
   const { intent } = detectIntent(message);
-
-  let currentProducts = products;
-  if (/(muéstrame|quiero ver|ver|muestra|dame)\\s*(solo\\s+)?(los\\s+)?combos/i.test(message)) {
-    currentProducts = products.filter(p => p.category === 'combos');
-  }
-
-  const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
-  const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
-
-  const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
-  const shouldUseAI = !isConfirming && !foundProduct && !isOrderIntent && intent === 'other';
-
-  const context = {
-    menu_items: products.map(p => ({
-      name: p.name,
-      price: p.price,
-      category: p.category
-    })),
-    modifiers: [],
-    announcements_active: [],
-    promos_active: [],
-    cart_state: [],
-    customer_message: message
-  };
-
-  // 1. Greeting
+  
+  // Greeting
   let greeting = '';
   if (profile?.name) {
     greeting = `¡Hola ${profile.name}! 👋\n\n`;
   }
 
+  // 1. High Priority: Allergies
   if (/alergi|alérgi/i.test(message)) {
     if (profile?.restrictions?.length) {
       return `${greeting}Tienes registradas las siguientes alergias: ${profile.restrictions.join(', ')}. Tomamos todas las precauciones.`;
     }
     return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
   }
+
+  // 2. High Priority: Combo Request
+  if (/(?:mostr|ver|muestra|dame|quiero)\s*(?:solo\s+)?(?:los\s+)?combos/i.test(message)) {
+    const combos = products.filter(p => p.category === 'combos');
+    if (!combos.length) return `${greeting}No hay combos disponibles en este momento 😔`;
+    
+    let text = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
+    for (const p of combos) {
+      if (isCompatible(p, profile?.restrictions)) {
+        text += `🍗 ${p.name} - $${p.price}\n`;
+      }
+    }
+    text += "\n¿Cuál de estos te gustaría ordenar? 😏";
+    return text;
+  }
+
+  const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
+  const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
+  
+  let currentProducts = products;
+  const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
+  const shouldUseAI = !isConfirming && !foundProduct && !isOrderIntent && intent === 'other';
+
   
   if (isConfirming && phone) {
     const order = memory.get(phone);
