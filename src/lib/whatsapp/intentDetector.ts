@@ -20,60 +20,60 @@ export interface DetectionResult {
 
 // ── Product aliases (slang → canonical name) ──────────────────────────────────
 const PRODUCT_ALIASES: Record<string, string> = {
-  'boneless':             'Boneless 250g',
-  'boni':                 'Boneless 250g',
-  'boneless 250':         'Boneless 250g',
-  'boneless power':       'Boneless Power 911',
-  'power':                'Boneless Power 911',
-  'alitas':               'Alitas 6pz',
-  'alas':                 'Alitas 6pz',
-  'alitas 6':             'Alitas 6pz',
-  'alitas fuego':         'Alitas Fuego 911',
-  'fuego':                'Alitas Fuego 911',
-  'combo mixto':          'Combo Mixto 911',
-  'mixto':                'Combo Mixto 911',
-  'combo 911':            'Combo Mixto 911',
-  'combo callejero':      'Combo Callejero 911',
-  'callejero':            'Combo Callejero 911',
-  'banderilla suprema':   'Combo Banderilla Suprema',
-  'suprema':              'Combo Banderilla Suprema',
-  'dedos':                'Dedos de queso (6)',
-  'dedos de queso':       'Dedos de queso (6)',
-  'banderilla':           'Banderilla coreana',
-  'banderilla coreana':   'Banderilla coreana',
-  'papas':                'Papas clásicas',
-  'papas clasicas':       'Papas clásicas',
-  'papas con queso':      'Papas con queso',
-  'salchipapas':          'Salchipapas',
-  'papas loaded':         'Papas 911 Loaded',
-  'loaded':               'Papas 911 Loaded',
-  'refresco':             'Refresco 400ml',
-  'bebida':               'Refresco 400ml',
-  'coca':                 'Refresco 400ml',
+  'boneless': 'Boneless 250g',
+  'boni': 'Boneless 250g',
+  'boneless 250': 'Boneless 250g',
+  'boneless power': 'Boneless Power 911',
+  'power': 'Boneless Power 911',
+  'alitas': 'Alitas 6pz',
+  'alas': 'Alitas 6pz',
+  'alitas 6': 'Alitas 6pz',
+  'alitas fuego': 'Alitas Fuego 911',
+  'fuego': 'Alitas Fuego 911',
+  'combo mixto': 'Combo Mixto 911',
+  'mixto': 'Combo Mixto 911',
+  'combo 911': 'Combo Mixto 911',
+  'combo callejero': 'Combo Callejero 911',
+  'callejero': 'Combo Callejero 911',
+  'banderilla suprema': 'Combo Banderilla Suprema',
+  'suprema': 'Combo Banderilla Suprema',
+  'dedos': 'Dedos de queso (6)',
+  'dedos de queso': 'Dedos de queso (6)',
+  'banderilla': 'Banderilla coreana',
+  'banderilla coreana': 'Banderilla coreana',
+  'papas': 'Papas clásicas',
+  'papas clasicas': 'Papas clásicas',
+  'papas con queso': 'Papas con queso',
+  'salchipapas': 'Salchipapas',
+  'papas loaded': 'Papas 911 Loaded',
+  'loaded': 'Papas 911 Loaded',
+  'refresco': 'Refresco 400ml',
+  'bebida': 'Refresco 400ml',
+  'coca': 'Refresco 400ml',
 };
 
 // ── Category aliases ──────────────────────────────────────────────────────────
 const CATEGORY_ALIASES: Record<string, string> = {
-  'combos':       'COMBOS',
-  'combo':        'COMBOS',
-  'proteina':     'PROTEINA',
-  'proteína':     'PROTEINA',
-  'papas':        'PAPAS',
-  'banderillas':  'BANDERILLAS',
-  'bebidas':      'BEBIDAS',
-  'extras':       'EXTRAS',
+  'combos': 'COMBOS',
+  'combo': 'COMBOS',
+  'proteina': 'PROTEINA',
+  'proteína': 'PROTEINA',
+  'papas': 'PAPAS',
+  'banderillas': 'BANDERILLAS',
+  'bebidas': 'BEBIDAS',
+  'extras': 'EXTRAS',
 };
 
 // ── Sauce aliases ─────────────────────────────────────────────────────────────
 const SAUCE_ALIASES: Record<string, string> = {
-  'bbq':            'BBQ',
-  'mango':          'Mango Habanero',
-  'habanero':       'Mango Habanero',
+  'bbq': 'BBQ',
+  'mango': 'Mango Habanero',
+  'habanero': 'Mango Habanero',
   'mango habanero': 'Mango Habanero',
-  'sin salsa':      'NONE',
-  'sin enchilada':  'NONE',
-  'sin enchilar':   'NONE',
-  'natural':        'NONE',
+  'sin salsa': 'NONE',
+  'sin enchilada': 'NONE',
+  'sin enchilar': 'NONE',
+  'natural': 'NONE',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ function extractSauce(text: string): string | null {
 // ── Main detector ─────────────────────────────────────────────────────────────
 export function detectIntent(rawText: string): DetectionResult {
   const text = rawText.trim();
-  const n    = normalize(text);
+  const n = normalize(text);
 
   // ── Handoff (priority — detect first) ────────────────────────────────────
   const handoffTriggers = ['queja', 'reclamo', 'problema', 'no llego', 'no me llego',
@@ -182,7 +182,7 @@ export function detectIntent(rawText: string): DetectionResult {
   if (extraTriggers.some(t => n.includes(t))) {
     const dipName = n.includes('parmesano') ? 'Dip Parmesano'
       : n.includes('cheddar') ? 'Dip Queso Cheddar'
-      : n.includes('salsa') ? 'Salsa extra' : 'extra';
+        : n.includes('salsa') ? 'Salsa extra' : 'extra';
     return { intent: 'ADD_EXTRAS', entities: { extra: dipName, qty: extractQty(n) }, confidence: 'HIGH' };
   }
 

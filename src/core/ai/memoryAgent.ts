@@ -30,6 +30,13 @@ async function callGemini(prompt: string) {
   return text ? JSON.parse(text) : null;
 }
 
+function normalizeInsight(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/alergico a|alergia a|soy|no me gusta/gi, '')
+    .trim();
+}
+
 export async function extractAndSaveInsights(phone: string, userMessage: string, botResponse: string) {
   try {
     const supabase = getSupabaseAdmin();
@@ -80,15 +87,15 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
 
     if (insights.preferences || currentProfile?.preferences) {
       updateData.preferences = Array.from(new Set([
-        ...(currentProfile?.preferences || []),
-        ...(insights.preferences || [])
+        ...(currentProfile?.preferences || []).map(normalizeInsight),
+        ...(insights.preferences || []).map(normalizeInsight)
       ]));
     }
 
     if (insights.restrictions || currentProfile?.restrictions) {
       updateData.restrictions = Array.from(new Set([
-        ...(currentProfile?.restrictions || []),
-        ...(insights.restrictions || [])
+        ...(currentProfile?.restrictions || []).map(normalizeInsight),
+        ...(insights.restrictions || []).map(normalizeInsight)
       ]));
     }
 

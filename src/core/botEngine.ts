@@ -67,6 +67,15 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     return `${greeting}No tenemos alergias registradas para ti. ¿Quieres añadir alguna?`;
   }
 
+  if (/favorito|preferido/i.test(message)) {
+    return `${greeting}${profile?.favoriteProduct ? `Tu combo favorito es: ${profile.favoriteProduct} 🌟` : 'Aún no tengo tu favorito registrado 😔'}`;
+  }
+
+  let currentProducts = products;
+  if (/solo los combos|todos los combos/i.test(message) || /combo/i.test(message)) {
+    currentProducts = products.filter(p => p.category === 'combos');
+  }
+
   if (isConfirming && phone) {
     const order = memory.get(phone);
     if (!order) return "No tengo tu pedido 😅 inténtalo otra vez";
@@ -91,7 +100,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     }
   }
 
-  if (!products || products.length === 0) return "Ahorita no tengo productos disponibles 😔";
+  if (!currentProducts || currentProducts.length === 0) return "Ahorita no tengo productos disponibles 😔";
 
   if (foundProduct) {
     const qty = extractQty(message);
@@ -116,7 +125,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
   if (profile?.favoriteProduct) text += `Te recomendamos tu favorito: ${profile.favoriteProduct} 🌟\n\n`;
 
-  for (const p of products) {
+  for (const p of currentProducts) {
     if (isCompatible(p, profile?.restrictions)) {
       text += `🍗 ${p.name} - $${p.price}\n`;
     }
