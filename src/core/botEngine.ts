@@ -37,6 +37,11 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const lower = message.toLowerCase();
   const { intent } = detectIntent(message);
   
+  // Greeting intent handling (no AI)
+  if (intent === 'greeting' && profile?.name) {
+    return `¡Hola ${profile.name}! 👋 ¿Quieres ver el menú o te recomiendo algo? 🔥`;
+  }
+  
   // Greeting
   let greeting = '';
   if (profile?.name) {
@@ -146,11 +151,31 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
   text += "\n¿Qué te gustaría ordenar? 😏";
 
+  const simpleMessage =
+    intent === 'browsing' ||
+    intent === 'exploracion' ||
+    intent === 'hambre' ||
+    intent === 'duda' ||
+    message.length < 20;
+
+  if (simpleMessage) {
+    return '¡Hola! 👋 ¿Quieres ver el menú o te recomiendo algo?';
+  }
+
   if (shouldUseAI) {
+    let aiRes = null;
+
     try {
-      const ai = await getAIResponse(context);
-      if (ai?.message_to_user) return `${greeting}${ai.message_to_user}`;
-    } catch { }
+      aiRes = await getAIResponse(context);
+    } catch (e) {
+      console.error('[AI FALLBACK]', e);
+    }
+
+    if (aiRes?.message_to_user) return `${greeting}${aiRes.message_to_user}`;
+
+    if (!aiRes) {
+      return '¿Te muestro el menú o buscas algo en especial? 🔥';
+    }
   }
 
   return text;
