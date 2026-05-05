@@ -33,6 +33,7 @@ async function callGemini(prompt: string) {
 function normalizeInsight(text: string): string {
   return text
     .toLowerCase()
+    .replace(/^la\s+|^el\s+|^los\s+|^las\s+/gi, '')
     .replace(/(soy|tengo|sufro de)/gi, '')
     .replace(/(alergia a|alergico a|alérgico a)/gi, '')
     .replace(/(no me gusta|no consumo)/gi, '')
