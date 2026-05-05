@@ -18,14 +18,8 @@ function isCompatible(product: any, restrictions: string[] = []) {
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
-  let profile;
-  if (phone) {
-    try {
-      profile = await getCustomerProfileFromDB(phone);
-    } catch (e) {
-      console.error("[getBotResponse] Error fetching profile:", e);
-    }
-  }
+  const profile = await getCustomerProfileFromDB(phone).catch(() => null);
+  console.log('[botEngine] PROFILE:', profile);
 
   const products = await dbGetProducts();
   return buildPersonalizedResponse(message, phone, products, profile);
@@ -51,7 +45,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 2. FAVORITO
   if (/favorito|preferido/i.test(message)) {
-    return `${greeting}${profile?.favoriteProduct ? `Tu combo favorito es: ${profile.favoriteProduct} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
+    return `${greeting}${profile?.favorite_product ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
   }
 
   // 3. SOLO COMBOS
@@ -129,13 +123,13 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
     const rec = await getEntryRecommendation(intent, profile);
     if (rec && isCompatible(rec, profile?.restrictions)) {
-      const isFav = profile?.favoriteProduct?.toLowerCase() === rec.name.toLowerCase();
+      const isFav = profile?.favorite_product?.toLowerCase() === rec.name.toLowerCase();
       return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
     }
   }
 
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
-  if (profile?.favoriteProduct) text += `Te recomendamos tu favorito: ${profile.favoriteProduct} 🌟\n\n`;
+  if (profile?.favorite_product) text += `Te recomendamos tu favorito: ${profile.favorite_product} 🌟\n\n`;
 
   for (const p of currentProducts) {
     if (isCompatible(p, profile?.restrictions)) {
