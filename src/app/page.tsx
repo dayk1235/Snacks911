@@ -48,14 +48,14 @@ function UpsellPopup({
 }) {
   // Suggest 2-3 high-margin items that complement what was added
   const suggestions = useMemo(() => {
-    const ids: number[] = [];
+    const ids: string[] = [];
     // If they added wings/boneless → suggest papas or drinks
     if (product.category === 'proteina') {
-      ids.push(5, 6); // Papas Gajo + Papas Loaded
+      ids.push('5', '6'); // Papas Gajo + Papas Loaded
     } else if (product.category === 'papas') {
-      ids.push(1, 3); // Alitas BBQ + Boneless Clásico
+      ids.push('1', '3'); // Alitas BBQ + Boneless Clásico
     } else if (product.category === 'combos') {
-      ids.push(6); // Papas Loaded
+      ids.push('6'); // Papas Loaded
     }
     return products.filter(p => ids.includes(p.id));
   }, [product]);
@@ -463,17 +463,18 @@ export default function Page() {
 
   const handleAddExtra = useCallback((extra: AdminProduct) => {
     const asProduct = {
-      id: parseInt(extra.id.replace(/\D/g, '')) + 900,
+      id: `${extra.id}_ext`,
       name: extra.name,
       description: extra.description,
       price: extra.price,
       category: 'extras' as const,
       image: extra.imageUrl || '/images/combo.webp',
+      ingredients: extra.ingredients || [],
     };
     addToCart(asProduct);
   }, [addToCart]);
 
-  const featuredCombo = useMemo(() => products.find(p => p.id === 7) ?? products[6] ?? null, []);
+  const featuredCombo = useMemo(() => products.find(p => p.id === '7') ?? products[6] ?? null, []);
 
   const handleOrderFeatured = useCallback(() => {
     if (!featuredCombo) return;

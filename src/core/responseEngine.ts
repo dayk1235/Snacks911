@@ -9,7 +9,7 @@
  *   5. OUTPUT → { text, actions?, nextState }
  */
 
-import { products as allProducts } from '@/data/products';
+import { dbGetProducts } from '@/lib/db';
 import { filterProducts } from './allergyFilter';
 import { extractFoodIntent, rankProductsByIntent } from './contextRanker';
 import { detectIntent } from './intentDetector';
@@ -717,11 +717,14 @@ function parseUserRequest(text: string) {
  * 
  * Orchestrates the full pipeline using specialized agents.
  */
+import { AdminProduct } from '@/lib/adminTypes';
+
 export async function handleMessageModular(
   text: string,
   state: ConversationState,
   products: ProductRefs,
   action?: string,
+  allProductsOverride?: AdminProduct[]
 ): Promise<ResponseOutput> {
   console.log("ENGINE USED:", "MODULAR");
   
@@ -736,7 +739,8 @@ export async function handleMessageModular(
   }
 
   // 2. Filter all products for safety
-  const safeProducts = filterProducts(allProducts, nextState.allergies);
+  const allProducts = allProductsOverride || await dbGetProducts();
+  const safeProducts = filterProducts(allProducts as any, nextState.allergies);
 
   // 3. Rank products by user intent (after allergy filter)
   const intent = extractFoodIntent(text);

@@ -7,8 +7,11 @@ let supabaseInstance: SupabaseClient | null = null;
 
 function getSupabase() {
   if (!supabaseInstance) {
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables');
+    if (!supabaseUrl) {
+      throw new Error('FATAL: NEXT_PUBLIC_SUPABASE_URL is not defined. Check your .env file.');
+    }
+    if (!supabaseKey) {
+      throw new Error('FATAL: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined. Check your .env file.');
     }
     supabaseInstance = createClient(supabaseUrl, supabaseKey);
   }

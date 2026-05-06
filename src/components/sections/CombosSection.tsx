@@ -12,7 +12,7 @@ interface CombosSectionProps {
 
 function CombosSectionComponent({ onAdd }: CombosSectionProps) {
   const combos = useMemo(() => products.filter(p => p.category === 'combos'), []);
-  const [addedId, setAddedId] = useState<number | null>(null);
+  const [addedId, setAddedId] = useState<string | null>(null);
 
   const handleAdd = (product: Product) => {
     onAdd(product);

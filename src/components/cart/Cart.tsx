@@ -18,7 +18,7 @@ interface CartProps {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
-  onUpdateQuantity: (id: number, delta: number) => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
   total: number;
   onClearCart: () => void;
   onAddExtra?: (extra: AdminProduct) => void;

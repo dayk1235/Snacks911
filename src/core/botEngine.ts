@@ -25,8 +25,8 @@ function parseMultiIntent(message: string, products: any[]) {
   
   // Extract include keywords (after "con", "quiero", "dame", or just at start)
   // Matches things like "quiero papas", "dame alitas", "papas"
-  const includeMatch = lower.match(/\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i) || 
-                       lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin)\s+|$)/i);
+  const includeMatch = lower.match(/\b(?:con|quiero|dame|busco)\s+([a-z\s]+?)(?=\s+(?:pero|sin|alergico|no puedo)\s+|$)/i) || 
+                       lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin|alergico|no puedo)\s+|$)/i);
   
   let includeWords: string[] = [];
   if (includeMatch) {
@@ -43,20 +43,19 @@ function parseMultiIntent(message: string, products: any[]) {
   // If no specific include/exclude keywords found, return null
   if (!includeWords.length && !excludeWords.length) return null;
   
-  // Filter products
+  // Filter products using the centralized isProductSafe logic
   const filtered = products.filter(p => {
-    const nameAndIngredients = `${p.name} ${(p.ingredients || []).join(' ')}`.toLowerCase();
-    
-    // Must include at least one include word (if specified)
-    if (includeWords.length) {
-      const hasInclude = includeWords.some(word => nameAndIngredients.includes(word));
-      if (!hasInclude) return false;
+    // 1. Must NOT include any exclude word (treat as temporary allergy)
+    if (excludeWords.length > 0) {
+      if (!isProductSafe(p, excludeWords)) return false;
     }
     
-    // Must NOT include any exclude word
-    if (excludeWords.length) {
-      const hasExclude = excludeWords.some(word => nameAndIngredients.includes(word));
-      if (hasExclude) return false;
+    // 2. Must include at least one include word (if specified)
+    if (includeWords.length > 0) {
+      // For searching inclusion, we still check name + ingredients
+      const searchSpace = `${p.name} ${p.description || ''} ${(p.ingredients || []).join(' ')}`.toLowerCase();
+      const hasInclude = includeWords.some(word => searchSpace.includes(word));
+      if (!hasInclude) return false;
     }
     
     return true;
@@ -158,6 +157,26 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
         .trim();
     }
 
+    // Filter safe products using all restrictions
+    const allRestrictions = [...(profile?.restrictions || [])];
+    if (currentAllergen && !allRestrictions.includes(currentAllergen)) {
+      allRestrictions.push(currentAllergen);
+      
+      // PERSIST TO SUPABASE
+      if (phone) {
+        const { upsertCustomerProfile } = await import('@/lib/server/supabaseServer');
+        try {
+          await upsertCustomerProfile({
+            phone: phone,
+            restrictions: allRestrictions
+          });
+          console.log(`[botEngine] Persisted new restriction for ${phone}: ${currentAllergen}`);
+        } catch (e) {
+          console.warn('[botEngine] Failed to persist restriction', e);
+        }
+      }
+    }
+
     // Build response
     let response = greeting;
 
@@ -167,13 +186,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       response += `¡Entendido! Eres alérgico a "${currentAllergen}". Lo anotamos para tu seguridad. 🛡️`;
     }
 
-    // Filter safe products using all restrictions
-    const allRestrictions = [...(profile?.restrictions || [])];
-    if (currentAllergen && !allRestrictions.includes(currentAllergen)) {
-      allRestrictions.push(currentAllergen);
-    }
-
-      const localSafe = safeProducts.filter(p => isProductSafe(p, allRestrictions)).slice(0, 5);
+    const localSafe = products.filter(p => isProductSafe(p, allRestrictions)).slice(0, 5);
 
     if (localSafe.length > 0) {
       response += `\n\nTe recomendamos estos productos seguros:\n\n`;
@@ -201,21 +214,18 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     lower.includes('solo combos');
 
   if (wantsCombos) {
-    const combos = Array.from(
-      new Map(
-        safeProducts
-          .filter(p => p.category === 'combos')
-          .map(p => [p.name, p])
-      ).values()
-    );
+    const filtered = products
+      .filter(p => p.category === 'combos')
+      .filter(p => isProductSafe(p, profile?.restrictions || []));
 
-    const filtered = combos.filter(p =>
-      isProductSafe(p, profile?.restrictions)
+    // Ensure uniqueness by name
+    const uniqueFiltered = Array.from(
+      new Map(filtered.map(p => [p.name, p])).values()
     );
 
     let comboText = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
 
-    for (const p of filtered) {
+    for (const p of uniqueFiltered) {
       comboText += `🍗 ${p.name} - $${p.price}\n`;
     }
 
@@ -293,11 +303,10 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     return `${greeting}🔥 ${foundProduct.name}\nPrecio: $${foundProduct.price}\n\n¿Cuántas quieres?`;
   }
 
-  // 4. RECOMENDACIONES Y MENÚ
   if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
     let rec = await getEntryRecommendation(detected.intent, profile);
 
-      if (rec && !isProductSafe(rec, profile?.restrictions || [])) {
+    if (rec && !isProductSafe(rec, profile?.restrictions || [])) {
       console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
       rec = safeProducts[0] || null;
     }

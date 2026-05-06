@@ -81,10 +81,10 @@ export const cartStore = {
       });
     }
   },
-  updateQuantity: (id: number, delta: number) => {
+  updateQuantity: (id: string, delta: number) => {
     persistState(cartEngine.updateQuantity(state, id, delta));
   },
-  remove: (id: number) => {
+  remove: (id: string) => {
     persistState(cartEngine.removeFromCart(state, id));
   },
   clear: () => {

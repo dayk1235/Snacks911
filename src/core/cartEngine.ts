@@ -28,13 +28,14 @@ export function addToCart(
   product: CoreProduct | Omit<CartItem, 'quantity'>,
 ): CartState {
   const newItem: CartItem = {
-    id: product.id as number,
+    id: String(product.id),
     name: product.name,
     description: product.description,
     price: product.price,
     category: product.category,
     image: (product as CoreProduct).imageUrl ?? (product as CartItem).image ?? '',
     quantity: 1,
+    ingredients: product.ingredients || [],
     linkedExtras: (product as any).linkedExtras,
     isStandaloneExtra: (product as any).isStandaloneExtra,
   };
@@ -53,7 +54,7 @@ export function addToCart(
  */
 export function updateQuantity(
   state: CartState,
-  id: number,
+  id: string,
   delta: number,
 ): CartState {
   const items = state.items
@@ -68,7 +69,7 @@ export function updateQuantity(
  */
 export function removeFromCart(
   state: CartState,
-  id: number,
+  id: string,
 ): CartState {
   const items = state.items.filter(item => item.id !== id);
   return recalculate(items);
@@ -120,7 +121,7 @@ export function hasItems(state: CartState): boolean {
 /**
  * Get cart item count for a specific product ID.
  */
-export function getItemQuantity(state: CartState, id: number): number {
+export function getItemQuantity(state: CartState, id: string): number {
   return state.items.find(i => i.id === id)?.quantity ?? 0;
 }
 
@@ -137,18 +138,18 @@ export function hasCategory(state: CartState, category: string): boolean {
  */
 export function getSuggestedUpsell(state: CartState, allProducts: CoreProduct[]): CoreProduct[] {
   const categoriesInCart = new Set(state.items.map(i => i.category));
-  const suggestedIds: number[] = [];
+  const suggestedIds: string[] = [];
 
   // If wings/boneless in cart → suggest papas or drinks
   if (categoriesInCart.has('proteina')) {
-    suggestedIds.push(5, 6); // Papas Gajo + Papas Loaded
+    suggestedIds.push('5', '6'); // Papas Gajo + Papas Loaded
   } else if (categoriesInCart.has('papas')) {
-    suggestedIds.push(1, 3); // Alitas BBQ + Boneless Clásico
+    suggestedIds.push('1', '3'); // Alitas BBQ + Boneless Clásico
   } else if (categoriesInCart.has('combos')) {
-    suggestedIds.push(6); // Papas Loaded
+    suggestedIds.push('6'); // Papas Loaded
   }
 
-  return allProducts.filter(p => suggestedIds.includes(Number(p.id)));
+  return allProducts.filter(p => suggestedIds.includes(String(p.id)));
 }
 
 /**

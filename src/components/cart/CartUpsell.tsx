@@ -17,9 +17,9 @@ interface CartUpsellProps {
 
 function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
   const { getCartId } = useCartStore();
-  const [addedId, setAddedId]   = useState<number | null>(null);
+  const [addedId, setAddedId]   = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const lastSuggestedId = useRef<number | null>(null);
+  const lastSuggestedId = useRef<string | null>(null);
 
   const [upsell, setUpsell] = useState<{ product: Product, title: string, subtitle: string } | null>(null);
 

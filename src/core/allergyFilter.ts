@@ -8,22 +8,32 @@ import { Product } from '@/data/products';
 export function isProductSafe(product: Product, allergies: string[] = []): boolean {
   if (!allergies || allergies.length === 0) return true;
 
-  const lowerAllergies = allergies.map(a => a.toLowerCase());
-  const hasSalchichaAllergy = lowerAllergies.includes('salchicha');
+  const lowerAllergies = allergies.map(a => a.toLowerCase().trim()).filter(a => a.length > 0);
+  if (lowerAllergies.length === 0) return true;
+
+  const name = (product.name || '').toLowerCase();
+  const description = (product.description || '').toLowerCase();
+  const ingredients = (product.ingredients || []).map(i => i.toLowerCase().trim());
   
-  const name = product.name.toLowerCase();
-  const description = product.description.toLowerCase();
-  const ingredients = (product.ingredients || []).map(i => i.toLowerCase());
+  // Create a combined content string for searching
   const content = `${name} ${description} ${ingredients.join(' ')}`;
+  
+  // Log de diagnóstico
+  console.log(`[allergyFilter] Revisando: "${product.name}", Alergias: [${lowerAllergies.join(', ')}]`);
+  
+  for (const allergy of lowerAllergies) {
+    // 1. Direct match in content (name, description, ingredients)
+    // We only check if the product CONTENT contains the allergy keyword
+    if (content.includes(allergy)) {
+      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por coincidencia con: "${allergy}"`);
+      return false;
+    }
 
-  // 1. General allergen check
-  if (lowerAllergies.some(allergy => content.includes(allergy))) {
-    return false;
-  }
-
-  // 2. Special rule for salchicha (also blocks banderilla)
-  if (hasSalchichaAllergy && content.includes('banderilla')) {
-    return false;
+    // 2. Special rule: "salchicha" also blocks "banderilla"
+    if (allergy === 'salchicha' && content.includes('banderilla')) {
+      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por regla especial: salchicha -> banderilla`);
+      return false;
+    }
   }
 
   return true;
@@ -34,4 +44,52 @@ export function isProductSafe(product: Product, allergies: string[] = []): boole
  */
 export function filterProducts(products: Product[], allergies: string[] = []): Product[] {
   return products.filter(p => isProductSafe(p, allergies));
+}
+
+/**
+ * Test manual para validar el filtro de alergias.
+ * Compara Salchipapas vs Papas Clásicas con alergia a "salchicha".
+ * Llamar manualmente desde consola: window.testAllergyFilter?.()
+ */
+export function testAllergyFilter(): void {
+  const salchipapas: Product = {
+    id: '12',
+    name: 'Salchipapas',
+    description: 'Salchicha + papas + vegetales + salsas',
+    price: 85,
+    category: 'papas',
+    image: '/images/papas.webp',
+    ingredients: ['salchicha', 'papa'],
+    spicy: 0,
+  };
+
+  const papasClasicas: Product = {
+    id: '10',
+    name: 'Papas Clásicas',
+    description: 'Con sal y especias 911',
+    price: 45,
+    category: 'papas',
+    image: '/images/papas.webp',
+    ingredients: ['papas'],
+    spicy: 0,
+  };
+
+  const allergy = 'salchicha';
+  console.log('\n🧪 [TEST ALLERGY FILTER] Alergia:', allergy);
+  console.log('─'.repeat(50));
+
+  const result1 = isProductSafe(salchipapas, [allergy]);
+  console.log(`Salchipapas (ingredientes: ${salchipapas.ingredients.join(', ')}):`, result1 ? '✅ PERMITIDO' : '❌ RECHAZADO');
+
+  const result2 = isProductSafe(papasClasicas, [allergy]);
+  console.log(`Papas Clásicas (ingredientes: ${papasClasicas.ingredients.join(', ')}):`, result2 ? '✅ PERMITIDO' : '❌ RECHAZADO');
+
+  console.log('─'.repeat(50));
+  console.log('Esperado: Salchipapas=RECHAZADO, Papas Clásicas=PERMITIDO');
+  console.log('Resultado:', !result1 && result2 ? '✅ TEST PASADO' : '❌ TEST FALLIDO');
+  console.log('');
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).testAllergyFilter = testAllergyFilter;
 }

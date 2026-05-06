@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
-import { MENU } from '@/data/menu';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   const auth = await requireApiRole(req, ['admin']);
   if (!auth.ok) return auth.response;
 
@@ -11,19 +10,13 @@ export async function GET(req: Request) {
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase Admin is not configured.' }, { status: 500 });
   }
-  
+
   try {
-    // 1. Delete all existing products
-    await supabase.from('products').delete().neq('id', '');
-
-    // 2. Insert MENU
-    const { error } = await supabase.from('products').insert(MENU);
-
+    const { error } = await supabase.from('products').delete().neq('id', '');
     if (error) throw error;
-
-    return NextResponse.json({ success: true, count: MENU.length });
+    return NextResponse.json({ ok: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error al sembrar productos';
+    const message = error instanceof Error ? error.message : 'Error deleting all products';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

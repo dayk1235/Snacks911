@@ -7,7 +7,8 @@
  */
 
 import { Intent, CartItem, CustomerProfile } from './types';
-import { Product, products as allProducts } from '@/data/products';
+import { Product } from '@/data/products';
+import { dbGetProducts } from '@/lib/db';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
 import { supabase } from '@/lib/supabase';
@@ -33,6 +34,8 @@ export async function getEntryRecommendation(
   intent: Intent,
   profile?: CustomerProfile
 ): Promise<Product | null> {
+  const allProducts = await dbGetProducts() as unknown as Product[];
+  
   // Filter products by restrictions
   const safeProducts = profile?.restrictions?.length
     ? allProducts.filter(p => isProductSafe(p, profile.restrictions))
@@ -45,7 +48,7 @@ export async function getEntryRecommendation(
   }
 
   if (profile && profile.totalOrders > 0) {
-    return safeProducts.find(p => p.id === 1) || safeProducts[0]; // Combo Mixto 911
+    return safeProducts[0] || null;
   }
 
   // 2. Intent-based Logic
@@ -55,11 +58,11 @@ export async function getEntryRecommendation(
       // Largest/Most expensive Combo
       return [...safeProducts]
         .filter(p => p.category === 'combos')
-        .sort((a, b) => b.price - a.price)[0] || safeProducts[0];
+        .sort((a, b) => (b.price || 0) - (a.price || 0))[0] || safeProducts[0];
 
     case 'hungry_light':
       // Best-selling individual item
-      return safeProducts.find(p => p.popular && p.category !== 'combos') || safeProducts[9]; // Papas Loaded
+      return safeProducts.find(p => p.category !== 'combos') || safeProducts[0];
 
     case 'undecided':
     case 'duda':
@@ -67,7 +70,7 @@ export async function getEntryRecommendation(
     case 'other':
     default:
       // Absolute bestseller
-      return safeProducts.find(p => p.popular) || safeProducts[0];
+      return safeProducts[0] || null;
   }
 }
 
@@ -81,6 +84,8 @@ export async function getBestUpsell(
 ): Promise<UpsellOption | null> {
   if (getCurrentLevel() === 'ECO') return null;
   if (!currentCart || currentCart.length === 0) return null;
+
+  const allProducts = await dbGetProducts() as unknown as Product[];
 
   // 1. Identify missing categories
   const hasCombos = currentCart.some(i => i.category === 'combos');
@@ -171,7 +176,7 @@ export async function getBestUpsell(
   if (stock.length === 0 || !stock[0].available) return null;
 
   return {
-    productId: bestProduct.id,
+    productId: String(bestProduct.id),
     name: bestProduct.name,
     price: bestProduct.price,
     reason,
@@ -183,13 +188,16 @@ export async function getBestUpsell(
 // ─── Legacy Support Helpers (to be refactored out eventually) ───────────────
 
 export async function getTopCombos() {
+  const allProducts = await dbGetProducts() as unknown as Product[];
   return allProducts.filter(p => p.category === 'combos').slice(0, 3);
 }
 
 export async function getBestsellers() {
-  return allProducts.filter(p => p.popular).slice(0, 3);
+  const allProducts = await dbGetProducts() as unknown as Product[];
+  return allProducts.slice(0, 3);
 }
 
 export async function getCrossSell() {
+  const allProducts = await dbGetProducts() as unknown as Product[];
   return allProducts.find(p => p.category === 'extras') || null;
 }

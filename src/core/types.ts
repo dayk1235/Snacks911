@@ -84,8 +84,9 @@ export interface CoreProduct {
   name: string;
   description: string;
   price: number;
-  category: Product['category'];
+  category: string;
   imageUrl?: string;
+  ingredients: string[];
   available?: boolean;
   badge?: string;
   badges?: string[];
@@ -113,13 +114,14 @@ export interface ProductRefs {
 // ─── Cart Types ──────────────────────────────────────────────────────────────
 
 export interface CartItem {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
-  category: Product['category'];
+  category: string;
   image: string;
   quantity: number;
+  ingredients: string[];
   isStandaloneExtra?: boolean;
   linkedExtras?: string[];
 }

@@ -1,10 +1,11 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
-  category: 'combos' | 'proteina' | 'papas' | 'banderillas' | 'bebidas' | 'extras' | 'postres';
+  category: string;
   image: string;
+  ingredients: string[];
   spicy?: number;
   popular?: boolean;
   badge?: string;
@@ -12,14 +13,13 @@ export interface Product {
   /** Para combos: suma de items individuales antes del descuento */
   originalPrice?: number;
   available?: boolean;
-  ingredients?: string[];
 }
 
 export const products: Product[] = [
 
   // ─── COMBOS 🔥 ────────────────────────────────────────────────────────────
   {
-    id: 1,
+    id: '1',
     name: 'Combo Mixto 911',
     description: 'Boneless 150g + Alitas 6pz + Papas + Bebida. Lo mejor de dos mundos en un solo combo 🔥',
     price: 249,
@@ -32,7 +32,7 @@ export const products: Product[] = [
     ingredients: ['boneless', 'alitas', 'papas', 'bebida'],
   },
   {
-    id: 2,
+    id: '2',
     name: 'Boneless Power 911',
     description: 'Boneless 250g + Papas + Bebida + Salsa a elegir. Para los que van en serio 💪',
     price: 155,
@@ -45,7 +45,7 @@ export const products: Product[] = [
     ingredients: ['boneless', 'papas', 'bebida', 'salsa'],
   },
   {
-    id: 3,
+    id: '3',
     name: 'Alitas Fuego 911',
     description: 'Alitas 12pz + Papas + Bebida + Salsa. Fuego puro en cada mordida 🔥',
     price: 145,
@@ -57,7 +57,7 @@ export const products: Product[] = [
     ingredients: ['alitas', 'papas', 'bebida', 'salsa'],
   },
   {
-    id: 4,
+    id: '4',
     name: 'Combo Callejero 911',
     description: 'Banderilla + Salchipapas + Bebida. Sabor de calle, nivel 911 🌭',
     price: 175,
@@ -69,7 +69,7 @@ export const products: Product[] = [
     ingredients: ['salchicha', 'papa', 'bebida'],
   },
   {
-    id: 5,
+    id: '5',
     name: 'Combo Banderilla Suprema',
     description: '2 Banderillas + Papas con queso + Bebida. Doble antojo, doble disfrute 🧀',
     price: 149,
@@ -81,7 +81,7 @@ export const products: Product[] = [
     ingredients: ['salchicha', 'masa', 'papas', 'queso', 'bebida'],
   },
   {
-    id: 6,
+    id: '6',
     name: 'Combo Dedos de Queso + Papas',
     description: 'Dedos de queso + Papas clásicas + Bebida. Queso que se derrite, papas que crujen 🧀',
     price: 139,
@@ -93,7 +93,7 @@ export const products: Product[] = [
     ingredients: ['queso', 'papas', 'bebida'],
   },
   {
-    id: 7,
+    id: '7',
     name: 'Papas 911 Loaded',
     description: 'Papas grandes + Queso + Tocino + Jalapeños + Bebida. El loaded más cargado de la colonia 🤤',
     price: 149,
@@ -108,48 +108,52 @@ export const products: Product[] = [
 
   // ─── PROTEÍNA 🍗 ─────────────────────────────────────────────────────────
   {
-    id: 8,
+    id: '8',
     name: 'Boneless 250g',
     description: 'Con papas chicas y salsa a elegir. Crujientes, jugosos y recién hechos 😋',
     price: 139,
     category: 'proteina',
     image: '/images/boneless.webp',
+    ingredients: ['pollo', 'papas'],
     spicy: 1,
     popular: true,
   },
   {
-    id: 9,
+    id: '9',
     name: 'Alitas 6 piezas',
     description: 'Con papas chicas y salsa a elegir. Crujientes por fuera, jugosas por dentro 🔥',
     price: 125,
     category: 'proteina',
     image: '/images/alitas.webp',
+    ingredients: ['alitas', 'papas'],
     spicy: 1,
   },
 
   // ─── PAPAS Y ANTOJOS 🍟 ──────────────────────────────────────────────────
   {
-    id: 10,
+    id: '10',
     name: 'Papas Clásicas',
     description: 'Con sal y especias 911. Crujientes, doradas y bien sazonadas 🍟',
     price: 45,
     category: 'papas',
     image: '/images/papas.webp',
+    ingredients: ['papas'],
     spicy: 0,
   },
   {
-    id: 11,
+    id: '11',
     name: 'Papas con Queso',
     description: 'Cheddar fundido + tocino. El combo que no puedes rechazar 🧀',
     price: 65,
     category: 'papas',
     image: '/images/papas.webp',
+    ingredients: ['papas', 'queso', 'tocino'],
     spicy: 0,
     popular: true,
     badge: '🧀 Favorita',
   },
   {
-    id: 12,
+    id: '12',
     name: 'Salchipapas',
     description: 'Salchicha + papas + vegetales + salsas. Antojo callejero que no falla 🌭',
     price: 85,
@@ -162,7 +166,7 @@ export const products: Product[] = [
 
   // ─── BANDERILLAS Y DEDOS 🍡 ───────────────────────────────────────────────
   {
-    id: 13,
+    id: '13',
     name: 'Banderilla Coreana',
     description: 'Empanizada con salsa especial. Crujiente, dorada y con queso que se estira 🇰🇷',
     price: 79,
@@ -174,44 +178,48 @@ export const products: Product[] = [
     ingredients: ['salchicha', 'masa'],
   },
   {
-    id: 14,
+    id: '14',
     name: 'Dedos de Queso',
     description: '6 piezas + salsa marinara. Crujientes por fuera, queso fundido por dentro 🧀',
     price: 85,
     category: 'banderillas',
     image: '/images/combo.webp',
+    ingredients: ['queso', 'masa'],
     spicy: 0,
     badge: '🧀 Hit',
   },
 
   // ─── BEBIDAS 🥤 ───────────────────────────────────────────────────────────
   {
-    id: 15,
+    id: '15',
     name: 'Refresco 400ml',
     description: 'Coca, Sprite, Fanta, Manzanita. Bien frío para acompañar tu pedido 🥤',
     price: 30,
     category: 'bebidas',
     image: '/images/combo.webp',
+    ingredients: ['bebida'],
     spicy: 0,
   },
 
   // ─── EXTRAS ➕ ────────────────────────────────────────────────────────────
   {
-    id: 16,
+    id: '16',
     name: 'Salsa Extra',
     description: 'BBQ o Mango Habanero. Para bañarlo todo 🔥',
     price: 12,
     category: 'extras',
     image: '/images/alitas.webp',
+    ingredients: ['salsa'],
     spicy: 2,
   },
   {
-    id: 17,
+    id: '17',
     name: 'Dip Extra',
     description: 'Parmesano o Queso Cheddar. El dip que hace la diferencia 🧀',
     price: 15,
     category: 'extras',
     image: '/images/combo.webp',
+    ingredients: ['queso'],
     spicy: 0,
   },
 ];

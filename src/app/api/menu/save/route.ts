@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       available: true,
       description: item.description || '',
       applicableProductIds: [],
+      ingredients: [],
     }));
 
     // Save all products

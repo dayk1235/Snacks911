@@ -6,13 +6,12 @@ interface FoodIntent {
 }
 
 interface Product {
-  id: string | number;
+  id: string;
   name: string;
-  category?: string;
-  dietaryTags?: string[];
-  attributes?: string[];
-  description?: string;
-  price?: number;
+  price: number;
+  category: string;
+  description: string;
+  ingredients: string[];
 }
 
 const CATEGORY_KEYWORDS = new Set(['snack', 'drink', 'dessert', 'meal', 'breakfast', 'lunch', 'dinner', 'papas', 'boneless', 'alitas', 'combo']);
@@ -74,20 +73,6 @@ export function rankProductsByIntent(products: Product[], intent: FoodIntent): P
         score += CATEGORY_KEYWORDS.has(keyword) ? 2 : 1;
       }
     });
-
-    // Dietary tags
-    if (product.dietaryTags) {
-      product.dietaryTags.forEach(tag => {
-        if (intent.dietary.includes(tag)) score += 2;
-      });
-    }
-
-    // Attributes
-    if (product.attributes) {
-      product.attributes.forEach(attr => {
-        if (intent.attributes.includes(attr)) score += 1;
-      });
-    }
 
     return { product, score };
   });

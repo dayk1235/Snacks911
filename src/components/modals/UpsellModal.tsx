@@ -17,7 +17,7 @@ export default function UpsellModal({ product, onUpgrade, onSkip }: UpsellModalP
 
   const offer = useMemo(() => {
     if (isBoneless) {
-      const combo = products.find(p => p.id === 7); // Combo Boneless
+      const combo = products.find(p => p.id === '2'); // Boneless Power 911
       return {
         title: '¿Hazlo Combo?',
         message: 'Por solo un poco más, llévate tus boneless con papas y bebida.',
@@ -28,7 +28,7 @@ export default function UpsellModal({ product, onUpgrade, onSkip }: UpsellModalP
       };
     }
     if (isAlitas) {
-      const combo = products.find(p => p.id === 8); // Combo Alitas
+      const combo = products.find(p => p.id === '3'); // Alitas Fuego 911
       return {
         title: '¿Hazlo Combo?',
         message: 'Tus alitas saben mejor con papas y una bebida fría.',

@@ -12,24 +12,6 @@ import type {
 
 export type { Customer };
 
-// ─── Development Seed Defaults (used ONLY for local dev fallback) ─────────────
-const SEED_PRODUCTS: AdminProduct[] = [
-  { id: 'p1', name: 'Alitas BBQ',              price: 120, category: 'alitas',   available: true,  description: '8 alitas bañadas en salsa BBQ ahumada',          imageUrl: '' },
-  { id: 'p2', name: 'Alitas Buffalo',           price: 120, category: 'alitas',   available: true,  description: '8 alitas en salsa buffalo picante clásica',      imageUrl: '' },
-  { id: 'p3', name: 'Boneless Mango Habanero',  price: 130, category: 'boneless', available: true,  description: '10 boneless con salsa mango habanero artesanal', imageUrl: '' },
-  { id: 'p4', name: 'Boneless BBQ Ranch',       price: 125, category: 'boneless', available: false, description: '10 boneless en salsa BBQ con aderezo ranch',      imageUrl: '' },
-  { id: 'p5', name: 'Papas Gajo Loaded',        price: 80,  category: 'papas',    available: true,  description: 'Papas gajo con queso, tocino y jalapeños',       imageUrl: '' },
-  { id: 'p6', name: 'Combo 911',                price: 220, category: 'combos',   available: true,  description: '12 alitas + papas gajo + 2 refrescos',           imageUrl: '' },
-  { id: 'e1', name: 'Salsa Valentina',          price: 5,   category: 'extras',   available: true,  description: 'Salsa Valentina extra',                          imageUrl: '' },
-  { id: 'e2', name: 'Salsa Buffalo',            price: 10,  category: 'extras',   available: true,  description: 'Porción extra de salsa buffalo',                 imageUrl: '' },
-  { id: 'e3', name: 'Limones (6)',              price: 0,   category: 'extras',   available: true,  description: '6 limones frescos',                              imageUrl: '' },
-  { id: 'e4', name: 'Cebolla Curtida',          price: 10,  category: 'extras',   available: true,  description: 'Porción de cebolla curtida',                     imageUrl: '' },
-  { id: 'e5', name: 'Zanahorias',              price: 10,  category: 'extras',   available: true,  description: 'Zanahorias con limón y chile',                   imageUrl: '' },
-  { id: 'e6', name: 'Queso Extra',              price: 20,  category: 'extras',   available: true,  description: 'Porción extra de queso derretido',               imageUrl: '' },
-  { id: 'e7', name: 'Refresco',                price: 25,  category: 'extras',   available: true,  description: 'Refresco de 600ml',                              imageUrl: '' },
-  { id: 'e8', name: 'Salsa Habanero',           price: 10,  category: 'extras',   available: true,  description: 'Salsa habanero artesanal 🌶️',                   imageUrl: '' },
-];
-
 const DEFAULT_SETTINGS: BusinessSettings = {
   prepTime: 25,
   acceptingOrders: true,
@@ -62,6 +44,11 @@ const DEFAULT_SETTINGS: BusinessSettings = {
 
 export function rowToProduct(row: Record<string, unknown>): AdminProduct {
   const availabilityRaw = row.is_available ?? row.available;
+  const description = String(row.description ?? '');
+  // Heuristic: derive ingredients from description if column is missing
+  const ingredients = (row.ingredients as string[]) ?? 
+                      description.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 2);
+
   return {
     id:                   String(row.id),
     name:                 String(row.name),
@@ -69,7 +56,8 @@ export function rowToProduct(row: Record<string, unknown>): AdminProduct {
     category:             String(row.category),
     imageUrl:             String(row.image_url ?? ''),
     available:            availabilityRaw === undefined ? true : Boolean(availabilityRaw),
-    description:          String(row.description ?? ''),
+    description,
+    ingredients,
     applicableProductIds: (row.applicable_product_ids as string[]) ?? [],
     deliveryPrice:        row.delivery_price ? Number(row.delivery_price) : undefined,
     priceToShow:          row.delivery_price ? Number(row.delivery_price) : Number(row.price),
@@ -78,7 +66,7 @@ export function rowToProduct(row: Record<string, unknown>): AdminProduct {
 
 export function productToRow(p: AdminProduct) {
   const avail = (p as any).is_available ?? p.available ?? true;
-  return {
+  const row: any = {
     id:                    p.id,
     name:                  p.name,
     price:                 p.price,
@@ -89,6 +77,9 @@ export function productToRow(p: AdminProduct) {
     applicable_product_ids: p.applicableProductIds ?? [],
     delivery_price:        p.deliveryPrice ?? null,
   };
+  
+  // Omit ingredients to avoid "column not found" errors until schema is updated
+  return row;
 }
 
 function isUuid(value: string) {
@@ -159,19 +150,12 @@ function rowToSettings(row: Record<string, unknown>): BusinessSettings {
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export async function dbGetProducts(): Promise<AdminProduct[]> {
-  try {
-    const { data, error } = await supabase.from('products').select('*').order('created_at');
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      return SEED_PRODUCTS;
-    }
-    
-    return (data as Record<string, unknown>[]).map(rowToProduct);
-  } catch (e) {
-    console.warn('[db] Falling back to SEED_PRODUCTS due to error:', e);
-    return SEED_PRODUCTS;
+  const { data, error } = await supabase.from('products').select('*');
+  if (error) {
+    console.error('[dbGetProducts] Error:', error);
+    return [];
   }
+  return (data || []).map(rowToProduct);
 }
 
 
@@ -181,8 +165,19 @@ export async function dbSaveProduct(product: AdminProduct): Promise<void> {
   if (error) throw error;
 }
 
+export async function dbInsertProducts(products: AdminProduct[]): Promise<void> {
+  const rows = products.map(productToRow);
+  const { error } = await supabase.from('products').insert(rows);
+  if (error) throw error;
+}
+
 export async function dbDeleteProduct(id: string): Promise<void> {
   const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function dbDeleteAllProducts(): Promise<void> {
+  const { error } = await supabase.from('products').delete().gte('id', 0);
   if (error) throw error;
 }
 
@@ -302,7 +297,7 @@ export async function dbGetSales(): Promise<SaleRecord[]> {
     .in('status', ['preparing', 'ready', 'delivered'])
     .gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   if (error) throw error;
-  if (!data || data.length === 0) return getSeededSales();
+  if (!data || data.length === 0) return [];
 
   const byDate: Record<string, { total: number; orderCount: number }> = {};
   for (const row of data as Record<string, unknown>[]) {
@@ -316,19 +311,6 @@ export async function dbGetSales(): Promise<SaleRecord[]> {
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-30);
-}
-
-function getSeededSales(): SaleRecord[] {
-  const today = new Date();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (6 - i));
-    return {
-      date: d.toISOString().slice(0, 10),
-      total: 800 + Math.floor(Math.random() * 1200),
-      orderCount: 8 + Math.floor(Math.random() * 12),
-    };
-  });
 }
 
 // ─── Custom Categories ────────────────────────────────────────────────────────
@@ -364,6 +346,8 @@ function rowToCustomer(row: Record<string, unknown>): Customer {
     lastOrderTotal: Number(row.last_order_total ?? 0),
     favoriteProduct: String(row.favorite_product ?? ''),
     createdAt:      String(row.created_at ?? new Date().toISOString()),
+    restrictions:   (row.restrictions as string[]) ?? [],
+    preferences:    (row.preferences as string[]) ?? [],
   };
 }
 
@@ -387,6 +371,8 @@ export async function dbUpsertCustomer(c: Customer): Promise<void> {
     last_order_total: c.lastOrderTotal,
     favorite_product: c.favoriteProduct,
     created_at:      c.createdAt,
+    restrictions:    c.restrictions || [],
+    preferences:     c.preferences || [],
   };
   const { error } = await supabase.from('customers').upsert(row);
   if (error) throw error;

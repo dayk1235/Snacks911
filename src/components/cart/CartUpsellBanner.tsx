@@ -16,14 +16,14 @@ export default function CartUpsellBanner({
   total: number;
   onAdd: (product: Product) => void;
 }) {
-  const [added, setAdded] = useState<Set<number>>(new Set());
+  const [added, setAdded] = useState<Set<string>>(new Set());
 
   const MIN_ORDER = 150;
   const remaining = MIN_ORDER - total;
   if (remaining <= 0) return null;
 
   // Suggest cheap complements: papas + 1 extra
-  const suggestions = products.filter(p => p.id === 5 || p.id === 6); // Papas Gajo + Loaded
+  const suggestions = products.filter(p => p.id === '5' || p.id === '6'); // Papas Gajo + Loaded
 
   const handleAdd = (product: Product) => {
     track('upsell_accepted', {

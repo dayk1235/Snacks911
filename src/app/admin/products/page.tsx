@@ -14,6 +14,7 @@ const emptyForm = (): Omit<AdminProduct, 'id'> => ({
   name: '', price: 0, category: 'alitas',
   description: '', imageUrl: '', available: true,
   applicableProductIds: [],
+  ingredients: [],
 });
 
 export default function ProductsPage() {
@@ -63,7 +64,16 @@ export default function ProductsPage() {
 
   const openEdit = (p: AdminProduct) => {
     setEditTarget(p);
-    setForm({ name: p.name, price: p.price, category: p.category, description: p.description, imageUrl: p.imageUrl, available: p.available, applicableProductIds: p.applicableProductIds ?? [] });
+    setForm({ 
+      name: p.name, 
+      price: p.price, 
+      category: p.category, 
+      description: p.description, 
+      imageUrl: p.imageUrl, 
+      available: p.available, 
+      applicableProductIds: p.applicableProductIds ?? [],
+      ingredients: p.ingredients ?? []
+    });
     setFormErrors({});
     setShowNewCat(false);
     setModalOpen(true);

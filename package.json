@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "jest",
     "ai:fix-overflow": "node ai/cli.js fix-overflow",
     "ai:fix-cursor": "node ai/cli.js fix-cursor",
     "ai:add-logout": "node ai/cli.js add-logout",
@@ -21,6 +22,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "cline": "^2.17.0",
+    "dotenv": "^17.4.2",
     "framer-motion": "^12.38.0",
     "gsap": "^3.14.2",
     "next": "16.2.2",
@@ -31,13 +33,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "jest": "^30.3.0",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.9",
     "typescript": "^5"
   }
 }

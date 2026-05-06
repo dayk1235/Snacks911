@@ -55,13 +55,13 @@ function UpsellPopup({
   onClose: () => void;
 }) {
   const suggestions = useMemo(() => {
-    const ids: number[] = [];
+    const ids: string[] = [];
     if (product.category === 'proteina') {
-      ids.push(5, 6);
+      ids.push('5', '6');
     } else if (product.category === 'papas') {
-      ids.push(1, 3);
+      ids.push('1', '3');
     } else if (product.category === 'combos') {
-      ids.push(6);
+      ids.push('6');
     }
     return staticProducts.filter(p => ids.includes(p.id));
   }, [product]);
@@ -157,13 +157,14 @@ export default function MenuPage() {
     return dbProducts
       .filter(p => p.available)
       .map((p) => ({
-        id: numericIdFromString(p.id),
+        id: p.id,
         name: p.name,
         description: p.description || '',
         price: p.price,
         category: categoryFromDb(p.category),
         image: p.imageUrl || getProductImage({ id: p.id, name: p.name, category: p.category }),
         available: p.available,
+        ingredients: p.ingredients || [],
       }));
   }, [dbProducts]);
 
@@ -187,7 +188,7 @@ export default function MenuPage() {
   const performanceRank = useMemo(() => {
     if (orders.length === 0 || dbProducts.length === 0) {
       // Fallback: use popular flag
-      const rank: Record<number, number> = {};
+      const rank: Record<string, number> = {};
       menuProducts.forEach((p, i) => {
         rank[p.id] = p.popular ? 100 - i : 50 - i;
       });
@@ -195,20 +196,18 @@ export default function MenuPage() {
     }
 
     const analysis = analyzeSales(orders, dbProducts);
-    const rank: Record<number, number> = {};
+    const rank: Record<string, number> = {};
 
     // Default rank for all products
     menuProducts.forEach((p) => { rank[p.id] = 50; });
 
     // Assign scores based on position in bestSellers/lowPerformers
     analysis.bestSellers.forEach((item, i) => {
-      const productId = parseInt(item.productId.replace(/\D/g, ''));
-      if (productId) rank[productId] = 100 - i * 10;
+      rank[item.productId] = 100 - i * 10;
     });
 
     analysis.lowPerformers.forEach((item, i) => {
-      const productId = parseInt(item.productId.replace(/\D/g, ''));
-      if (productId) rank[productId] = 10 - i * 5;
+      rank[item.productId] = 10 - i * 5;
     });
 
     return rank;
@@ -296,12 +295,13 @@ export default function MenuPage() {
 
   const handleAddExtra = useCallback((extra: AdminProduct, standalone = true) => {
     const asProduct = {
-      id: parseInt(extra.id.replace(/\D/g, '')) + 900,
+      id: `${extra.id}_ext`,
       name: extra.name,
       description: extra.description,
       price: extra.price,
       category: 'extras' as const,
       image: extra.imageUrl || '/images/combo.webp',
+      ingredients: extra.ingredients || [],
       isStandaloneExtra: standalone
     };
     storeAddToCart(asProduct);

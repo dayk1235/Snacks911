@@ -55,27 +55,32 @@ export default function SalesOptimizationPage() {
       }
     }
 
-    // 3. Create combo from top opportunity
-    if (result.comboOpportunities.length > 0) {
-      const top = result.comboOpportunities[0];
-      const productA = products.find(p => p.id === top.productA);
-      const productB = products.find(p => p.id === top.productB);
+      // 3. Create combo from top opportunity
+      if (result.comboOpportunities.length > 0) {
+        const top = result.comboOpportunities[0];
+        const productA = products.find(p => p.id === top.productA);
+        const productB = products.find(p => p.id === top.productB);
 
-      if (productA && productB) {
-        const comboName = `Combo ${productA.name.split(' ')[0]} + ${productB.name.split(' ')[0]}`;
-        const combo: AdminProduct = {
-          id: `p_combo_${Date.now()}`,
-          name: comboName,
-          price: result.comboOpportunities[0].suggestedPrice,
-          category: 'combos',
-          imageUrl: productA.imageUrl || '/images/combo.webp',
-          available: true,
-          description: `${productA.name} + ${productB.name} — ¡Ahorra $${result.comboOpportunities[0].suggestedDiscount}!`,
-          applicableProductIds: [],
-        };
-        await AdminStore.saveProduct(combo);
+        if (productA && productB) {
+          const comboName = `Combo ${productA.name.split(' ')[0]} + ${productB.name.split(' ')[0]}`;
+          // Merge ingredients from both products
+          const mergedIngredients = [...(productA.ingredients || []), ...(productB.ingredients || [])];
+          const uniqueIngredients = [...new Set(mergedIngredients)]; // Remove duplicates
+          
+          const combo: AdminProduct = {
+            id: `p_combo_${Date.now()}`,
+            name: comboName,
+            price: result.comboOpportunities[0].suggestedPrice,
+            category: 'combos',
+            imageUrl: productA.imageUrl || '/images/combo.webp',
+            available: true,
+            description: `${productA.name} + ${productB.name} — ¡Ahorra $${result.comboOpportunities[0].suggestedDiscount}!`,
+            ingredients: uniqueIngredients,
+            applicableProductIds: [],
+          };
+          await AdminStore.saveProduct(combo);
+        }
       }
-    }
 
     setApplying(false);
     alert('Optimizaciones aplicadas. Recarga la página para ver los cambios.');

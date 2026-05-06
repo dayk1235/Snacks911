@@ -1,6 +1,6 @@
 /**
- * adminStore.ts — Thin async wrapper over db.ts (Supabase).
- * All methods are now async. Falls back to localStorage when Supabase is unavailable.
+ * adminStore.ts — Uses fetch API to unified Supabase DB.
+ * No localStorage. All read/write goes through /api/* endpoints.
  */
 
 import type {
@@ -9,37 +9,7 @@ import type {
   Customer, AuditLog,
 } from './adminTypes';
 
-import {
-  dbGetProducts, dbSaveProduct, dbDeleteProduct, dbToggleProduct,
-  dbGetOrders, dbSaveOrder, dbUpdateOrderStatus,
-  dbGetSettings, dbSaveSettings,
-  dbGetSales,
-  dbGetCustomCategories, dbSaveCustomCategory, dbDeleteCustomCategory,
-  dbGetCustomer, dbUpsertCustomer, dbGetAllCustomers,
-  dbGetAuditLogs,
-} from './db';
-
-// ─── localStorage keys (used as offline cache) ────────────────────────────────
-const K = {
-  PRODUCTS:   'snacks911_admin_products',
-  SETTINGS:   'snacks911_admin_settings',
-  CATEGORIES: 'snacks911_admin_categories',
-} as const;
-
-function lsRead<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch { return fallback; }
-}
-
-function lsWrite<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
-}
-
-// ─── In-memory TTL cache ──────────────────────────────────────────────────────
+// ─── In-memory TTL cache ──────────────────────────────────────
 type CacheEntry = { data: unknown; expires: number };
 const _cache = new Map<string, CacheEntry>();
 
@@ -62,13 +32,12 @@ const TTL = {
   SETTINGS:   5 * 60 * 1000, // 5 min
   PRODUCTS:   2 * 60 * 1000, // 2 min
   CATEGORIES: 5 * 60 * 1000, // 5 min
-} as const;
+};
 
 function createUuid() {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
   }
-  // RFC4122 v4 compliant fallback
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -76,66 +45,97 @@ function createUuid() {
   });
 }
 
-
-// ─── AdminStore ───────────────────────────────────────────────────────────────
+// ─── AdminStore ───────────────────────────────────────────────
 export const AdminStore = {
 
-  // ── Products ────────────────────────────────────────────────────────────────
+  // ── Products ─────────────────────────────────────────────────
   async getProducts(): Promise<AdminProduct[]> {
     const hit = cacheGet<AdminProduct[]>('products');
     if (hit) return hit;
     try {
-      const products = await dbGetProducts();
-      lsWrite(K.PRODUCTS, products);
+      const response = await fetch('/api/products?all=true');
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const products = await response.json();
       cacheSet('products', products, TTL.PRODUCTS);
       return products;
     } catch (e) {
-      console.warn('[AdminStore] Supabase unavailable, using localStorage', e);
-      return lsRead<AdminProduct[]>(K.PRODUCTS, []);
+      console.error('[AdminStore] getProducts failed', e);
+      throw e;
     }
   },
 
   async saveProduct(product: AdminProduct): Promise<void> {
     cacheDel('products');
     try {
-      await dbSaveProduct(product);
-      // update local cache
-      const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
-      const idx = all.findIndex(p => p.id === product.id);
-      if (idx >= 0) all[idx] = product; else all.push(product);
-      lsWrite(K.PRODUCTS, all);
+      const method = product.id && product.id.length > 0 ? 'PUT' : 'POST';
+      const response = await fetch('/api/products', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+      });
+      if (!response.ok) throw new Error('Failed to save product');
     } catch (e) {
-      console.warn('[AdminStore] saveProduct fallback', e);
-      const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
-      const idx = all.findIndex(p => p.id === product.id);
-      if (idx >= 0) all[idx] = product; else all.push(product);
-      lsWrite(K.PRODUCTS, all);
+      console.error('[AdminStore] saveProduct failed', e);
+      throw e;
+    }
+  },
+
+  async insertProducts(products: AdminProduct[]): Promise<void> {
+    cacheDel('products');
+    try {
+      await Promise.all(
+        products.map(p =>
+          fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p),
+          })
+        )
+      );
+    } catch (e) {
+      console.error('[AdminStore] insertProducts failed', e);
+      throw e;
     }
   },
 
   async deleteProduct(id: string): Promise<void> {
     cacheDel('products');
     try {
-      await dbDeleteProduct(id);
+      const response = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete product');
     } catch (e) {
-      console.warn('[AdminStore] deleteProduct fallback', e);
+      console.error('[AdminStore] deleteProduct failed', e);
+      throw e;
     }
-    const all = lsRead<AdminProduct[]>(K.PRODUCTS, []).filter(p => p.id !== id);
-    lsWrite(K.PRODUCTS, all);
+  },
+
+  async deleteAllProducts(): Promise<void> {
+    cacheDel('products');
+    try {
+      const response = await fetch('/api/products/delete-all', { method: 'POST' });
+      if (!response.ok) throw new Error('Failed to delete all products');
+    } catch (e) {
+      console.error('[AdminStore] deleteAllProducts failed', e);
+      throw e;
+    }
   },
 
   async toggleProduct(id: string): Promise<void> {
     try {
-      await dbToggleProduct(id);
+      const response = await fetch('/api/products/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) throw new Error('Failed to toggle product');
+      cacheDel('products');
     } catch (e) {
-      console.warn('[AdminStore] toggleProduct fallback', e);
+      console.error('[AdminStore] toggleProduct failed', e);
+      throw e;
     }
-    const all = lsRead<AdminProduct[]>(K.PRODUCTS, []);
-    const prod = all.find(p => p.id === id);
-    if (prod) { prod.available = !prod.available; lsWrite(K.PRODUCTS, all); }
   },
 
-  // ── Orders ──────────────────────────────────────────────────────────────────
+  // ── Orders ─────────────────────────────────────────────────
   async getOrders(): Promise<Order[]> {
     try {
       const response = await fetch('/api/orders');
@@ -162,12 +162,10 @@ export const AdminStore = {
           notes: order.notes,
         }),
       });
-
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Unknown API error' }));
         throw new Error(err.error || 'Failed to save order via API');
       }
-
       const result = await response.json();
       order.id = result.orderId;
     } catch (e) {
@@ -176,9 +174,8 @@ export const AdminStore = {
     }
   },
 
-  /** Quick order submit — generates ID, saves to Supabase, returns order ID */
   async submitOrder(
-    items: { id: number; name: string; price: number; quantity: number; linkedExtras?: string[] }[],
+    items: { id: string | number; name: string; price: number; quantity: number; linkedExtras?: string[] }[],
     total: number,
     whatsappNumber?: string,
     customerName?: string,
@@ -212,16 +209,19 @@ export const AdminStore = {
   },
 
   async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
-    console.log('[AdminStore] update', id, status);
-    const response = await fetch('/api/orders/status', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `Failed to update status: ${response.status}`);
+    try {
+      const response = await fetch('/api/orders/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `Failed to update status: ${response.status}`);
+      }
+    } catch (e) {
+      console.error('[AdminStore] updateOrderStatus failed', e);
+      throw e;
     }
   },
 
@@ -238,127 +238,122 @@ export const AdminStore = {
     }
   },
 
-  // ── Settings — stale-while-revalidate ────────────────────────────────────────
+  // ── Settings ────────────────────────────────────────────────
   async getSettings(): Promise<BusinessSettings> {
-    // 1. In-memory cache hit
     const memHit = cacheGet<BusinessSettings>('settings');
     if (memHit) return memHit;
 
-    const DEFAULTS: BusinessSettings = {
-      prepTime: 25, acceptingOrders: true, whatsappNumber: '525584507458',
-      openHours: {}, businessName: 'Snacks 911', address: '',
-      heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
-      heroStats: [
-        { value: '500+', label: 'Pedidos diarios' },
-        { value: '4.9★', label: 'Calificación' },
-        { value: '30min', label: 'Tiempo promedio' },
-      ],
-      deliveryApps: [
-        { name: 'Uber Eats', href: 'https://ubereats.com',  icon: '🟢', color: '#06C167', enabled: true },
-        { name: 'Rappi',     href: 'https://rappi.com',      icon: '🟠', color: '#FF441A', enabled: true },
-        { name: 'DiDi Food', href: 'https://didiglobal.com', icon: '🟡', color: '#FF6E20', enabled: true },
-      ],
-    };
-
-    // 2. Stale-while-revalidate: return localStorage instantly, refresh in bg
-    const lsHit = lsRead<BusinessSettings | null>(K.SETTINGS, null);
-    if (lsHit) {
-      cacheSet('settings', lsHit, TTL.SETTINGS);
-      dbGetSettings()
-        .then(fresh => { lsWrite(K.SETTINGS, fresh); cacheDel('settings'); })
-        .catch(() => {});
-      return lsHit;
-    }
-
-    // 3. No cache — fetch and wait
     try {
-      const settings = await dbGetSettings();
-      lsWrite(K.SETTINGS, settings);
+      const response = await fetch('/api/settings');
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const settings = await response.json();
       cacheSet('settings', settings, TTL.SETTINGS);
       return settings;
     } catch (e) {
-      console.warn('[AdminStore] getSettings fallback', e);
-      return DEFAULTS;
+      console.error('[AdminStore] getSettings failed', e);
+      throw e;
     }
   },
 
   async saveSettings(settings: BusinessSettings): Promise<void> {
     cacheDel('settings');
     try {
-      await dbSaveSettings(settings);
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error('Failed to save settings');
     } catch (e) {
-      console.warn('[AdminStore] saveSettings fallback', e);
+      console.error('[AdminStore] saveSettings failed', e);
+      throw e;
     }
-    lsWrite(K.SETTINGS, settings);
-
   },
 
-  // ── Sales ────────────────────────────────────────────────────────────────────
+  // ── Sales ──────────────────────────────────────────────────
   async getSales(): Promise<SaleRecord[]> {
     try {
-      return await dbGetSales();
+      const response = await fetch('/api/sales');
+      if (!response.ok) throw new Error('Failed to fetch sales');
+      return await response.json();
     } catch (e) {
-      console.warn('[AdminStore] getSales fallback', e);
+      console.warn('[AdminStore] getSales failed', e);
       return [];
     }
   },
 
-  // ── Custom Categories ────────────────────────────────────────────────────────
+  // ── Custom Categories ──────────────────────────────────────
   async getCustomCategories(): Promise<CustomCategory[]> {
     const hit = cacheGet<CustomCategory[]>('categories');
     if (hit) return hit;
     try {
-      const cats = await dbGetCustomCategories();
-      lsWrite(K.CATEGORIES, cats);
+      const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      const cats = await response.json();
       cacheSet('categories', cats, TTL.CATEGORIES);
       return cats;
     } catch (e) {
-      console.warn('[AdminStore] getCustomCategories fallback', e);
-      return lsRead<CustomCategory[]>(K.CATEGORIES, []);
+      console.warn('[AdminStore] getCustomCategories failed', e);
+      return [];
     }
   },
 
   async saveCustomCategory(cat: CustomCategory): Promise<void> {
     cacheDel('categories');
     try {
-      await dbSaveCustomCategory(cat);
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cat),
+      });
+      if (!response.ok) throw new Error('Failed to save category');
     } catch (e) {
-      console.warn('[AdminStore] saveCustomCategory fallback', e);
+      console.error('[AdminStore] saveCustomCategory failed', e);
+      throw e;
     }
-    const all = lsRead<CustomCategory[]>(K.CATEGORIES, []);
-    const idx = all.findIndex(c => c.id === cat.id);
-    if (idx >= 0) all[idx] = cat; else all.push(cat);
-    lsWrite(K.CATEGORIES, all);
   },
 
   async deleteCustomCategory(id: string): Promise<void> {
     cacheDel('categories');
     try {
-      await dbDeleteCustomCategory(id);
+      const response = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete category');
     } catch (e) {
-      console.warn('[AdminStore] deleteCustomCategory fallback', e);
+      console.error('[AdminStore] deleteCustomCategory failed', e);
+      throw e;
     }
-    const all = lsRead<CustomCategory[]>(K.CATEGORIES, []).filter(c => c.id !== id);
-    lsWrite(K.CATEGORIES, all);
   },
 
-  // ── Customers ───────────────────────────────────────────────────────────────
+  // ── Customers ─────────────────────────────────────────────
   async getCustomer(phone: string): Promise<Customer | null> {
-    try { return await dbGetCustomer(phone); }
-    catch { return null; }
+    try {
+      const response = await fetch(`/api/customers?phone=${phone}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch { return null; }
   },
 
   async upsertCustomer(c: Customer): Promise<void> {
-    try { await dbUpsertCustomer(c); }
-    catch (e) { console.warn('[AdminStore] upsertCustomer fallback', e); }
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(c),
+      });
+      if (!response.ok) throw new Error('Failed to upsert customer');
+    } catch (e) {
+      console.warn('[AdminStore] upsertCustomer failed', e);
+    }
   },
 
   async getAllCustomers(): Promise<Customer[]> {
-    try { return await dbGetAllCustomers(); }
-    catch { return []; }
+    try {
+      const response = await fetch('/api/customers');
+      if (!response.ok) return [];
+      return await response.json();
+    } catch { return []; }
   },
 
-  /** Update customer stats after an order. Creates if new. */
   async trackCustomerOrder(phone: string, name: string, total: number, orderDate: string, topProduct: string): Promise<void> {
     if (!phone || phone.length < 10) return;
     const existing = await this.getCustomer(phone);
@@ -369,7 +364,6 @@ export const AdminStore = {
       existing.lastOrderDate = orderDate;
       existing.lastOrderTotal = total;
       if (name) existing.name = name;
-      // Update favorite: count occurrences
       const favCounts: Record<string, number> = {};
       favCounts[existing.favoriteProduct] = (favCounts[existing.favoriteProduct] || 0) + 1;
       favCounts[topProduct] = (favCounts[topProduct] || 0) + 1;
@@ -388,12 +382,14 @@ export const AdminStore = {
       });
     }
   },
-  
+
   async getAuditLogs(): Promise<AuditLog[]> {
     try {
-      return await dbGetAuditLogs();
+      const response = await fetch('/api/audit-logs');
+      if (!response.ok) return [];
+      return await response.json();
     } catch (e) {
-      console.warn('[AdminStore] getAuditLogs fallback', e);
+      console.warn('[AdminStore] getAuditLogs failed', e);
       return [];
     }
   },

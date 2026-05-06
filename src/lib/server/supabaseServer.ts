@@ -15,18 +15,28 @@ import { CustomerProfile } from '@/core/types';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 // Anon client — for routes that need RLS-respected access
-export const supabaseAnon: SupabaseClient | null = supabaseUrl
-  ? createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+function createAnonClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('FATAL: Supabase Anon credentials missing (NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY)');
+  }
+  return createClient(url, key, {
     auth: { persistSession: false },
-  })
-  : null;
+  });
+}
+
+export const supabaseAnon: SupabaseClient = createAnonClient();
 
 export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    throw new Error('Missing Supabase environment variables (URL or SERVICE_ROLE_KEY)');
+  if (!url) {
+    throw new Error('FATAL: NEXT_PUBLIC_SUPABASE_URL is missing. Check your environment.');
+  }
+  if (!key) {
+    throw new Error('FATAL: SUPABASE_SERVICE_ROLE_KEY is missing. Check your environment.');
   }
 
   return createClient(url, key, {
@@ -55,4 +65,26 @@ export async function getCustomerProfileFromDB(phone: string): Promise<CustomerP
     preferences: data.preferences,
     restrictions: data.restrictions,
   };
+}
+
+export async function upsertCustomerProfile(profile: Partial<CustomerProfile> & { phone: string }): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  
+  const row = {
+    phone_number: profile.phone,
+    name: profile.name,
+    favorite_product: profile.favoriteProduct,
+    preferences: profile.preferences,
+    restrictions: profile.restrictions,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase
+    .from("customers")
+    .upsert(row, { onConflict: 'phone_number' });
+
+  if (error) {
+    console.error("[supabaseServer] Error upserting profile:", error);
+    throw error;
+  }
 }

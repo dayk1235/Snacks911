@@ -1,10 +1,12 @@
 import { useSyncExternalStore } from 'react';
+import { AdminStore } from './adminStore';
 
 /**
- * lib/customerProfileStore.ts — Local persistence for customer data.
+ * lib/customerProfileStore.ts — Syncs customer data with Supabase.
  * 
  * Part of Phase 1.6: Customer Memory & Context.
  * Stores basic metrics to personalize the experience.
+ * localStorage is used only for session persistence of the phone number.
  */
 
 export interface CustomerProfile {
@@ -13,6 +15,7 @@ export interface CustomerProfile {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate?: string;
+  favoriteProduct?: string;
 }
 
 const LS_PROFILE_KEY = 'snacks911_customer_profile';
@@ -25,7 +28,7 @@ const DEFAULT_PROFILE: CustomerProfile = {
 let state: CustomerProfile = DEFAULT_PROFILE;
 let listeners: Array<() => void> = [];
 
-// Hydrate from localStorage on client
+// Initial hydration from localStorage (mainly to keep track of the session's phone number)
 if (typeof window !== 'undefined') {
   try {
     const saved = localStorage.getItem(LS_PROFILE_KEY);
@@ -45,14 +48,58 @@ function emitChange() {
 
 export const customerStore = {
   /**
-   * Updates the profile and persists to localStorage.
+   * Fetches profile from Supabase and updates the store.
    */
-  update: (updates: Partial<CustomerProfile>) => {
+  fetchProfile: async (phone: string) => {
+    if (!phone || phone.length < 10) return;
+    try {
+      const dbProfile = await AdminStore.getCustomer(phone);
+      if (dbProfile) {
+        const profile: CustomerProfile = {
+          phone: dbProfile.phoneNumber,
+          name: dbProfile.name,
+          totalOrders: dbProfile.totalOrders,
+          totalSpent: dbProfile.lastOrderTotal,
+          lastOrderDate: dbProfile.lastOrderDate,
+          favoriteProduct: dbProfile.favoriteProduct
+        };
+        state = profile;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(state));
+        }
+        emitChange();
+      }
+    } catch (e) {
+      console.warn('[customerStore] Failed to fetch profile', e);
+    }
+  },
+
+  /**
+   * Updates the profile and persists to Supabase.
+   */
+  update: async (updates: Partial<CustomerProfile>) => {
     state = { ...state, ...updates };
     if (typeof window !== 'undefined') {
       localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(state));
     }
     emitChange();
+
+    // Persist to Supabase if phone exists
+    if (state.phone) {
+      try {
+        await AdminStore.upsertCustomer({
+          phoneNumber: state.phone,
+          name: state.name || '',
+          totalOrders: state.totalOrders,
+          lastOrderDate: state.lastOrderDate || new Date().toISOString(),
+          lastOrderTotal: state.totalSpent,
+          favoriteProduct: state.favoriteProduct || '',
+          createdAt: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('[customerStore] Supabase sync failed', e);
+      }
+    }
   },
 
   /**
@@ -89,6 +136,7 @@ export function useCustomerProfile() {
 
   return {
     ...profile,
+    fetchProfile: customerStore.fetchProfile,
     updateProfile: customerStore.update,
     clearProfile: customerStore.clear,
   };

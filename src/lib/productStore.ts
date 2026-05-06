@@ -8,7 +8,7 @@ interface ProductState {
   fetchProducts: (all?: boolean) => Promise<void>;
   updateProduct: (product: Product) => Promise<boolean>;
   createProduct: (product: Omit<Product, 'id'>) => Promise<boolean>;
-  deleteProduct: (id: number) => Promise<boolean>;
+  deleteProduct: (id: string) => Promise<boolean>;
 }
 
 export const useProductStore = create<ProductState>()((set, get) => ({
@@ -25,7 +25,7 @@ export const useProductStore = create<ProductState>()((set, get) => ({
       
       // Map DB snake_case back to camelCase used in the frontend
       const mapped = data.map((dbProduct: any) => ({
-        id: Number(dbProduct.id),
+        id: String(dbProduct.id),
         name: dbProduct.name,
         description: dbProduct.description,
         price: Number(dbProduct.price),

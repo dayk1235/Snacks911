@@ -20,6 +20,7 @@ export interface AdminProduct {
   imageUrl: string;
   available: boolean;
   description: string;
+  ingredients: string[];
   /** Only for extras: which product IDs this extra applies to. Empty = applies to all. */
   applicableProductIds?: string[];
   deliveryPrice?: number;
@@ -65,6 +66,8 @@ export interface Customer {
   lastOrderTotal: number;
   favoriteProduct: string;
   createdAt: string;       // ISO date
+  restrictions?: string[];
+  preferences?: string[];
 }
 
 export type UserRole = 'admin' | 'gerente' | 'staff';

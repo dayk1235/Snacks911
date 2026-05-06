@@ -1,42 +1,41 @@
 import { NextResponse } from 'next/server';
+import { dbGetProducts, dbInsertProducts, dbDeleteAllProducts } from '@/lib/db';
 import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
 // GET: Fetch products
-export async function GET(req: Request) {
-  const db = getDb();
-  if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
-
-  const { searchParams } = new URL(req.url);
-  const showAll = searchParams.get('all') === 'true';
-
-  let query = db.from('products').select('*').order('category').order('price', { ascending: false });
-  
-  if (!showAll) {
-    query = query.eq('is_available', true);
+export async function GET() {
+  try {
+    const products = await dbGetProducts();
+    return NextResponse.json(products, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json(data);
 }
 
-// POST: Create product
+// POST: Create products (bulk)
 export async function POST(req: Request) {
   const auth = await requireApiRole(req, ['admin', 'gerente']);
   if (!auth.ok) return auth.response;
 
-  const db = getDb();
-  if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
+  try {
+    const body = await req.json();
+    const products = Array.isArray(body) ? body : [body];
 
-  const body = await req.json();
-  const { error } = await db.from('products').insert(body);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Validation
+    for (const p of products) {
+      if (!p.name || typeof p.price !== 'number') {
+        return NextResponse.json({ error: 'Cada producto debe tener name y price (number)' }, { status: 400 });
+      }
+    }
 
-  return NextResponse.json({ ok: true });
+    await dbInsertProducts(products);
+    return NextResponse.json({ success: true, count: products.length });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 // PUT: Update product
@@ -57,20 +56,26 @@ export async function PUT(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE: Delete product
+// DELETE: Delete products (all or single)
 export async function DELETE(req: Request) {
   const auth = await requireApiRole(req, ['admin', 'gerente']);
   if (!auth.ok) return auth.response;
 
-  const db = getDb();
-  if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+    if (id) {
+      const db = getDb();
+      if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
+      const { error } = await db.from('products').delete().eq('id', id);
+      if (error) throw error;
+    } else {
+      await dbDeleteAllProducts();
+    }
 
-  const { error } = await db.from('products').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
