@@ -137,7 +137,22 @@ export function detectIntent(rawText: string): DetectionResult {
   // ── Extract category once ──────────────────────────────────────────────────
   const cat = extractCategory(n);
 
-  // ── Menu browsing ─────────────────────────────────────────────────────────
+  // ── Add to cart ──────────────────────────────────────────────────
+  const addTriggers = ['quiero', 'dame', 'ponme', 'pideme', 'agrega', 'uno de', 'una de', 'pide', 'ordena'];
+  if (addTriggers.some(t => n.includes(t))) {
+    const product = extractProduct(n);
+    if (product) {
+      return { intent: 'ADD_TO_CART', entities: { product, qty: extractQty(n) }, confidence: 'HIGH' };
+    }
+  }
+
+  // ── Product name alone = ADD_TO_CART ──────────────────────────────
+  const productAlone = extractProduct(n);
+  if (productAlone) {
+    return { intent: 'ADD_TO_CART', entities: { product: productAlone, qty: extractQty(n) }, confidence: 'HIGH' };
+  }
+
+  // ── Menu browsing ──────────────────────────────────────────────────
   const menuTriggers = ['menu', 'carta', 'tienen', 'que hay', 'que venden', 'que tienen', 'ver todo'];
   if (menuTriggers.some(t => n.includes(t))) {
     if (cat) return { intent: 'SHOW_CATEGORY', entities: { category: cat }, confidence: 'HIGH' };
@@ -169,20 +184,6 @@ export function detectIntent(rawText: string): DetectionResult {
     return { intent: 'SHOW_CATEGORY', entities: { category: cat }, confidence: 'HIGH' };
   }
 
-  // ── Add to cart ──────────────────────────────────────────────────────────
-  const addTriggers = ['quiero', 'dame', 'ponme', 'pideme', 'agrega', 'uno de', 'una de', 'pide', 'ordena'];
-  if (addTriggers.some(t => n.includes(t))) {
-    const product = extractProduct(n);
-    if (product) {
-      return { intent: 'ADD_TO_CART', entities: { product, qty: extractQty(n) }, confidence: 'HIGH' };
-    }
-  }
-
-  // ── Product name alone = ADD_TO_CART ────────────────────────────────────
-  const productAlone = extractProduct(n);
-  if (productAlone) {
-    return { intent: 'ADD_TO_CART', entities: { product: productAlone, qty: extractQty(n) }, confidence: 'HIGH' };
-  }
 
   // ── Add extras ──────────────────────────────────────────────────────────
   const extraTriggers = ['dip', 'salsa extra', 'parmesano', 'cheddar', 'extra'];

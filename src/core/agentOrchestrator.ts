@@ -8,7 +8,10 @@ import { detectIntent } from './intentDetector';
 import { getEntryRecommendation, getBestUpsell } from './offerAgent';
 import { shouldHandoff } from './humanHandoff';
 import { getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
+import { dbGetProducts } from "@/lib/db";
+import { filterProducts, isProductSafe } from '@/core/allergyFilter';
 import { Intent } from './types';
+import type { Product } from '@/data/products';
 
 export interface ConversationContext {
   messageHistory: string[];
@@ -31,24 +34,34 @@ export interface AgentResponse {
  */
 export async function runAgents(context: ConversationContext): Promise<AgentResponse> {
   const lastMessage = context.messageHistory[context.messageHistory.length - 1] || '';
-
+  
   // 1. Memory Agent
-   const profile = context.customerPhone ? (await getCustomerProfileFromDB(context.customerPhone)) ?? undefined : undefined;
-
+  const profile = context.customerPhone ? (await getCustomerProfileFromDB(context.customerPhone)) ?? undefined : undefined;
+  
   // 2. NLU Agent
   const { intent } = detectIntent(lastMessage);
-
-  // 3. Safety Agent
-  const handoffRequired = shouldHandoff(context.messageHistory, context.failedAttempts, context.cartTotal);
-
-  // 4. Offer Agent - Entry Recommendation
-  const recommendation = await getEntryRecommendation(intent, profile);
-
-  // 5. Offer Agent - Upsell Expansion
-  const upsell = await getBestUpsell(context.cartItems, profile);
+  
+  // 3. Safety Agent - Get products and filter by allergies
+  const allProducts = await dbGetProducts() as unknown as Product[];
+  const allRestrictions = Array.from(new Set([
+    ...(profile?.restrictions || []),
+    ...(detectIntent(lastMessage).allergies || [])
+  ]));
+  const safeProducts = allRestrictions.length > 0
+    ? allProducts.filter(p => isProductSafe(p, allRestrictions))
+    : allProducts;
+  
+  // 4. Offer Agent - Entry Recommendation (pass safeProducts)
+  const recommendation = await getEntryRecommendation(intent, profile, safeProducts);
+  
+  // 5. Offer Agent - Upsell Expansion (pass safeProducts)
+  const upsell = await getBestUpsell(context.cartItems, profile, safeProducts);
 
   // 6. Closing Agent (Internal)
   const closingMessage = generateClosingMessage(intent, context.cartTotal);
+
+  // 7. Human Handoff Check
+  const handoffRequired = shouldHandoff(context.messageHistory, context.failedAttempts, context.cartTotal);
 
   return {
     intent,

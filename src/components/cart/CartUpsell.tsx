@@ -32,7 +32,7 @@ function CartUpsellComponent({ cartItems, onAdd }: CartUpsellProps) {
         return;
       }
 
-      const best = await getBestUpsell(cartItems as any);
+      const best = await getBestUpsell(cartItems as any, undefined, products as any);
       if (cancelled) return;
 
       if (best) {

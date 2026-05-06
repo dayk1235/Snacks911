@@ -12,7 +12,7 @@ import { dbGetProducts } from '@/lib/db';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
 import { supabase } from '@/lib/supabase';
-import { isProductSafe } from '@/core/allergyFilter';
+import { isProductSafe, filterProducts } from '@/core/allergyFilter';
 
 /**
  * Structure for upsell results
@@ -33,23 +33,10 @@ export interface UpsellOption {
  */
 export async function getEntryRecommendation(
   intent: Intent,
-  profile?: CustomerProfile,
-  allergies: string[] = []
+  profile: CustomerProfile | undefined,
+  safeProducts: Product[]
 ): Promise<Product | null> {
-  const allProducts = await dbGetProducts() as unknown as Product[];
-  
-  // Merge profile restrictions with current session allergies
-  const allRestrictions = Array.from(new Set([
-    ...(profile?.restrictions || []),
-    ...allergies
-  ]));
-
-  // Filter products by restrictions
-  const safeProducts = allRestrictions.length
-    ? allProducts.filter(p => isProductSafe(p, allRestrictions))
-    : allProducts;
-
-  if (safeProducts.length === 0) return null;
+  if (!safeProducts || safeProducts.length === 0) return null;
 
   // 1. Personalized Recommendation (Priority)
   if (profile?.favoriteProduct) {
@@ -91,25 +78,14 @@ export async function getEntryRecommendation(
  */
 export async function getBestUpsell(
   currentCart: CartItem[],
-  customerProfile?: CustomerProfile,
-  allergies: string[] = []
+  customerProfile: CustomerProfile | undefined,
+  safeProducts: Product[]
 ): Promise<UpsellOption | null> {
   if (getCurrentLevel() === 'ECO') return null;
   if (!currentCart || currentCart.length === 0) return null;
+  if (!safeProducts || safeProducts.length === 0) return null;
 
-  // Get ALL products and filter by allergies FIRST
-  const allProducts = await dbGetProducts() as unknown as Product[];
-  
-  const allRestrictions = Array.from(new Set([
-    ...(customerProfile?.restrictions || []),
-    ...allergies
-  ]));
-  
-  // CRITICAL: Use safeProducts for ALL operations
-  const safeProducts = allRestrictions.length > 0
-    ? allProducts.filter(p => isProductSafe(p, allRestrictions))
-    : allProducts;
-
+  // Use safeProducts directly - already filtered by allergies
   // 1. Identify missing categories (from safeProducts)
   const cartProductIds = currentCart.map(i => i.id);
   const cartProducts = safeProducts.filter(p => cartProductIds.includes(p.id));
@@ -200,24 +176,16 @@ export async function getBestUpsell(
   };
 }
 
-// ─── Legacy Support Helpers (to be refactored out eventually) ───────────────
-
-import { filterProducts } from '@/core/allergyFilter';
-
-export async function getTopCombos(allergies: string[] = []) {
-  const allProducts = await dbGetProducts() as unknown as Product[];
-  const safeProducts = filterProducts(allProducts, allergies);
-  return safeProducts.filter(p => p.category === 'combos').slice(0, 3);
+export async function getTopCombos(safeProducts: Product[] = []): Promise<Product[]> {
+  const filtered = safeProducts.filter(p => p.category === 'combos');
+  return filtered.slice(0, 3);
 }
 
-export async function getBestsellers(allergies: string[] = []) {
-  const allProducts = await dbGetProducts() as unknown as Product[];
-  const safeProducts = filterProducts(allProducts, allergies);
+export async function getBestSellers(safeProducts: Product[] = []): Promise<Product[]> {
   return safeProducts.slice(0, 3);
 }
 
-export async function getCrossSell(allergies: string[] = []) {
-  const allProducts = await dbGetProducts() as unknown as Product[];
-  const safeProducts = filterProducts(allProducts, allergies);
-  return safeProducts.find(p => p.category === 'extras') || null;
+export async function getCrossSell(safeProducts: Product[] = []): Promise<Product | null> {
+  const found = safeProducts.find(p => p.category === 'extras');
+  return found || null;
 }

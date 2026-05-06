@@ -73,10 +73,11 @@ function normalizePhone(phone: string) {
 }
 
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
-  console.log("[ENGINE USED:", "MODULAR");
+  console.log("[botEngine] PIPELINE START");
   const cleanPhone = phone ? normalizePhone(phone) : undefined;
+  
+  // 1. Context & Profile
   let profile = null;
-
   if (cleanPhone) {
     try {
       profile = await getCustomerProfileFromDB(cleanPhone);
@@ -84,35 +85,62 @@ export async function getBotResponse({ message, phone }: { message: string; phon
       profile = null;
     }
   }
-  console.log('[botEngine] PROFILE:', profile);
-  console.log('[DEBUG PROFILE]', profile);
 
-  // 1. Get products and IMMEDIATELY filter by allergies
+  // 1. Detect Intent and Restrictions
+  const nlu = detectIntent(message);
+  const intent = nlu.intent;
+  
+  // MERGE: User stated allergies + Intent-detected restrictions (e.g. "sin salchicha")
+  // Also treat strong rejection keywords as temporary restrictions if they match product names
+  const detectedRestrictions = nlu.allergies || [];
+  if (intent === 'rechazo_fuerte' || intent === 'rechazo') {
+    const words = message.toLowerCase().split(/\s+/);
+    // Add words that might be products to restrictions
+    detectedRestrictions.push(...words.filter(w => w.length > 4)); 
+  }
+
+  const allRestrictions = [...new Set([...(profile?.restrictions || []), ...detectedRestrictions])];
+
+  // 4. Fetch & Filter (Strict Safety Layer)
   const products = await dbGetProducts();
-  const allRestrictions = Array.from(new Set([
-    ...(profile?.restrictions || []),
-    ...(detectIntent(message).allergies || [])
-  ]));
   const safeProducts = filterProducts(products as any, allRestrictions);
-  console.log(`[botEngine] Total products: ${products.length} | Safe products: ${safeProducts.length}`);
-  console.log(`[botEngine] Restrictions applied:`, allRestrictions);
+  
+  console.log(`[botEngine] Total: ${products.length} | Safe: ${safeProducts.length}`);
+  console.log(`[botEngine] Restrictions:`, allRestrictions);
 
-  // 2. Pass safeProducts to buildPersonalizedResponse
-  return buildPersonalizedResponse(message, cleanPhone, safeProducts, profile);
+  // 5. Generate Response using ONLY safeProducts
+  let responseText = await buildPersonalizedResponse(message, cleanPhone, safeProducts, profile, products.length, allRestrictions);
+
+  // 6. FINAL SAFETY VALIDATION: Ensure response text doesn't mention prohibited products
+  const prohibitedProducts = products.filter(p => !safeProducts.some(sp => sp.id === p.id));
+  
+  for (const p of prohibitedProducts) {
+    const namePattern = new RegExp(`\\b${p.name}\\b`, 'gi');
+    if (namePattern.test(responseText)) {
+      console.warn(`[SAFETY] Prohibited product "${p.name}" mentioned in response. Sanitizing...`);
+      // Replacement logic or just a warning for now? The user said "Validar que la respuesta no contenga"
+      // I will replace it with a generic "opción segura" if it leaks
+      responseText = responseText.replace(namePattern, '[opción segura]');
+    }
+  }
+
+  return responseText;
 }
 
-async function buildPersonalizedResponse(message: string, phone: string | undefined, safeProducts: any[], profile?: any) {
+async function buildPersonalizedResponse(
+  message: string, 
+  phone: string | undefined, 
+  safeProducts: any[], 
+  profile: any, 
+  totalCount: number, 
+  allRestrictions: string[]
+) {
   const lower = message.toLowerCase();
-  const detected = detectIntent(message);
-  const { intent, allergies: detectedAllergies } = detected;
-
-  // allRestrictions for VALIDATION only (safeProducts is already filtered)
-  const allRestrictions = Array.from(new Set([
-    ...(profile?.restrictions || []),
-    ...(detectedAllergies || [])
-  ]));
   
-  // CONTEXT RANKING - use safeProducts directly
+  // 1. Intent Detection (Intent only, allergies already handled in pipeline)
+  const { intent } = detectIntent(message);
+
+  // 2. Context Ranking (Strictly using safeProducts)
   const foodIntent = extractFoodIntent(message);
   console.log("[INTENT]", foodIntent);
   
@@ -251,7 +279,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const foundProduct = safeProducts.find(p => lower.includes(p.name.toLowerCase()));
   
   // FALLBACK TRIGGER: Only if NO intent AND NO safe products available
-  const isGenericIntent = detected.intent === 'other' || !detected.intent;
+  const isGenericIntent = intent === 'other' || !intent;
   const shouldUseAI = isGenericIntent && safeProducts.length === 0;
 
   // Fix: Only confirm if order actually exists in memory
@@ -307,60 +335,60 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     return `${greeting}🔥 ${foundProduct.name}\nPrecio: $${foundProduct.price}\n\n¿Cuántas quieres?`;
   }
 
-  if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
-    let rec: any = await getEntryRecommendation(detected.intent, profile, allRestrictions);
+  if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
+    let rec: any = await getEntryRecommendation(intent, profile, safeProducts);
 
-    // CRITICAL: Validate recommended product belongs to safeProducts
-    if (rec && !safeProducts.some(p => p.id === rec!.id)) {
-      console.log('[botEngine] UNSAFE recommendation detected, recalculating from safeProducts...');
-      // Recalculate: find the best alternative in safeProducts with same category, or fallback to top ranked
-      rec = (rankedProducts.find(p => p.category === rec!.category) || rankedProducts[0] || null) as any;
+    // VALIDACIÓN CRÍTICA: Si rec NO está en safeProducts → RECALCULAR
+    if (rec && !safeProducts.some(p => p.id === rec.id)) {
+      console.log('[botEngine] ⚠️ REC NOT IN safeProducts:', rec.name, '- Recalculating from rankedProducts...');
+      // rankedProducts ya viene de safeProducts, es seguro usar el primero
+      rec = rankedProducts[0] || null;
     }
+
+    let responseText = '';
 
     if (rec) {
       console.log('[botEngine] FINAL RECOMMENDATION:', rec.name);
       const isFav = profile?.favorite_product?.toLowerCase() === rec.name.toLowerCase();
-      return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
-    }
-  }
+      responseText = `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
+    } else {
+      // Build menu text
+      let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
+      const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
+      if (favProduct) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
 
-  let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
-  const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
-  if (favProduct) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
-
-  for (const p of safeProducts) {
-    if (p.name !== profile?.favorite_product) {
-      text += `🍗 ${p.name} - $${p.price}\n`;
-    }
-  }
-  text += "\n¿Qué te gustaría ordenar? 😏";
-
-  // If we have products, always show them (never trigger generic fallback)
-  if (safeProducts.length > 0) {
-    return text;
-  }
-
-  // Only reach here if no products available
-  if (shouldUseAI) {
-    console.log('[AI DEBUG] input:', message);
-    console.log('[AI DEBUG] allergies:', profile?.restrictions || []);
-    console.log('[AI DEBUG] products:', safeProducts.map(p => p.name));
-
-    let aiRes = null;
-
-    try {
-      aiRes = await getAIResponse(context);
-      console.log('[AI DEBUG] response:', aiRes?.message_to_user || 'NO_RESPONSE');
-    } catch (e) {
-      console.error('[AI FALLBACK]', e);
+      for (const p of safeProducts) {
+        if (p.name !== profile?.favorite_product) {
+          text += `🍗 ${p.name} - $${p.price}\n`;
+        }
+      }
+      text += "\n¿Qué te gustaría ordenar? 😏";
+      responseText = text;
     }
 
-    if (aiRes?.message_to_user) return `${greeting}${aiRes.message_to_user}`;
-
-    if (!aiRes) {
-      return '¿Te muestro el menú o buscas algo en especial? 🔥';
+    // AI Fallback if needed
+    const isGenericIntent = intent === 'other' || !intent;
+    if ((safeProducts.length === 0 || isGenericIntent) && !rec && !foundProduct) {
+       try {
+         const aiRes = await getAIResponse({
+           menu_items: safeProducts.map(p => ({ name: p.name, price: p.price, category: p.category })),
+           customer_message: message,
+           modifiers: [], announcements_active: [], promos_active: [], cart_state: []
+         });
+         if (aiRes?.message_to_user) responseText = `${greeting}${aiRes.message_to_user}`;
+       } catch (e) {
+         console.error('[AI FALLBACK]', e);
+       }
     }
+
+    // DEBUG MODE: Append info if "DEBUG" is in the message
+    if (message.toUpperCase().includes('DEBUG')) {
+      const debugInfo = `\n\n--- 🛠 DEBUG MODE ---\n✅ Safe: ${safeProducts.length}/${totalCount}\n🎯 Rec: ${rec?.name || 'None'}\n🛡 Filters: ${allRestrictions.join(', ') || 'None'}`;
+      responseText += debugInfo;
+    }
+
+    return responseText;
   }
 
-  return text;
+  return `${greeting}Ahorita no tengo productos disponibles compatibles con tus restricciones 😔`;
 }

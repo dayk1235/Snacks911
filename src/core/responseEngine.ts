@@ -726,60 +726,35 @@ export async function handleMessageModular(
   action?: string,
   allProductsOverride?: AdminProduct[]
 ): Promise<ResponseOutput> {
-  console.log("ENGINE USED:", "MODULAR");
+  console.log("[responseEngine] MODULAR PIPELINE START");
   
-  // 1. Extract Allergies/Exclusions from intent detector & manual parser
-  const { intent: baseIntent, allergies: detectedAllergies } = detectIntent(text);
-  const { includeWords, excludeWords } = parseUserRequest(text);
-  const nextState = { ...state };
+  // 1. Detectar Intent
+  const intentResult = detectIntent(text);
+  const baseIntent = intentResult.intent;
+  const { excludeWords } = parseUserRequest(text);
   
-  // Merge allergies from detectIntent with excludeWords
-  const allAllergies = [
+  // 2. Detectar Constraints (Merge State + Real-time Allergies & Filters)
+  const allConstraints = Array.from(new Set([
     ...(state.allergies || []), 
-    ...(detectedAllergies || []), 
+    ...(intentResult.allergies || []), 
+    ...(intentResult.filters || []),
     ...excludeWords
-  ];
-  nextState.allergies = Array.from(new Set(allAllergies));
+  ]));
+  
+  const nextState = { ...state, allergies: allConstraints };
 
-  // 2. Filter all products for safety
+  // 3. Filtrar Productos (Safety First + Ranking)
   const allProducts = allProductsOverride || await dbGetProducts();
-  const safeProducts = filterProducts(allProducts as any, nextState.allergies);
+  const safeProducts = filterProducts(allProducts as any, allConstraints);
 
-  // 3. Rank products by user intent (after allergy filter)
-  const intent = extractFoodIntent(text);
-  console.log("[INTENT]", intent);
+  const foodIntent = extractFoodIntent(text);
+  const rankedProducts = rankProductsByIntent(safeProducts, foodIntent);
   
-  const rankedProducts = rankProductsByIntent(safeProducts, intent);
-  console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
-  console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
-
-  console.log("[AI]", {
-    input: text,
-    allergies: nextState.allergies,
-    safe: safeProducts.map(p => p.name),
-  });
-
-  // 4. Fast Path: If user specifically requested an item and it's safe
-  if (includeWords.length > 0) {
-    const matchingSafe = rankedProducts.filter(p => {
-      const content = `${p.name} ${p.description || ''}`.toLowerCase();
-      return includeWords.some(word => content.includes(word));
-    });
-
-    if (matchingSafe.length > 0) {
-      const product = matchingSafe[0];
-      return validateResponseOutput({
-        text: `¡Claro! Te recomiendo el **${product.name}** ($${product.price}). Es una excelente opción. ¿Lo agregamos? 🔥`,
-        type: 'text',
-        nextState,
-      }, state);
-    }
-  }
+  console.log(`[responseEngine] Total: ${allProducts.length} | Safe: ${safeProducts.length}`);
   
-  // 4. Call the unified bot engine
+  // 4. Generar Respuesta (via botEngine)
   const responseText = await getBotResponse({ message: text, phone: state.phone });
   
-  // Return in ResponseOutput format
   return validateResponseOutput({
     text: responseText,
     type: 'text',

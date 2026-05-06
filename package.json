@@ -15,7 +15,9 @@
     "ai:order-alert": "node ai/cli.js order-alert",
     "ai:order-sound": "node ai/cli.js order-sound",
     "ai:manage-staff": "node ai/cli.js manage-staff",
-    "ai:auto": "node ai/cli.js auto"
+    "ai:auto": "node ai/cli.js auto",
+    "eval": "tsx src/tests/auto-evaluator.ts",
+    "train:auto": "tsx src/core/autoTrainer.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

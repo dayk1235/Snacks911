@@ -34,6 +34,29 @@ export type Intent =
   | 'precio'
   | 'other';
 
+export type ActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
+
+export type CategoryType = 'combo' | 'boneless' | 'alitas' | 'papas' | 'bebida' | 'postre' | 'extra' | 'none';
+
+export interface Entities {
+  products: string[];
+  categories: string[];
+  qty: number[];
+  sauces: string[];
+  restrictions: string[];
+}
+
+export interface IntentResult {
+  intent: Intent;
+  entities: Entities;
+  confidence: 'HIGH' | 'LOW';
+  action?: ActionType;
+  filters?: string[];
+  category?: CategoryType;
+  allergies?: string[];
+  scores?: Record<string, number>;
+}
+
 export type Stage = 'inicio' | 'explorando' | 'decidiendo' | 'ordenando' | 'post_venta';
 
 export type UpsellStep = 'none' | 'papas' | 'bebida' | 'postre' | 'done';

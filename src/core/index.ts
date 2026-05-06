@@ -61,7 +61,7 @@ export {
 // Offer Agent (Unified Recommendation & Upsell)
 export {
   getTopCombos,
-  getBestsellers,
+  getBestSellers,
   getCrossSell,
   getEntryRecommendation,
   getBestUpsell,

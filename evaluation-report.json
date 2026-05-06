@@ -1,0 +1,837 @@
+{
+  "timestamp": "2026-05-06T10:43:47.437Z",
+  "totalCases": 100,
+  "summary": {
+    "accuracy": 84,
+    "intentAccuracy": 57.99999999999999,
+    "allergyAccuracy": 99,
+    "constraintsAccuracy": 95
+  },
+  "classifications": {
+    "INTENT_MISMATCH": [
+      {
+        "id": 1,
+        "input": "hola",
+        "expected": "SHOW_MENU",
+        "actual": "browsing",
+        "fix_suggestion": "Add keywords from \"hola\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 2,
+        "input": "menu",
+        "expected": "SHOW_MENU",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"menu\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 3,
+        "input": "que venden",
+        "expected": "SHOW_MENU",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"que venden\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 8,
+        "input": "bebidas",
+        "expected": "SHOW_CATEGORY",
+        "actual": "ADD_TO_CART",
+        "fix_suggestion": "Add keywords from \"bebidas\" to rules for SHOW_CATEGORY in intentDetector.ts"
+      },
+      {
+        "id": 10,
+        "input": "ver todo",
+        "expected": "SHOW_MENU",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"ver todo\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 24,
+        "input": "quiero combo sin salchicha",
+        "expected": "ADD_TO_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"quiero combo sin salchicha\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 25,
+        "input": "quiero papas sin salchicha",
+        "expected": "ADD_TO_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"quiero papas sin salchicha\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 35,
+        "input": "algo con papas",
+        "expected": "RECOMMEND",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"algo con papas\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 36,
+        "input": "algo con boneless",
+        "expected": "RECOMMEND",
+        "actual": "ADD_TO_CART",
+        "fix_suggestion": "Add keywords from \"algo con boneless\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 37,
+        "input": "lo mas vendido",
+        "expected": "RECOMMEND",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"lo mas vendido\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 38,
+        "input": "algo llenador",
+        "expected": "RECOMMEND",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"algo llenador\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 39,
+        "input": "algo ligero",
+        "expected": "RECOMMEND",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"algo ligero\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 41,
+        "input": "ver carrito",
+        "expected": "VIEW_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"ver carrito\" to rules for VIEW_CART in intentDetector.ts"
+      },
+      {
+        "id": 42,
+        "input": "que llevo",
+        "expected": "VIEW_CART",
+        "actual": "ADD_TO_CART",
+        "fix_suggestion": "Add keywords from \"que llevo\" to rules for VIEW_CART in intentDetector.ts"
+      },
+      {
+        "id": 43,
+        "input": "quita boneless",
+        "expected": "EDIT_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"quita boneless\" to rules for EDIT_CART in intentDetector.ts"
+      },
+      {
+        "id": 44,
+        "input": "elimina papas",
+        "expected": "EDIT_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"elimina papas\" to rules for EDIT_CART in intentDetector.ts"
+      },
+      {
+        "id": 45,
+        "input": "confirmar",
+        "expected": "CONFIRM_ORDER",
+        "actual": "CHECKOUT",
+        "fix_suggestion": "Add keywords from \"confirmar\" to rules for CONFIRM_ORDER in intentDetector.ts"
+      },
+      {
+        "id": 49,
+        "input": "efectivo",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"efectivo\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 50,
+        "input": "tarjeta",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"tarjeta\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 51,
+        "input": "holas",
+        "expected": "SHOW_MENU",
+        "actual": "browsing",
+        "fix_suggestion": "Add keywords from \"holas\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 52,
+        "input": "ver el menú",
+        "expected": "SHOW_MENU",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"ver el menú\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 53,
+        "input": "que tienen de comer?",
+        "expected": "SHOW_MENU",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"que tienen de comer?\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 60,
+        "input": "muestrame todo",
+        "expected": "SHOW_MENU",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"muestrame todo\" to rules for SHOW_MENU in intentDetector.ts"
+      },
+      {
+        "id": 61,
+        "input": "dame unos boneless",
+        "expected": "ADD_TO_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"dame unos boneless\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 63,
+        "input": "una orden de papas",
+        "expected": "ADD_TO_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"una orden de papas\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 68,
+        "input": "papas con quesito",
+        "expected": "ADD_TO_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"papas con quesito\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 74,
+        "input": "quiero un combo pero sin salchicha",
+        "expected": "ADD_TO_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"quiero un combo pero sin salchicha\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 75,
+        "input": "unas papas sin salchicha",
+        "expected": "ADD_TO_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"unas papas sin salchicha\" to rules for ADD_TO_CART in intentDetector.ts"
+      },
+      {
+        "id": 85,
+        "input": "busco algo con papas",
+        "expected": "RECOMMEND",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"busco algo con papas\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 86,
+        "input": "que tenga boneless",
+        "expected": "RECOMMEND",
+        "actual": "ADD_TO_CART",
+        "fix_suggestion": "Add keywords from \"que tenga boneless\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 88,
+        "input": "algo para quedar satisfecho",
+        "expected": "RECOMMEND",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"algo para quedar satisfecho\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 89,
+        "input": "algo tranqui",
+        "expected": "RECOMMEND",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"algo tranqui\" to rules for RECOMMEND in intentDetector.ts"
+      },
+      {
+        "id": 91,
+        "input": "ver mi carrito",
+        "expected": "VIEW_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"ver mi carrito\" to rules for VIEW_CART in intentDetector.ts"
+      },
+      {
+        "id": 92,
+        "input": "que hay en mi orden?",
+        "expected": "VIEW_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"que hay en mi orden?\" to rules for VIEW_CART in intentDetector.ts"
+      },
+      {
+        "id": 93,
+        "input": "quita los boneless",
+        "expected": "EDIT_CART",
+        "actual": "RECOMMEND",
+        "fix_suggestion": "Add keywords from \"quita los boneless\" to rules for EDIT_CART in intentDetector.ts"
+      },
+      {
+        "id": 94,
+        "input": "borra las papas",
+        "expected": "EDIT_CART",
+        "actual": "SHOW_CATEGORY",
+        "fix_suggestion": "Add keywords from \"borra las papas\" to rules for EDIT_CART in intentDetector.ts"
+      },
+      {
+        "id": 95,
+        "input": "confirmo",
+        "expected": "CONFIRM_ORDER",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"confirmo\" to rules for CONFIRM_ORDER in intentDetector.ts"
+      },
+      {
+        "id": 96,
+        "input": "hacer el pago",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"hacer el pago\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 97,
+        "input": "traelo a mi casa",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"traelo a mi casa\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 98,
+        "input": "yo paso por el",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"yo paso por el\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 99,
+        "input": "pago cash",
+        "expected": "CHECKOUT",
+        "actual": "UNKNOWN",
+        "fix_suggestion": "Add keywords from \"pago cash\" to rules for CHECKOUT in intentDetector.ts"
+      },
+      {
+        "id": 100,
+        "input": "pago con tarjeta",
+        "expected": "CHECKOUT",
+        "actual": "pago_problema",
+        "fix_suggestion": "Add keywords from \"pago con tarjeta\" to rules for CHECKOUT in intentDetector.ts"
+      }
+    ],
+    "ALLERGY_LEAK": [
+      {
+        "id": 71,
+        "input": "soy alergico a salchichas",
+        "missing_allergy": "salchicha",
+        "fix_suggestion": "Update extractAllergies regex to capture \"salchicha\" from input \"soy alergico a salchichas\""
+      }
+    ],
+    "INCLUDE_MISS": [
+      {
+        "id": 35,
+        "input": "algo con papas",
+        "missing_ingredient": "papas",
+        "fix_suggestion": "Ensure recommendation engine ranks products containing \"papas\" higher when present in intent"
+      },
+      {
+        "id": 40,
+        "input": "algo sin salchicha y con papas",
+        "missing_ingredient": "papas",
+        "fix_suggestion": "Ensure recommendation engine ranks products containing \"papas\" higher when present in intent"
+      },
+      {
+        "id": 85,
+        "input": "busco algo con papas",
+        "missing_ingredient": "papas",
+        "fix_suggestion": "Ensure recommendation engine ranks products containing \"papas\" higher when present in intent"
+      }
+    ],
+    "EXCLUDE_LEAK": [
+      {
+        "id": 27,
+        "input": "no quiero banderilla",
+        "leaked_ingredient": "banderilla",
+        "fix_suggestion": "Verify that \"banderilla\" is added to exclusions/allergies and filterProducts is called before generating response"
+      },
+      {
+        "id": 77,
+        "input": "banderillas no quiero",
+        "leaked_ingredient": "banderilla",
+        "fix_suggestion": "Verify that \"banderilla\" is added to exclusions/allergies and filterProducts is called before generating response"
+      }
+    ]
+  },
+  "failures": [
+    {
+      "id": 1,
+      "input": "hola",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "browsing",
+      "actualAllergies": []
+    },
+    {
+      "id": 2,
+      "input": "menu",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 3,
+      "input": "que venden",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 8,
+      "input": "bebidas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "ADD_TO_CART",
+      "actualAllergies": []
+    },
+    {
+      "id": 10,
+      "input": "ver todo",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 24,
+      "input": "quiero combo sin salchicha",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchicha"
+      ]
+    },
+    {
+      "id": 25,
+      "input": "quiero papas sin salchicha",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchicha"
+      ]
+    },
+    {
+      "id": 27,
+      "input": "no quiero banderilla",
+      "isIntentCorrect": true,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": "banderilla",
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "banderilla"
+      ]
+    },
+    {
+      "id": 35,
+      "input": "algo con papas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": "papas",
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 36,
+      "input": "algo con boneless",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "ADD_TO_CART",
+      "actualAllergies": []
+    },
+    {
+      "id": 37,
+      "input": "lo mas vendido",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 38,
+      "input": "algo llenador",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 39,
+      "input": "algo ligero",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 40,
+      "input": "algo sin salchicha y con papas",
+      "isIntentCorrect": true,
+      "isAllergiesCorrect": true,
+      "includeMiss": "papas",
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchicha",
+        "con",
+        "papas"
+      ]
+    },
+    {
+      "id": 41,
+      "input": "ver carrito",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 42,
+      "input": "que llevo",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "ADD_TO_CART",
+      "actualAllergies": []
+    },
+    {
+      "id": 43,
+      "input": "quita boneless",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "boneless"
+      ]
+    },
+    {
+      "id": 44,
+      "input": "elimina papas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "papas"
+      ]
+    },
+    {
+      "id": 45,
+      "input": "confirmar",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "CHECKOUT",
+      "actualAllergies": []
+    },
+    {
+      "id": 49,
+      "input": "efectivo",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 50,
+      "input": "tarjeta",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 51,
+      "input": "holas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "browsing",
+      "actualAllergies": []
+    },
+    {
+      "id": 52,
+      "input": "ver el menú",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 53,
+      "input": "que tienen de comer?",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": []
+    },
+    {
+      "id": 60,
+      "input": "muestrame todo",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 61,
+      "input": "dame unos boneless",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": []
+    },
+    {
+      "id": 63,
+      "input": "una orden de papas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 68,
+      "input": "papas con quesito",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 71,
+      "input": "soy alergico a salchichas",
+      "isIntentCorrect": true,
+      "isAllergiesCorrect": false,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchichas"
+      ]
+    },
+    {
+      "id": 74,
+      "input": "quiero un combo pero sin salchicha",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchicha"
+      ]
+    },
+    {
+      "id": 75,
+      "input": "unas papas sin salchicha",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "salchicha"
+      ]
+    },
+    {
+      "id": 77,
+      "input": "banderillas no quiero",
+      "isIntentCorrect": true,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": "banderilla",
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "banderillas"
+      ]
+    },
+    {
+      "id": 85,
+      "input": "busco algo con papas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": "papas",
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 86,
+      "input": "que tenga boneless",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "ADD_TO_CART",
+      "actualAllergies": []
+    },
+    {
+      "id": 88,
+      "input": "algo para quedar satisfecho",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 89,
+      "input": "algo tranqui",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 91,
+      "input": "ver mi carrito",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 92,
+      "input": "que hay en mi orden?",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 93,
+      "input": "quita los boneless",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "RECOMMEND",
+      "actualAllergies": [
+        "los",
+        "boneless"
+      ]
+    },
+    {
+      "id": 94,
+      "input": "borra las papas",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "SHOW_CATEGORY",
+      "actualAllergies": []
+    },
+    {
+      "id": 95,
+      "input": "confirmo",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 96,
+      "input": "hacer el pago",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 97,
+      "input": "traelo a mi casa",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 98,
+      "input": "yo paso por el",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 99,
+      "input": "pago cash",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "UNKNOWN",
+      "actualAllergies": []
+    },
+    {
+      "id": 100,
+      "input": "pago con tarjeta",
+      "isIntentCorrect": false,
+      "isAllergiesCorrect": true,
+      "includeMiss": null,
+      "excludeLeak": null,
+      "actualIntent": "pago_problema",
+      "actualAllergies": []
+    }
+  ]
+}

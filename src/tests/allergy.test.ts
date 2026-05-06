@@ -1,25 +1,25 @@
 import './env-setup';
 import { handleMessageModular, INITIAL_STATE } from '@/core/responseEngine';
 
-// Real product data for testing
+// Real product data for testing (with ingredients field)
 const mockProducts: any[] = [
-  { id: '1', name: 'Combo Mixto 911', price: 239, category: 'combos', description: 'Boneless 150g, Alitas 6pz, Papas, Bebida' },
-  { id: '2', name: 'Boneless Power 911', price: 149, category: 'combos', description: 'Boneless 250g, Papas, Bebida' },
-  { id: '3', name: 'Alitas Fuego 911', price: 139, category: 'combos', description: 'Alitas 12pz, Papas, Bebida' },
-  { id: '4', name: 'Combo Callejero 911', price: 169, category: 'combos', description: 'Banderilla, Salchipapas, Bebida' },
-  { id: '5', name: 'Combo Banderilla Suprema', price: 139, category: 'combos', description: '2 Banderillas, Papas con queso, Bebida' },
-  { id: '6', name: 'Combo Dedos de Queso + Papas', price: 129, category: 'combos', description: 'Dedos de queso, Papas clásicas, Bebida' },
-  { id: '7', name: 'Papas 911 Loaded', price: 139, category: 'combos', description: 'Papas grandes, Queso, Tocino, Jalapeños, Bebida' },
-  { id: '8', name: 'Boneless 250g', price: 129, category: 'proteina', description: 'Con papas chicas' },
-  { id: '9', name: 'Alitas 6 piezas', price: 115, category: 'proteina', description: 'Con papas chicas' },
-  { id: '10', name: 'Papas Clásicas', price: 39, category: 'papas', description: '' },
-  { id: '11', name: 'Papas con Queso', price: 59, category: 'papas', description: 'Cheddar fundido + tocino' },
-  { id: '12', name: 'Salchipapas', price: 79, category: 'papas', description: 'Salchicha + papas + vegetales' },
-  { id: '13', name: 'Banderilla Coreana', price: 69, category: 'banderillas', description: 'Empanizada con salsa especial' },
-  { id: '14', name: 'Dedos de Queso', price: 75, category: 'banderillas', description: '6 piezas' },
-  { id: '15', name: 'Refresco 400ml', price: 25, category: 'bebidas', description: '' },
-  { id: '16', name: 'Salsa Extra', price: 12, category: 'extras', description: '' },
-  { id: '17', name: 'Dip Extra', price: 15, category: 'extras', description: '' }
+  { id: '1', name: 'Combo Mixto 911', price: 239, category: 'combos', description: 'Boneless 150g, Alitas 6pz, Papas, Bebida', ingredients: ['boneless', 'alitas', 'papas', 'bebida'] },
+  { id: '2', name: 'Boneless Power 911', price: 149, category: 'combos', description: 'Boneless 250g, Papas, Bebida', ingredients: ['boneless', 'papas', 'bebida'] },
+  { id: '3', name: 'Alitas Fuego 911', price: 139, category: 'combos', description: 'Alitas 12pz, Papas, Bebida', ingredients: ['alitas', 'papas', 'bebida'] },
+  { id: '4', name: 'Combo Callejero 911', price: 169, category: 'combos', description: 'Banderilla, Salchipapas, Bebida', ingredients: ['salchicha', 'papa', 'bebida'] },
+  { id: '5', name: 'Combo Banderilla Suprema', price: 139, category: 'combos', description: '2 Banderillas, Papas con queso, Bebida', ingredients: ['salchicha', 'masa', 'papas', 'queso', 'bebida'] },
+  { id: '6', name: 'Combo Dedos de Queso + Papas', price: 129, category: 'combos', description: 'Dedos de queso, Papas clásicas, Bebida', ingredients: ['queso', 'papas', 'bebida'] },
+  { id: '7', name: 'Papas 911 Loaded', price: 139, category: 'combos', description: 'Papas grandes, Queso, Tocino, Jalapeños, Bebida', ingredients: ['papas', 'queso', 'tocino', 'jalapeños', 'bebida'] },
+  { id: '8', name: 'Boneless 250g', price: 129, category: 'proteina', description: 'Con papas chicas', ingredients: ['pollo', 'papas'] },
+  { id: '9', name: 'Alitas 6 piezas', price: 115, category: 'proteina', description: 'Con papas chicas', ingredients: ['alitas', 'papas'] },
+  { id: '10', name: 'Papas Clásicas', price: 39, category: 'papas', description: 'Con sal y especias', ingredients: ['papas'] },
+  { id: '11', name: 'Papas con Queso', price: 59, category: 'papas', description: 'Cheddar fundido + tocino', ingredients: ['papas', 'queso', 'tocino'] },
+  { id: '12', name: 'Salchipapas', price: 79, category: 'papas', description: 'Salchicha + papas + vegetales', ingredients: ['salchicha', 'papa'] },
+  { id: '13', name: 'Banderilla Coreana', price: 69, category: 'banderillas', description: 'Empanizada con salsa especial', ingredients: ['salchicha', 'masa'] },
+  { id: '14', name: 'Dedos de Queso', price: 75, category: 'banderillas', description: '6 piezas', ingredients: ['queso', 'masa'] },
+  { id: '15', name: 'Refresco 400ml', price: 25, category: 'bebidas', description: '', ingredients: ['bebida'] },
+  { id: '16', name: 'Salsa Extra', price: 12, category: 'extras', description: '', ingredients: ['salsa'] },
+  { id: '17', name: 'Dip Extra', price: 15, category: 'extras', description: '', ingredients: ['queso'] },
 ];
 
 // Mock ProductRefs since handleMessageModular expects it
