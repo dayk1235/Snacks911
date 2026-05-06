@@ -9,6 +9,8 @@
  *   5. OUTPUT → { text, actions?, nextState }
  */
 
+import { products as allProducts } from '@/data/products';
+import { filterProducts } from './allergyFilter';
 import { detectIntent } from './intentDetector';
 import { applyLoopStrategy, getNextStrategy } from './antojo';
 import type {
@@ -19,12 +21,10 @@ import type {
   PromptContext,
   Intent,
   Stage,
-  CustomerProfile,
 } from './types';
-import { runAgents } from './agentOrchestrator';
 import { getThermostatSettings } from './salesThermostat';
 import { validateResponseOutput } from './responseValidator';
-import { logEvent } from './eventLogger';
+
 
 export const INITIAL_STATE: ConversationState = {
   stage: 'inicio',
@@ -675,135 +675,85 @@ export function buildOrderConfirmation(
  * 
  * Orchestrates the full pipeline using specialized agents.
  */
+function parseUserRequest(text: string) {
+  const lower = text.toLowerCase();
+  
+  // Extract include keywords (e.g., "quiero papas", "dame alitas", "papas")
+  const includeMatch = lower.match(/\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i) || 
+                       lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin)\s+|$)/i);
+  
+  let includeWords: string[] = [];
+  if (includeMatch) {
+    includeWords = includeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+  }
+  
+  // Extract exclude keywords (after "sin", "pero sin")
+  const excludeMatch = lower.match(/(?:sin|pero sin)\s+([a-z\s]+?)(?:\s+|$)/i);
+  let excludeWords: string[] = [];
+  if (excludeMatch) {
+    excludeWords = excludeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+  }
+  
+  return { includeWords, excludeWords };
+}
+
+/**
+ * handleMessageModular() — NEW Modular Sales System Engine Integration.
+ * 
+ * Orchestrates the full pipeline using specialized agents.
+ */
 export async function handleMessageModular(
   text: string,
   state: ConversationState,
   products: ProductRefs,
   action?: string,
 ): Promise<ResponseOutput> {
-  const startTime = Date.now();
+  console.log("ENGINE USED:", "MODULAR");
   
-  // 1. Run the Modular Agents
-  const agentResponse = await runAgents({
-    messageHistory: [text], 
-    cartItems: state.cart.map(i => ({ name: i })), 
-    cartTotal: state.cartTotal,
-    failedAttempts: state.retryCount,
-    customerPhone: undefined 
+  // 1. Extract Allergies/Exclusions and update state
+  const { includeWords, excludeWords } = parseUserRequest(text);
+  const nextState = { ...state };
+  
+  if (excludeWords.length > 0) {
+    nextState.allergies = [...(state.allergies || []), ...excludeWords];
+    // Remove duplicates
+    nextState.allergies = Array.from(new Set(nextState.allergies));
+  }
+
+  // 2. Filter all products for safety
+  const safeProducts = filterProducts(allProducts, nextState.allergies);
+
+  console.log("[AI]", {
+    input: text,
+    allergies: nextState.allergies,
+    safe: safeProducts.map(p => p.name),
   });
 
-  const modularTime = Date.now() - startTime;
+  // 3. Fast Path: If user specifically requested an item and it's safe
+  if (includeWords.length > 0) {
+    const matchingSafe = safeProducts.filter(p => {
+      const content = `${p.name} ${(p.ingredients || []).join(' ')}`.toLowerCase();
+      return includeWords.some(word => content.includes(word));
+    });
 
-  // STEP 3: Handle Exploracion intent for Products UI (High Priority)
-  if (agentResponse.intent === 'exploracion') {
-    const nextState = updateState(state, 'exploracion', action, text);
-    return validateResponseOutput({
-      text: "¡Chécate estos favoritos! 👇",
-      type: 'products',
-      actions: [
-        { id: 'p1', label: 'Combo Mixto', value: 'add_combo_mixto', price: 120, image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400' },
-        { id: 'p5', label: 'Papas Gajo', value: 'add_papas_gajo', price: 80, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
-        { id: 'p3', label: 'Boneless Mango', value: 'add_boneless_mango', price: 130, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' }
-      ],
-      nextState,
-    }, state);
-  }
-
-  // 2. SHADOW EXECUTION: Run Legacy in background
-  const legacyStartTime = Date.now();
-  const legacyResponse = handleMessage(text, state, products, action);
-  const legacyTime = Date.now() - legacyStartTime;
-
-  // 3. Update state based on intent (using Modular result for actual state)
-  const nextState = updateState(state, agentResponse.intent as any, action, text);
-  
-  // 4. Handle Handoff
-  if (agentResponse.handoffRequired) {
-    const handoffMsg = "Ups, parece que necesito ayuda de un humano para esto. Un momento... ✋";
-    nextState.lastResponse = handoffMsg;
-    
-    // ...
-    
-    return validateResponseOutput({ 
-      text: handoffMsg, 
-      type: 'text',
-      nextState 
-    }, state);
-  }
-
-  // 5. Build prompt context
-  const ctx: PromptContext = {
-    comboName: products.comboName,
-    comboPrice: products.comboPrice,
-    papasName: products.papasName,
-    papasPrice: products.papasPrice,
-    bebidaName: products.bebidaName,
-    bebidaPrice: products.bebidaPrice,
-    postreName: products.postreName,
-    postrePrice: products.postrePrice,
-    comboBonelessName: products.comboBonelessName,
-    comboBonelessPrice: products.comboBonelessPrice,
-    ahorroBoneless: products.ahorroBoneless,
-    currentTotal: nextState.cartTotal || products.currentTotal,
-    hasPapas: products.hasPapas,
-    hasBebida: products.hasBebida,
-    hasPostre: products.hasPostre,
-  };
-
-  // 6. Intercept delivery flow
-  if (nextState.deliveryStep !== 'none') {
-    const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
-    if (deliveryPrompt) {
-      nextState.lastResponse = deliveryPrompt.text;
-      return validateResponseOutput({ 
-        text: deliveryPrompt.text, 
-        type: deliveryPrompt.actions ? 'buttons' : 'text',
-        actions: deliveryPrompt.actions, 
-        nextState 
+    if (matchingSafe.length > 0) {
+      const product = matchingSafe[0];
+      return validateResponseOutput({
+        text: `¡Claro! Te recomiendo el **${product.name}** ($${product.price}). Es una excelente opción. ¿Lo agregamos? 🔥`,
+        type: 'text',
+        nextState,
       }, state);
     }
   }
-
-  // 7. Get stage-aware prompt
-  const promptFn = getPromptByStage(agentResponse.intent as any, nextState.stage, nextState.upsellStep);
-  let responseText = promptFn.text(ctx);
-
-  // 8. Modular sales copy: urgency + combo + upsell hook (short and natural)
-  const urgencyHook = 'Se está moviendo rápido ahorita.';
-  const comboHook = `Si quieres, te dejo ${ctx.comboName} de una.`;
-  const upsellHook = '¿Le sumamos algo más para que quede completo?';
-  responseText = `${responseText} ${urgencyHook} ${comboHook} ${upsellHook}`.replace(/\s+/g, ' ').trim();
-
-  // 9. Override with modular recommendation/upsell if appropriate
-  const settings = getThermostatSettings();
-  if (settings.allowUpsells && agentResponse.upsell && nextState.stage === 'ordenando') {
-    responseText = `${agentResponse.upsell.message} (+$${agentResponse.upsell.price}). ${urgencyHook} ${comboHook} ${upsellHook}`.replace(/\s+/g, ' ').trim();
-  }
-
-  // 10. Apply anti-loop (strategy rotation)
-  const { text: loopText, newRetryCount } = applyAntiLoop(
-    responseText,
-    state.lastResponse,
-    nextState.retryCount,
-    ctx,
-  );
-  responseText = loopText;
-  nextState.retryCount = newRetryCount;
-
-  // 11. Assert non-empty
-  if (!responseText?.trim()) {
-    responseText = agentResponse.closingMessage || `🔥 **${ctx.comboName}** — $${ctx.comboPrice}. El más pedido. ¿Lo agregamos?`;
-  }
-
-  // 12. Store last response
-  nextState.lastResponse = responseText;
-
-  const resolvedActions = typeof promptFn.actions === 'function' ? promptFn.actions(ctx) : promptFn.actions;
-
+  
+  // 4. Call the unified bot engine
+  const responseText = await getBotResponse({ message: text, phone: state.phone });
+  
+  // Return in ResponseOutput format
   return validateResponseOutput({
     text: responseText,
-    type: promptFn.type || (resolvedActions ? 'buttons' : 'text'),
-    actions: resolvedActions,
+    type: 'text',
     nextState,
   }, state);
 }
+

@@ -11,6 +11,7 @@ import { Product, products as allProducts } from '@/data/products';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
 import { supabase } from '@/lib/supabase';
+import { isProductSafe } from '@/core/allergyFilter';
 
 /**
  * Structure for upsell results
@@ -32,14 +33,19 @@ export async function getEntryRecommendation(
   intent: Intent,
   profile?: CustomerProfile
 ): Promise<Product | null> {
+  // Filter products by restrictions
+  const safeProducts = profile?.restrictions?.length
+    ? allProducts.filter(p => isProductSafe(p, profile.restrictions))
+    : allProducts;
+
   // 1. Personalized Recommendation (Priority)
   if (profile?.favoriteProduct) {
-    const fav = allProducts.find(p => p.name.toLowerCase() === profile.favoriteProduct?.toLowerCase());
+    const fav = safeProducts.find(p => p.name.toLowerCase() === profile.favoriteProduct?.toLowerCase());
     if (fav) return fav;
   }
 
   if (profile && profile.totalOrders > 0) {
-    return allProducts.find(p => p.id === 1) || allProducts[0]; // Combo Mixto 911
+    return safeProducts.find(p => p.id === 1) || safeProducts[0]; // Combo Mixto 911
   }
 
   // 2. Intent-based Logic
@@ -47,13 +53,13 @@ export async function getEntryRecommendation(
     case 'hambre':
     case 'hungry_strong':
       // Largest/Most expensive Combo
-      return [...allProducts]
+      return [...safeProducts]
         .filter(p => p.category === 'combos')
-        .sort((a, b) => b.price - a.price)[0] || allProducts[0];
+        .sort((a, b) => b.price - a.price)[0] || safeProducts[0];
 
     case 'hungry_light':
       // Best-selling individual item
-      return allProducts.find(p => p.popular && p.category !== 'combos') || allProducts[9]; // Papas Loaded
+      return safeProducts.find(p => p.popular && p.category !== 'combos') || safeProducts[9]; // Papas Loaded
 
     case 'undecided':
     case 'duda':
@@ -61,7 +67,7 @@ export async function getEntryRecommendation(
     case 'other':
     default:
       // Absolute bestseller
-      return allProducts.find(p => p.popular) || allProducts[0];
+      return safeProducts.find(p => p.popular) || safeProducts[0];
   }
 }
 
@@ -149,6 +155,14 @@ export async function getBestUpsell(
     .limit(1);
 
   if (error || !candidates || candidates.length === 0) return null;
+
+  // Filter by restrictions if they exist
+  if (customerProfile?.restrictions?.length) {
+    const candidateProduct = allProducts.find(p => p.name === candidates[0].name);
+    if (candidateProduct && !isProductSafe(candidateProduct, customerProfile.restrictions)) {
+      return null; // Skip unsafe upsell
+    }
+  }
 
   const bestProduct = candidates[0];
 

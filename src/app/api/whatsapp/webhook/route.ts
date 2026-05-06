@@ -8,6 +8,7 @@ import { dbGetProductsServer } from '@/lib/dbServer';
 import { logConversation } from '@/lib/logger';
 import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
+import { handleMessageModular, INITIAL_STATE } from '@/core';
 
 /* =========================
    CONFIG
@@ -97,26 +98,26 @@ export async function POST(req: NextRequest) {
           console.log("STEP 1: CALLING RUNBOT");
 
           // Deterministic response + AI fallback
-          const response = await getBotResponse({
-            message: userInput,
-            phone: from
-          });
+          const output = await handleMessageModular(
+            userInput,
+            { ...INITIAL_STATE, phone: from } as any,
+            undefined,
+            undefined
+          );
 
           await logConversation({
             phone: from,
             user_message: userInput,
-            bot_response: response,
+            bot_response: output.text,
             intent: "unknown"
           });
 
-          extractAndSaveInsights(from, userInput, response).catch(() => { });
+          extractAndSaveInsights(from, userInput, output.text).catch(() => {});
 
-          console.log("STEP 2: RUNBOT CALLED");
-
-          console.log("[WA FINAL RESPONSE]:", response);
+          console.log("[WA FINAL RESPONSE]:", output.text);
 
           // Send reply
-          await sendWhatsAppMessage(from, response);
+          await sendWhatsAppMessage(from, output.text);
         }
       }
     }
@@ -167,76 +168,11 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
 }
 
 /* =========================
-   Deterministic Response + AI Fallback
+    Send WhatsApp Message
 ========================= */
 
-async function getDeterministicResponse(text: string, from: string): Promise<string> {
-  const lower = text.toLowerCase();
+async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
 
-  // Rule 1: Menu
-  if (lower.includes('menu') || lower.includes('menú')) {
-    return '¡Te muestro nuestro menú! 🍔\n\nAlitas BBQ - $120\nBoneless Mango Habanero - $130\nPapas Gajo Loaded - $80\nCombo 911 - $220\n\n¿Qué te gustaría ordenar?';
-  }
-
-  // Rule 2: Greeting
-  if (lower.includes('hola') || lower.includes('buenas') || lower.includes('buen dia')) {
-    return '¡Hola! Bienvenido a Snacks 911 🍔\n¿Qué te gustaría pedir hoy?';
-  }
-
-  // Rule 3: Order intent
-  if (lower.includes('pedido') || lower.includes('ordenar') || lower.includes('quiero') || lower.includes('me das')) {
-    return '¡Excelente elección! 🔥\n¿Qué productos te gustaría ordenar?\n\nEscribe "menú" para ver nuestras opciones.';
-  }
-
-  // Rule 4: Help / Location / Hours
-  if (lower.includes('ubicacion') || lower.includes('direccion') || lower.includes('donde')) {
-    return 'Estamos en Av. Principal #123. 📍\nHorario: 1pm - 10pm todos los días.';
-  }
-
-  if (lower.includes('horario') || lower.includes('abierto') || lower.includes('cierran')) {
-    return 'Abierto de 1pm a 10pm todos los días. 🕐\n¡Haz tu pedido ahora!';
-  }
-
-  // NO RULE MATCHED → AI Fallback (short prompt, max 240 chars)
-  console.log('[WA] No rule matched, calling AI fallback...');
-  try {
-    const products = await dbGetProductsServer();
-    const menuItems: MenuItemContext[] = products.map(p => ({
-      name: p.name,
-      price: p.price,
-      category: p.category,
-      description: p.description,
-    }));
-
-    const context = buildContextPayload(
-      menuItems,
-      [], // modifiers
-      [], // announcements
-      [], // promos
-      [], // cart
-      text
-    );
-
-    const aiResult = await getAIResponse(context);
-
-    // Limit response to 240 characters max
-    let message = aiResult.message_to_user || '¡Te ayudo! 🍔\nEscribe "menú" para ver nuestro catálogo.';
-    if (message.length > 240) {
-      message = message.substring(0, 237) + '...';
-    }
-
-    console.log('[WA] AI response:', message);
-    return message;
-
-  } catch (aiError) {
-    console.error('[WA] AI fallback failed:', aiError);
-    return '¡Gracias por escribirnos! 🍔\nEscribe "menú" para ver nuestro catálogo o "pedido" para hacer una orden.';
-  }
-}
-
-/* =========================
-   Send WhatsApp Message
-========================= */
 
 async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
   if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {

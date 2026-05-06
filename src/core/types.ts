@@ -56,6 +56,7 @@ export interface ConversationState {
   whatsappUrl: string | null;
   orderTimestamp?: number;
   reset: boolean;
+  allergies: string[];
 }
 
 export interface QuickAction {

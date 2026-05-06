@@ -3,6 +3,7 @@ import { getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
 import { getEntryRecommendation } from './offerAgent';
 import { getAIResponse } from "@/lib/whatsapp/aiService";
 import { detectIntent } from './intentDetector';
+import { filterProducts, isProductSafe } from '@/core/allergyFilter';
 
 const memory = new Map<string, { product: any; qty: number }>();
 
@@ -18,26 +19,61 @@ function normalize(text: string) {
     .trim();
 }
 
+function parseMultiIntent(message: string, products: any[]) {
+  const lower = message.toLowerCase();
+  
+  // Extract include keywords (after "con", "quiero", "dame", or just at start)
+  // Matches things like "quiero papas", "dame alitas", "papas"
+  const includeMatch = lower.match(/\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i) || 
+                       lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin)\s+|$)/i);
+  
+  let includeWords: string[] = [];
+  if (includeMatch) {
+    includeWords = includeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+  }
+  
+  // Extract exclude keywords (after "sin", "pero sin")
+  const excludeMatch = lower.match(/(?:sin|pero sin)\s+([a-z\s]+?)(?:\s+|$)/i);
+  let excludeWords: string[] = [];
+  if (excludeMatch) {
+    excludeWords = excludeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+  }
+  
+  // If no specific include/exclude keywords found, return null
+  if (!includeWords.length && !excludeWords.length) return null;
+  
+  // Filter products
+  const filtered = products.filter(p => {
+    const nameAndIngredients = `${p.name} ${(p.ingredients || []).join(' ')}`.toLowerCase();
+    
+    // Must include at least one include word (if specified)
+    if (includeWords.length) {
+      const hasInclude = includeWords.some(word => nameAndIngredients.includes(word));
+      if (!hasInclude) return false;
+    }
+    
+    // Must NOT include any exclude word
+    if (excludeWords.length) {
+      const hasExclude = excludeWords.some(word => nameAndIngredients.includes(word));
+      if (hasExclude) return false;
+    }
+    
+    return true;
+  });
+  
+  return {
+    products: filtered.slice(0, 4),
+    includeWords,
+    excludeWords
+  };
+}
+
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, '');
 }
 
-function isCompatible(product: any, restrictions: string[] = []) {
-  if (!restrictions.length) return true;
-
-  const ingredients = product.ingredients || [];
-  const text = `${product.name} ${product.description || ''}`.toLowerCase();
-
-  return !restrictions.some(r => {
-    const clean = r.toLowerCase();
-    return (
-      text.includes(clean) ||
-      ingredients.some((i: string) => i.toLowerCase().includes(clean))
-    );
-  });
-}
-
 export async function getBotResponse({ message, phone }: { message: string; phone?: string }) {
+  console.log("[ENGINE USED:", "MODULAR");
   const cleanPhone = phone ? normalizePhone(phone) : undefined;
   let profile = null;
 
@@ -56,8 +92,14 @@ export async function getBotResponse({ message, phone }: { message: string; phon
 }
 
 async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
+  // GLOBAL ALLERGY FILTER
+  const safeProducts = filterProducts(products, profile?.restrictions || []);
+
   const lower = message.toLowerCase();
   const { intent } = detectIntent(message);
+
+  // MULTI-INTENT: Parse "quiero X pero sin Y"
+  const multiIntent = parseMultiIntent(message, safeProducts);
   
   const isGreeting =
     lower === 'hola' ||
@@ -72,13 +114,26 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       return `¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo? 🔥`;
     }
   }
-  
+
   // Greeting
   let greeting = '';
   if (profile?.name) {
     greeting = `¡Hola ${profile.name}! 👋\n\n`;
   }
 
+  // MULTI-INTENT: Handle "quiero X pero sin Y"
+  if (multiIntent && multiIntent.products.length > 0) {
+    let response = greeting;
+    response += `¡Claro! Te sugiero estas opciones:\n\n`;
+    
+    for (const p of multiIntent.products) {
+      response += `🍗 ${p.name} - $${p.price}\n`;
+    }
+    
+    response += `\n¿Cuál te gustaría ordenar? 😏`;
+    return response;
+  }
+  
   // 1. ALERGIAS
   if (/alergi|alérgi/i.test(message)) {
     // Extract allergen from current message
@@ -109,11 +164,11 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       allRestrictions.push(currentAllergen);
     }
 
-    const safeProducts = products.filter(p => isCompatible(p, allRestrictions)).slice(0, 5);
+      const localSafe = safeProducts.filter(p => isProductSafe(p, allRestrictions)).slice(0, 5);
 
-    if (safeProducts.length > 0) {
+    if (localSafe.length > 0) {
       response += `\n\nTe recomendamos estos productos seguros:\n\n`;
-      for (const p of safeProducts) {
+      for (const p of localSafe) {
         response += `🍗 ${p.name} - $${p.price}\n`;
       }
       response += `\n¿Cuál te gustaría ordenar? 😏`;
@@ -126,8 +181,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   // 2. FAVORITO
   if (/favorito|preferido/i.test(message)) {
-    const favProduct = products.find(p => p.name === profile?.favorite_product);
-    const isCompatibleFav = favProduct && isCompatible(favProduct, profile?.restrictions || []);
+    const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
+    const isCompatibleFav = favProduct && isProductSafe(favProduct, profile?.restrictions || []);
     return `${greeting}${profile?.favorite_product && isCompatibleFav ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
   }
 
@@ -139,14 +194,14 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (wantsCombos) {
     const combos = Array.from(
       new Map(
-        products
+        safeProducts
           .filter(p => p.category === 'combos')
           .map(p => [p.name, p])
       ).values()
     );
 
     const filtered = combos.filter(p =>
-      isCompatible(p, profile?.restrictions)
+      isProductSafe(p, profile?.restrictions)
     );
 
     let comboText = `${greeting}🔥 NUESTROS COMBOS 🔥\n\n`;
@@ -161,16 +216,22 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   // 3. SOLO COMBOS
-  let currentProducts = products;
+  let currentProducts = safeProducts;
 
   const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
   
   const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
-  const shouldUseAI = !isConfirming && !foundProduct && !isOrderIntent && intent === 'other';
+  
+  // FALLBACK TRIGGER: Only if NO intent AND NO safe products available
+  const isGenericIntent = intent === 'other' || !intent;
+  const shouldUseAI = isGenericIntent && safeProducts.length === 0;
+
+  // Fix: Only confirm if order actually exists in memory
+  const isConfirmingWithOrder = isConfirming && memory.has(phone);
 
   const context = {
-    menu_items: products.map(p => ({
+    menu_items: safeProducts.map(p => ({
       name: p.name,
       price: p.price,
       category: p.category
@@ -182,10 +243,9 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     customer_message: message
   };
 
-  if (isConfirming && phone) {
+  if (isConfirmingWithOrder) {
     const order = memory.get(phone);
-    if (!order) return "No tengo tu pedido 😅 inténtalo otra vez";
-
+    // No need to check !order since isConfirmingWithOrder ensures it exists
     try {
       await dbSaveOrder({
         id: '',
@@ -206,6 +266,11 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     }
   }
 
+  // If isConfirming was true but no order existed, treat as normal message
+  if (isConfirming && !isConfirmingWithOrder) {
+    // Fall through to normal processing
+  }
+
   if (!currentProducts || currentProducts.length === 0) return "Ahorita no tengo productos disponibles 😔";
 
   if (foundProduct) {
@@ -222,13 +287,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
     let rec = await getEntryRecommendation(intent, profile);
 
-    if (rec && !isCompatible(rec, profile?.restrictions)) {
+      if (rec && !isProductSafe(rec, profile?.restrictions || [])) {
       console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
-
-      const safeProducts = products.filter(p =>
-        isCompatible(p, profile?.restrictions)
-      );
-
       rec = safeProducts[0] || null;
     }
 
@@ -239,32 +299,32 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
-  const favProduct = products.find(p => p.name === profile?.favorite_product);
-  if (favProduct && isCompatible(favProduct, profile?.restrictions || [])) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
+  const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
+  if (favProduct && isProductSafe(favProduct, profile?.restrictions || [])) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
 
   for (const p of currentProducts) {
-    if (isCompatible(p, profile?.restrictions) && p.name !== profile?.favorite_product) {
+    if (isProductSafe(p, profile?.restrictions) && p.name !== profile?.favorite_product) {
       text += `🍗 ${p.name} - $${p.price}\n`;
     }
   }
   text += "\n¿Qué te gustaría ordenar? 😏";
 
-  const simpleMessage =
-    intent === 'browsing' ||
-    intent === 'exploracion' ||
-    intent === 'hambre' ||
-    intent === 'duda' ||
-    message.length < 20;
-
-  if (simpleMessage) {
-    return '¡Hola! 👋 ¿Quieres ver el menú o te recomiendo algo?';
+  // If we have products, always show them (never trigger generic fallback)
+  if (safeProducts.length > 0) {
+    return text;
   }
 
+  // Only reach here if no products available
   if (shouldUseAI) {
+    console.log('[AI DEBUG] input:', message);
+    console.log('[AI DEBUG] allergies:', profile?.restrictions || []);
+    console.log('[AI DEBUG] products:', safeProducts.map(p => p.name));
+
     let aiRes = null;
 
     try {
       aiRes = await getAIResponse(context);
+      console.log('[AI DEBUG] response:', aiRes?.message_to_user || 'NO_RESPONSE');
     } catch (e) {
       console.error('[AI FALLBACK]', e);
     }

@@ -29,12 +29,12 @@ export default function OrderBot() {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [state, setState] = useState<ConversationState>(INITIAL_STATE);
-  const [engine, setEngine] = useState<"legacy" | "modular" | "ai">("modular");
+  const [engine, setEngine] = useState<"modular" | "ai">("modular");
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("snacks911_engine");
-      if (saved === "legacy" || saved === "modular" || saved === "ai") setEngine(saved);
+      if (saved === "modular" || saved === "ai") setEngine(saved);
     } catch { }
   }, []);
 
@@ -139,12 +139,8 @@ export default function OrderBot() {
       const d = await r.json();
       output = { text: d.reply, type: "text", actions: [], nextState: state };
     }
-    else if (engine === "modular") {
-      output = await handleMessageModular(text, state, productRefs, action);
-    }
     else {
-      const { handleMessage } = await import('@/core/responseEngine');
-      output = handleMessage(text, state, productRefs, action);
+      output = await handleMessageModular(text, state, productRefs, action);
     }
 
 
@@ -209,16 +205,17 @@ export default function OrderBot() {
             </div>
           </div>
 
-          <button
-            disabled={forceLegacy}
-            onClick={(e) => {
-              e.stopPropagation();
-              setEngine(prev => {
-                const next = prev === "legacy" ? "modular" : prev === "modular" ? "ai" : "legacy";
-                console.log("SWITCH:", prev, "→", next);
-                return next;
-              });
-            }}
+               <button
+                 disabled={forceLegacy}
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   setEngine(prev => {
+                     const next = prev === "modular" ? "ai" : "modular";
+                     console.log("SWITCH:", prev, "→", next);
+                     return next;
+                   });
+                 }}
+
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
