@@ -97,13 +97,30 @@ export async function POST(req: NextRequest) {
 
           console.log("STEP 1: CALLING RUNBOT");
 
-          // Deterministic response + AI fallback
-          const output = await handleMessageModular(
-            userInput,
-            { ...INITIAL_STATE, phone: from } as any,
-            undefined,
-            undefined
-          );
+           // Deterministic response + AI fallback
+           const output = await handleMessageModular(
+             userInput,
+             { ...INITIAL_STATE, phone: from } as any,
+             {
+               comboName: 'Combo 911',
+               comboPrice: 119,
+               papasName: 'Papas Loaded',
+               papasPrice: 69,
+               bebidaName: 'Refresco',
+               bebidaPrice: 25,
+               postreName: 'Brownie',
+               postrePrice: 59,
+               comboBonelessName: 'Combo Boneless',
+               comboBonelessPrice: 99,
+               ahorroBoneless: 20,
+               currentTotal: 0,
+               hasPapas: false,
+               hasBebida: false,
+               hasPostre: false,
+             },
+             undefined
+           );
+
 
           await logConversation({
             phone: from,
@@ -170,9 +187,6 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
 /* =========================
     Send WhatsApp Message
 ========================= */
-
-async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
-
 
 async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
   if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {

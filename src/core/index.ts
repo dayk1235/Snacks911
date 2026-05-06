@@ -39,6 +39,8 @@ export {
   INITIAL_STATE,
 } from './responseEngine';
 
+export { filterProducts, isProductSafe } from './allergyFilter';
+
 // Cart engine
 export {
   addToCart,

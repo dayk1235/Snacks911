@@ -54,6 +54,7 @@ export interface ConversationState {
   cart: string[];
   cartTotal: number;
   whatsappUrl: string | null;
+  phone?: string;
   orderTimestamp?: number;
   reset: boolean;
   allergies: string[];

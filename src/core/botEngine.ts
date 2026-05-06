@@ -245,7 +245,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   if (isConfirmingWithOrder) {
     const order = memory.get(phone);
-    // No need to check !order since isConfirmingWithOrder ensures it exists
+    if (!order) return "Ups, no encontré tu pedido pendiente. ¿Qué te gustaría ordenar?";
+    
     try {
       await dbSaveOrder({
         id: '',

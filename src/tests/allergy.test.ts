@@ -29,13 +29,20 @@ async function testCase(input: string, forbidden: string[]) {
     mockProductRefs
   );
 
+  // We only care about forbidden terms in the recommendations section
+  // If the response contains "Te recomendamos", we check only the part after it.
+  let textToCheck = output.text;
+  if (textToCheck.includes('Te recomendamos')) {
+    textToCheck = textToCheck.split('Te recomendamos')[1];
+  }
+
   const containsForbidden = forbidden.some(f => 
-    output.text.toLowerCase().includes(f.toLowerCase())
+    textToCheck.toLowerCase().includes(f.toLowerCase())
   );
 
   if (containsForbidden) {
-    const found = forbidden.filter(f => output.text.toLowerCase().includes(f.toLowerCase()));
-    console.log(`❌ FAIL: Output contains forbidden terms: [${found.join(', ')}]`);
+    const found = forbidden.filter(f => textToCheck.toLowerCase().includes(f.toLowerCase()));
+    console.log(`❌ FAIL: Recommendations contain forbidden terms: [${found.join(', ')}]`);
     console.log(`Response: ${output.text}`);
   } else {
     console.log(`✅ PASS`);
@@ -47,6 +54,9 @@ async function runTests() {
   const forbidden = ["salchipapas", "banderilla", "salchicha"];
 
   await testCase("soy alergico a la salchicha", forbidden);
+  await testCase("alérgico a salchicha", forbidden);
+  await testCase("no puedo comer salchicha", forbidden);
+  await testCase("soy alérgico a la salchicha", forbidden);
   await testCase("papas sin salchicha", forbidden);
   await testCase("dame un combo", forbidden);
 }

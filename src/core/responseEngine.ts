@@ -13,6 +13,7 @@ import { products as allProducts } from '@/data/products';
 import { filterProducts } from './allergyFilter';
 import { detectIntent } from './intentDetector';
 import { applyLoopStrategy, getNextStrategy } from './antojo';
+import { getBotResponse } from './botEngine';
 import type {
   ConversationState,
   ResponseOutput,
@@ -44,6 +45,7 @@ export const INITIAL_STATE: ConversationState = {
   whatsappUrl: null,
   orderTimestamp: undefined,
   reset: false,
+  allergies: [],
 };
 
 function normalizeText(text: string): string {
@@ -676,7 +678,9 @@ export function buildOrderConfirmation(
  * Orchestrates the full pipeline using specialized agents.
  */
 function parseUserRequest(text: string) {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove accents
   
   // Extract include keywords (e.g., "quiero papas", "dame alitas", "papas")
   const includeMatch = lower.match(/\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i) || 
@@ -687,14 +691,24 @@ function parseUserRequest(text: string) {
     includeWords = includeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
   }
   
-  // Extract exclude keywords (after "sin", "pero sin")
-  const excludeMatch = lower.match(/(?:sin|pero sin)\s+([a-z\s]+?)(?:\s+|$)/i);
+  // Expand allergy patterns (Normalized: no accents)
+  const allergyPatterns = [
+    /\b(?:sin|pero sin)\s+([a-z\s]+)(?=\s+|$|[,.])\b/i,
+    /\b(?:soy alergico a|alergico a|no puedo comer)\s+([a-z\s]+)(?=\s+|$|[,.])\b/i,
+  ];
+
   let excludeWords: string[] = [];
-  if (excludeMatch) {
-    excludeWords = excludeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+  for (const pattern of allergyPatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      const extracted = match[1].trim()
+        .split(/\s+/)
+        .filter(w => !['la', 'el', 'los', 'las', 'un', 'una'].includes(w.toLowerCase()) && w.length > 2);
+      excludeWords = [...excludeWords, ...extracted];
+    }
   }
   
-  return { includeWords, excludeWords };
+  return { includeWords, excludeWords: Array.from(new Set(excludeWords)) };
 }
 
 /**

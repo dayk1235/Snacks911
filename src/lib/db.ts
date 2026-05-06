@@ -159,15 +159,19 @@ function rowToSettings(row: Record<string, unknown>): BusinessSettings {
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export async function dbGetProducts(): Promise<AdminProduct[]> {
-  const { data, error } = await supabase.from('products').select('*').order('created_at');
-  if (error) throw error;
-  
-  if (!data || data.length === 0) {
-    // Return dev fallback if table is empty (useful for rapid dev, but not for prod)
+  try {
+    const { data, error } = await supabase.from('products').select('*').order('created_at');
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      return SEED_PRODUCTS;
+    }
+    
+    return (data as Record<string, unknown>[]).map(rowToProduct);
+  } catch (e) {
+    console.warn('[db] Falling back to SEED_PRODUCTS due to error:', e);
     return SEED_PRODUCTS;
   }
-  
-  return (data as Record<string, unknown>[]).map(rowToProduct);
 }
 
 
