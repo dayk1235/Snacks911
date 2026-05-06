@@ -28,6 +28,7 @@ export type Intent =
   | 'urgencia'
   | 'mixto'
   | 'duda'
+  | 'list_products'
   | 'pedido'
   | 'hambre'
   | 'precio'

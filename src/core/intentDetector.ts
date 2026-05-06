@@ -23,6 +23,21 @@ interface IntentRule {
 
 const INTENT_RULES: IntentRule[] = [
   {
+    intent: 'list_products',
+    keywords: [
+      'todos', 'ver', 'mostrar', 'muestra', 'menu', 'menú', 'lista', 'opciones',
+      'combos', 'boneless', 'alitas', 'papas', 'que hay', 'qué hay',
+    ],
+    patterns: [
+      /(quiero |dame |dame los |muestra|muestrame|ver |todos los |todas las )?(combos|boneless|alitas|papas)/i,
+      /(qué|que) (tienes|hay|tienen) (de |los |las )?(combos|boneless|alitas|papas)/i,
+      /todos los (combos|boneless|alitas|papas)/i,
+      /ver (todos |todas las )?(los |las )?(combos|boneless|alitas|papas)/i,
+      /(combos|boneless|alitas|papas) (disponibles|tienes|hay)/i,
+    ],
+    priority: 10,
+  },
+  {
     intent: 'rechazo_fuerte',
     keywords: ['no quiero', 'no me interesa', 'muy caro', 'demasiado caro', 'no puedo', 'adiós', 'adios'],
     patterns: [
