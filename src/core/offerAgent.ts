@@ -33,10 +33,23 @@ export interface UpsellOption {
  */
 export async function getEntryRecommendation(
   intent: Intent,
-  profile: CustomerProfile | undefined,
-  safeProducts: Product[]
+  profile?: CustomerProfile,
+  allergies: string[] = []
 ): Promise<Product | null> {
-  if (!safeProducts || safeProducts.length === 0) return null;
+  const allProducts = await dbGetProducts() as unknown as Product[];
+  
+  // Merge profile restrictions with current session allergies
+  const allRestrictions = Array.from(new Set([
+    ...(profile?.restrictions || []),
+    ...allergies
+  ]));
+
+  // Filter products by restrictions
+  const safeProducts = allRestrictions.length
+    ? allProducts.filter(p => isProductSafe(p, allRestrictions))
+    : allProducts;
+
+  if (safeProducts.length === 0) return null;
 
   // 1. Personalized Recommendation (Priority)
   if (profile?.favoriteProduct) {
@@ -98,7 +111,7 @@ export async function getBestUpsell(
     : allProducts;
 
   // 1. Identify missing categories (from safeProducts)
-  const cartProductIds = currentCart.map(i => i.productId);
+  const cartProductIds = currentCart.map(i => i.id);
   const cartProducts = safeProducts.filter(p => cartProductIds.includes(p.id));
   const cartCategories = new Set(cartProducts.map(p => p.category));
 

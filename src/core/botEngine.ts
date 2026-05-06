@@ -93,7 +93,7 @@ export async function getBotResponse({ message, phone }: { message: string; phon
     ...(profile?.restrictions || []),
     ...(detectIntent(message).allergies || [])
   ]));
-  const safeProducts = filterProducts(products, allRestrictions);
+  const safeProducts = filterProducts(products as any, allRestrictions);
   console.log(`[botEngine] Total products: ${products.length} | Safe products: ${safeProducts.length}`);
   console.log(`[botEngine] Restrictions applied:`, allRestrictions);
 
@@ -308,13 +308,13 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
-    let rec = await getEntryRecommendation(detected.intent, profile, allRestrictions);
+    let rec: any = await getEntryRecommendation(detected.intent, profile, allRestrictions);
 
     // CRITICAL: Validate recommended product belongs to safeProducts
     if (rec && !safeProducts.some(p => p.id === rec!.id)) {
       console.log('[botEngine] UNSAFE recommendation detected, recalculating from safeProducts...');
       // Recalculate: find the best alternative in safeProducts with same category, or fallback to top ranked
-      rec = rankedProducts.find(p => p.category === rec!.category) || rankedProducts[0] || null;
+      rec = (rankedProducts.find(p => p.category === rec!.category) || rankedProducts[0] || null) as any;
     }
 
     if (rec) {
