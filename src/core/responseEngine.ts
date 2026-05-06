@@ -11,6 +11,7 @@
 
 import { products as allProducts } from '@/data/products';
 import { filterProducts } from './allergyFilter';
+import { extractFoodIntent, rankProductsByIntent } from './contextRanker';
 import { detectIntent } from './intentDetector';
 import { applyLoopStrategy, getNextStrategy } from './antojo';
 import { getBotResponse } from './botEngine';
@@ -737,16 +738,24 @@ export async function handleMessageModular(
   // 2. Filter all products for safety
   const safeProducts = filterProducts(allProducts, nextState.allergies);
 
+  // 3. Rank products by user intent (after allergy filter)
+  const intent = extractFoodIntent(text);
+  console.log("[INTENT]", intent);
+  
+  const rankedProducts = rankProductsByIntent(safeProducts, intent);
+  console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
+  console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
+
   console.log("[AI]", {
     input: text,
     allergies: nextState.allergies,
     safe: safeProducts.map(p => p.name),
   });
 
-  // 3. Fast Path: If user specifically requested an item and it's safe
+  // 4. Fast Path: If user specifically requested an item and it's safe
   if (includeWords.length > 0) {
-    const matchingSafe = safeProducts.filter(p => {
-      const content = `${p.name} ${(p.ingredients || []).join(' ')}`.toLowerCase();
+    const matchingSafe = rankedProducts.filter(p => {
+      const content = `${p.name} ${p.description || ''}`.toLowerCase();
       return includeWords.some(word => content.includes(word));
     });
 

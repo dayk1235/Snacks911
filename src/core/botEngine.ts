@@ -4,6 +4,7 @@ import { getEntryRecommendation } from './offerAgent';
 import { getAIResponse } from "@/lib/whatsapp/aiService";
 import { detectIntent } from './intentDetector';
 import { filterProducts, isProductSafe } from '@/core/allergyFilter';
+import { extractFoodIntent, rankProductsByIntent } from '@/core/contextRanker';
 
 const memory = new Map<string, { product: any; qty: number }>();
 
@@ -95,8 +96,16 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   // GLOBAL ALLERGY FILTER
   const safeProducts = filterProducts(products, profile?.restrictions || []);
 
+  // CONTEXT RANKING
+  const intent = extractFoodIntent(message);
+  console.log("[INTENT]", intent);
+  
+  const rankedProducts = rankProductsByIntent(safeProducts, intent);
+  console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
+  console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
+
   const lower = message.toLowerCase();
-  const { intent } = detectIntent(message);
+  const detected = detectIntent(message);
 
   // MULTI-INTENT: Parse "quiero X pero sin Y"
   const multiIntent = parseMultiIntent(message, safeProducts);
@@ -224,7 +233,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
   
   // FALLBACK TRIGGER: Only if NO intent AND NO safe products available
-  const isGenericIntent = intent === 'other' || !intent;
+  const isGenericIntent = detected.intent === 'other' || !detected.intent;
   const shouldUseAI = isGenericIntent && safeProducts.length === 0;
 
   // Fix: Only confirm if order actually exists in memory
@@ -285,8 +294,8 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   // 4. RECOMENDACIONES Y MENÚ
-  if (['duda', 'hambre', 'exploracion'].includes(intent) || /recomienda|sugiere/i.test(message)) {
-    let rec = await getEntryRecommendation(intent, profile);
+  if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
+    let rec = await getEntryRecommendation(detected.intent, profile);
 
       if (rec && !isProductSafe(rec, profile?.restrictions || [])) {
       console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
