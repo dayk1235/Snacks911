@@ -20,7 +20,7 @@ function normalize(text: string) {
     .trim();
 }
 
-function parseMultiIntent(message: string, products: any[]) {
+function parseMultiIntent(message: string, safeProducts: any[]) {
   const lower = message.toLowerCase();
   
   // Extract include keywords (after "con", "quiero", "dame", or just at start)
@@ -44,7 +44,7 @@ function parseMultiIntent(message: string, products: any[]) {
   if (!includeWords.length && !excludeWords.length) return null;
   
   // Filter products using the centralized isProductSafe logic
-  const filtered = products.filter(p => {
+  const filtered = safeProducts.filter(p => {
     // 1. Must NOT include any exclude word (treat as temporary allergy)
     if (excludeWords.length > 0) {
       if (!isProductSafe(p, excludeWords)) return false;
@@ -87,31 +87,39 @@ export async function getBotResponse({ message, phone }: { message: string; phon
   console.log('[botEngine] PROFILE:', profile);
   console.log('[DEBUG PROFILE]', profile);
 
+  // 1. Get products and IMMEDIATELY filter by allergies
   const products = await dbGetProducts();
-  return buildPersonalizedResponse(message, cleanPhone, products, profile);
+  const allRestrictions = Array.from(new Set([
+    ...(profile?.restrictions || []),
+    ...(detectIntent(message).allergies || [])
+  ]));
+  const safeProducts = filterProducts(products, allRestrictions);
+  console.log(`[botEngine] Total products: ${products.length} | Safe products: ${safeProducts.length}`);
+  console.log(`[botEngine] Restrictions applied:`, allRestrictions);
+
+  // 2. Pass safeProducts to buildPersonalizedResponse
+  return buildPersonalizedResponse(message, cleanPhone, safeProducts, profile);
 }
 
-async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
+async function buildPersonalizedResponse(message: string, phone: string | undefined, safeProducts: any[], profile?: any) {
   const lower = message.toLowerCase();
   const detected = detectIntent(message);
   const { intent, allergies: detectedAllergies } = detected;
 
-  // GLOBAL ALLERGY FILTER - merge profile restrictions with detected allergies from message
+  // allRestrictions for VALIDATION only (safeProducts is already filtered)
   const allRestrictions = Array.from(new Set([
     ...(profile?.restrictions || []),
     ...(detectedAllergies || [])
   ]));
   
-  const safeProducts = filterProducts(products, allRestrictions);
-
-  // CONTEXT RANKING
+  // CONTEXT RANKING - use safeProducts directly
   const foodIntent = extractFoodIntent(message);
   console.log("[INTENT]", foodIntent);
   
   const rankedProducts = rankProductsByIntent(safeProducts, foodIntent);
   console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
   console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
-
+  
   // MULTI-INTENT: Parse "quiero X pero sin Y"
   const multiIntent = parseMultiIntent(message, safeProducts);
   
@@ -192,7 +200,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
       response += `¡Entendido! Eres alérgico a "${currentAllergen}". Lo anotamos para tu seguridad. 🛡️`;
     }
 
-    const localSafe = products.filter(p => isProductSafe(p, allRestrictions)).slice(0, 5);
+    const localSafe = safeProducts.slice(0, 5);
 
     if (localSafe.length > 0) {
       response += `\n\nTe recomendamos estos productos seguros:\n\n`;
@@ -289,6 +297,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (safeProducts.length === 0) return "Ahorita no tengo productos disponibles compatibles con tus restricciones 😔";
 
   if (foundProduct) {
+    console.log('[botEngine] DIRECT SELECTION:', foundProduct.name);
     const qty = extractQty(message);
     if (qty && phone) {
       const total = foundProduct.price * qty;
@@ -301,12 +310,15 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
     let rec = await getEntryRecommendation(detected.intent, profile, allRestrictions);
 
-    if (rec && !isProductSafe(rec, allRestrictions)) {
-      console.log('[botEngine] BLOCKED unsafe recommendation (secondary check):', rec.name);
-      rec = safeProducts[0] || null;
+    // CRITICAL: Validate recommended product belongs to safeProducts
+    if (rec && !safeProducts.some(p => p.id === rec!.id)) {
+      console.log('[botEngine] UNSAFE recommendation detected, recalculating from safeProducts...');
+      // Recalculate: find the best alternative in safeProducts with same category, or fallback to top ranked
+      rec = rankedProducts.find(p => p.category === rec!.category) || rankedProducts[0] || null;
     }
 
     if (rec) {
+      console.log('[botEngine] FINAL RECOMMENDATION:', rec.name);
       const isFav = profile?.favorite_product?.toLowerCase() === rec.name.toLowerCase();
       return `${greeting}${isFav ? '🌟 Basado en tu favorito, te recomiendo:' : '💡 Te recomiendo probar:'}\n\n${rec.name} - $${rec.price}\n${rec.description || ''}\n\n¿Te gustaría ordenar este?`;
     }
