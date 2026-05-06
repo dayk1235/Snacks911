@@ -35,7 +35,7 @@ function persistLearnedRules(rules: any[]): void {
     const path = require('path');
     const file = path.join(process.cwd(), 'src/data/learning/learnedRules.json');
     fs.writeFileSync(file, JSON.stringify(rules, null, 2), 'utf8');
-  } catch {}
+  } catch { }
 }
 
 
@@ -411,14 +411,14 @@ function extractFilters(lower: string): string[] {
  */
 export function detectIntent(message: string): IntentResult {
   const n = normalizeText(message);
-  if (!n) return { 
-    intent: 'other', 
+  if (!n) return {
+    intent: 'other',
     entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
     confidence: 'LOW',
-    action: 'other', 
-    filters: [], 
-    category: 'none', 
-    allergies: [] 
+    action: 'other',
+    filters: [],
+    category: 'none',
+    allergies: []
   };
 
   // Extract allergies from "sin X" patterns
@@ -471,7 +471,7 @@ export function detectIntent(message: string): IntentResult {
       if (n.includes("sin") && ruleIntent !== 'RECOMMEND' as any) {
         addScore('RECOMMEND', rule.priority / 2); // Soft push to recommend instead of full priority
       } else {
-        addScore(ruleIntent, rule.priority); 
+        addScore(ruleIntent, rule.priority);
       }
 
       // Track usage for pruning
@@ -640,7 +640,7 @@ export function detectIntent(message: string): IntentResult {
   // ─── FINAL SELECTION ───
   const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const bestScore = sortedScores[0][1];
-  
+
   let mappedIntent = bestScore > 0 ? (sortedScores[0][0] as Intent) : ('UNKNOWN' as any);
 
   console.log("INPUT:", n);
@@ -652,7 +652,7 @@ export function detectIntent(message: string): IntentResult {
     mappedIntent = 'SHOW_CATEGORY' as any;
   }
 
-  return { 
+  return {
     intent: mappedIntent,
     entities,
     confidence: bestScore > 3 ? 'HIGH' : 'LOW',
@@ -678,22 +678,22 @@ export function extractAllergies(message: string): string[] {
   if (sinIndex !== -1) {
     // Extract everything after "sin "
     let afterSin = lower.substring(sinIndex + 4).trim(); // +4 for "sin "
-    
+
     // Remove trailing punctuation only (at end of string): ? ! . ; : ,
     afterSin = afterSin.replace(/[?.,!;:]+$/, '');
-    
+
     // Replace " y " and " e " with ", " for consistent splitting
     afterSin = afterSin.replace(/\s+y\s+/g, ', ').replace(/\s+e\s+/g, ', ');
-    
+
     // Split by commas and whitespace
     const items = afterSin
       .split(/[,\s]+/)
       .map(s => s.trim())
-      .filter(s => 
-        s.length > 2 && 
+      .filter(s =>
+        s.length > 2 &&
         !['sin', 'y', 'e', 'la', 'el', 'los', 'las', 'una', 'un', 'pero'].includes(s)
       );
-    
+
     allergies.push(...items);
   }
 

@@ -8,7 +8,7 @@ import { dbGetProductsServer } from '@/lib/dbServer';
 import { logConversation } from '@/lib/logger';
 import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
-import { handleMessageModular, INITIAL_STATE } from '@/core';
+import { handleMessageModular, INITIAL_STATE, detectIntent } from '@/core';
 
 /* =========================
    CONFIG
@@ -93,47 +93,56 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
+          // 1. Recibir mensaje (handled above in userInput)
           console.log('[WA] Processing:', { from, text: userInput });
 
-          console.log("STEP 1: CALLING RUNBOT");
+          // 2. Detectar intent (NLU Layer)
+          const nlu = detectIntent(userInput);
+          console.log('[WA] Intent detected:', nlu.intent);
 
-           // Deterministic response + AI fallback
-           const output = await handleMessageModular(
-             userInput,
-             { ...INITIAL_STATE, phone: from } as any,
-             {
-               comboName: 'Combo 911',
-               comboPrice: 119,
-               papasName: 'Papas Loaded',
-               papasPrice: 69,
-               bebidaName: 'Refresco',
-               bebidaPrice: 25,
-               postreName: 'Brownie',
-               postrePrice: 59,
-               comboBonelessName: 'Combo Boneless',
-               comboBonelessPrice: 99,
-               ahorroBoneless: 20,
-               currentTotal: 0,
-               hasPapas: false,
-               hasBebida: false,
-               hasPostre: false,
-             },
-             undefined
-           );
+          // 3. Obtener contexto (Implicit in handleMessageModular + Logged here)
+          // Note: handleMessageModular manages the session-level context internally.
+          
+          // 4. Ejecutar responseEngine (Modular Pipeline)
+          const output = await handleMessageModular(
+            userInput,
+            { ...INITIAL_STATE, phone: from } as any,
+            {
+              comboName: 'Combo 911',
+              comboPrice: 119,
+              papasName: 'Papas Loaded',
+              papasPrice: 69,
+              bebidaName: 'Refresco',
+              bebidaPrice: 25,
+              postreName: 'Brownie',
+              postrePrice: 59,
+              comboBonelessName: 'Combo Boneless',
+              comboBonelessPrice: 99,
+              ahorroBoneless: 20,
+              currentTotal: 0,
+              hasPapas: false,
+              hasBebida: false,
+              hasPostre: false,
+            },
+            undefined
+          );
 
-
+          // 5. Actualizar contexto & Insights
           await logConversation({
             phone: from,
             user_message: userInput,
             bot_response: output.text,
-            intent: "unknown"
+            intent: nlu.intent
           });
 
-          extractAndSaveInsights(from, userInput, output.text).catch(() => {});
+          // Persistent memory insights (background)
+          extractAndSaveInsights(from, userInput, output.text).catch((e) => 
+            console.error('[WA] Insight error:', e)
+          );
 
           console.log("[WA FINAL RESPONSE]:", output.text);
 
-          // Send reply
+          // 6. Enviar respuesta
           await sendWhatsAppMessage(from, output.text);
         }
       }

@@ -1,7 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import { Intent } from './types';
-import { runEvaluation } from '../tests/auto-evaluator';
+// Node-only modules
+const fs = typeof window === 'undefined' ? require('fs') : null;
+const path = typeof window === 'undefined' ? require('path') : null;
+
+import { Intent } from "./types";
 
 interface FailureEntry {
   input: string;
@@ -9,6 +10,8 @@ interface FailureEntry {
   failureType: string;
   output: string;
   timestamp: string;
+  matchedProducts?: any[];
+  safeProducts?: any[];
 }
 
 interface LearnedRule {
@@ -26,22 +29,77 @@ const MAX_RULES = 100;
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/[^\w\s]/gi, '') // Remove symbols
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[^\w\s]/gi, "") // Remove symbols
     .trim();
 }
 
-const FAILURES_FILE = path.join(process.cwd(), 'src/data/learning/failures.json');
-const RULES_FILE = path.join(process.cwd(), 'src/data/learning/learnedRules.json');
+const FAILURES_FILE = (fs && path) ? path.join(
+  process.cwd(),
+  "src/data/learning/failures.json",
+) : "";
+const RULES_FILE = (fs && path) ? path.join(
+  process.cwd(),
+  "src/data/learning/learnedRules.json",
+) : "";
+
+/**
+ * Saves a failure entry to the log.
+ */
+export function saveFailure(failure: any): void {
+  if (!fs || !path) return;
+  try {
+    const dir = path.dirname(FAILURES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const failures = loadFailures();
+    
+    // Avoid duplicates for same input and failure type
+    const exists = failures.some(
+      (f) => f.input === failure.input && f.failureType === failure.failureType
+    );
+    if (exists) return;
+
+    failures.push({
+      ...failure,
+      timestamp: new Date().toISOString(),
+    });
+    fs.writeFileSync(FAILURES_FILE, JSON.stringify(failures, null, 2), "utf8");
+  } catch (e) {
+    console.error("[autoTrainer] Failed to save failure:", e);
+  }
+}
+
+/**
+ * Records a fallback event when no products were matched.
+ * Used to improve intent-product mapping rules.
+ */
+export function recordFallback(
+  input: string,
+  intent: string,
+  matchedProducts: any[] = [],
+  safeProducts: any[] = []
+): void {
+  if (matchedProducts.length === 0 && safeProducts.length === 0) {
+    saveFailure({
+      input,
+      detectedIntent: intent,
+      failureType: "FALLBACK_USED",
+      output: "NO_PRODUCTS_MATCHED",
+      matchedProducts: [],
+      safeProducts: []
+    });
+  }
+}
 
 /**
  * Loads failures from the centralized log.
  */
 export function loadFailures(): FailureEntry[] {
+  if (!fs) return [];
   try {
     if (!fs.existsSync(FAILURES_FILE)) return [];
-    return JSON.parse(fs.readFileSync(FAILURES_FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(FAILURES_FILE, "utf8"));
   } catch (e) {
     return [];
   }
@@ -52,20 +110,24 @@ export function loadFailures(): FailureEntry[] {
  * Only generates a rule if the pattern has at least 3 occurrences.
  */
 export function generateRules(failures: FailureEntry[]): LearnedRule[] {
-  const patternCounts: Record<string, { count: number, intent: Intent }> = {};
+  const patternCounts: Record<string, { count: number; intent: Intent }> = {};
   const actionKeywords = [
-    { word: 'quiero', intent: 'pedido' as Intent },
-    { word: 'dame', intent: 'pedido' as Intent },
-    { word: 'ponme', intent: 'pedido' as Intent },
-    { word: 'pido', intent: 'pedido' as Intent },
-    { word: 'ver', intent: 'list_products' as Intent },
-    { word: 'mostrar', intent: 'list_products' as Intent },
-    { word: 'que hay', intent: 'list_products' as Intent },
-    { word: 'que tienen', intent: 'list_products' as Intent },
+    { word: "quiero", intent: "pedido" as Intent },
+    { word: "dame", intent: "pedido" as Intent },
+    { word: "ponme", intent: "pedido" as Intent },
+    { word: "pido", intent: "pedido" as Intent },
+    { word: "ver", intent: "list_products" as Intent },
+    { word: "mostrar", intent: "list_products" as Intent },
+    { word: "que hay", intent: "list_products" as Intent },
+    { word: "que tienen", intent: "list_products" as Intent },
   ];
 
   for (const failure of failures) {
-    if (failure.failureType !== 'INTENT_MISMATCH') continue;
+    if (
+      failure.failureType !== "INTENT_MISMATCH" &&
+      failure.failureType !== "FALLBACK_USED"
+    )
+      continue;
 
     const normalizedInput = normalizeText(failure.input);
     if (!normalizedInput) continue;
@@ -76,10 +138,21 @@ export function generateRules(failures: FailureEntry[]): LearnedRule[] {
         let targetIntent = action.intent;
 
         // BLOCK: Never generate ADD_TO_CART rules when restrictions present
-        const restrictionWords = [' sin ', ' no ', 'evita', 'nada de', 'quita', 'elimina', 'no puedo', 'alergic'];
-        const hasRestriction = restrictionWords.some(w => normalizedInput.includes(w));
-        if (hasRestriction && targetIntent === ('pedido' as Intent)) {
-          targetIntent = 'duda' as Intent; // Force RECOMMEND
+        const restrictionWords = [
+          " sin ",
+          " no ",
+          "evita",
+          "nada de",
+          "quita",
+          "elimina",
+          "no puedo",
+          "alergic",
+        ];
+        const hasRestriction = restrictionWords.some((w) =>
+          normalizedInput.includes(w),
+        );
+        if (hasRestriction && targetIntent === ("pedido" as Intent)) {
+          targetIntent = "duda" as Intent; // Force RECOMMEND
         }
 
         const key = `${action.word}:${targetIntent}`;
@@ -98,12 +171,12 @@ export function generateRules(failures: FailureEntry[]): LearnedRule[] {
 
   for (const [key, data] of Object.entries(patternCounts)) {
     if (data.count >= MIN_OCCURRENCES) {
-      const pattern = key.split(':')[0];
+      const pattern = key.split(":")[0];
       rules.push({
         pattern,
         intent: data.intent,
         priority: 8,
-        hits: 0
+        hits: 0,
       });
     }
   }
@@ -115,9 +188,10 @@ export function generateRules(failures: FailureEntry[]): LearnedRule[] {
  * Loads existing learned rules from disk.
  */
 function loadExistingRules(): LearnedRule[] {
+  if (!fs) return [];
   try {
     if (!fs.existsSync(RULES_FILE)) return [];
-    return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(RULES_FILE, "utf8"));
   } catch (e) {
     return [];
   }
@@ -126,11 +200,14 @@ function loadExistingRules(): LearnedRule[] {
 /**
  * Merges new rules with existing ones, avoiding duplicates.
  */
-function mergeRules(existing: LearnedRule[], candidates: LearnedRule[]): LearnedRule[] {
+function mergeRules(
+  existing: LearnedRule[],
+  candidates: LearnedRule[],
+): LearnedRule[] {
   const merged = [...existing];
   for (const candidate of candidates) {
     const isDuplicate = merged.some(
-      r => r.pattern === candidate.pattern && r.intent === candidate.intent
+      (r) => r.pattern === candidate.pattern && r.intent === candidate.intent,
     );
     if (!isDuplicate) {
       merged.push(candidate);
@@ -139,15 +216,21 @@ function mergeRules(existing: LearnedRule[], candidates: LearnedRule[]): Learned
   return merged;
 }
 
-const REPORT_FILE = path.join(process.cwd(), 'src/data/learning/learning-report.json');
+const REPORT_FILE = (fs && path) ? path.join(
+  process.cwd(),
+  "src/data/learning/learning-report.json",
+) : "";
 
 /**
  * Validates and saves rules only if they improve accuracy.
  * Generates learning-report.json with full audit trail.
  */
 export async function train(): Promise<void> {
-  console.log('[autoTrainer] Starting training cycle...');
+  if (typeof window !== 'undefined') return;
+  const { runEvaluation } = await import("../tests/auto-evaluator");
   
+  console.log("[autoTrainer] Starting training cycle...");
+
   // 1. Get baseline (with current learned rules)
   const baseline = await runEvaluation(true);
   console.log(`[autoTrainer] Baseline Accuracy: ${baseline.toFixed(2)}%`);
@@ -159,7 +242,10 @@ export async function train(): Promise<void> {
 
   // Filter out candidates that already exist
   const newCandidates = candidates.filter(
-    c => !existingRules.some(e => e.pattern === c.pattern && e.intent === c.intent)
+    (c) =>
+      !existingRules.some(
+        (e) => e.pattern === c.pattern && e.intent === c.intent,
+      ),
   );
 
   const iteration = loadReportHistory().length + 1;
@@ -170,7 +256,7 @@ export async function train(): Promise<void> {
     baselineAccuracy: parseFloat(baseline.toFixed(2)),
     newAccuracy: 0,
     delta: 0,
-    decision: 'NO_CANDIDATES',
+    decision: "NO_CANDIDATES",
     existingRulesCount: existingRules.length,
     candidateRules: newCandidates,
     acceptedRules: [] as LearnedRule[],
@@ -178,7 +264,9 @@ export async function train(): Promise<void> {
   };
 
   if (newCandidates.length === 0) {
-    console.log(`[autoTrainer] Iteration #${iteration}: No new rules to learn.`);
+    console.log(
+      `[autoTrainer] Iteration #${iteration}: No new rules to learn.`,
+    );
     saveReport(report);
     return;
   }
@@ -186,7 +274,7 @@ export async function train(): Promise<void> {
   // 3. Merge existing + new, save temporarily
   const merged = mergeRules(existingRules, newCandidates);
   saveRules(merged);
-  
+
   // 4. Run evaluation with merged rules
   const newAccuracy = await runEvaluation(true);
   console.log(`[autoTrainer] New Accuracy: ${newAccuracy.toFixed(2)}%`);
@@ -196,14 +284,18 @@ export async function train(): Promise<void> {
 
   // 5. Decision
   if (newAccuracy > baseline) {
-    report.decision = 'ACCEPTED';
+    report.decision = "ACCEPTED";
     report.acceptedRules = newCandidates;
-    console.log(`[autoTrainer] Iteration #${iteration} SUCCESS: +${report.delta}%. Total rules: ${merged.length}`);
+    console.log(
+      `[autoTrainer] Iteration #${iteration} SUCCESS: +${report.delta}%. Total rules: ${merged.length}`,
+    );
   } else {
-    report.decision = 'REJECTED';
+    report.decision = "REJECTED";
     report.discardedRules = newCandidates;
     saveRules(existingRules); // Revert to previous rules
-    console.log(`[autoTrainer] Iteration #${iteration} REJECTED: No improvement. Reverted.`);
+    console.log(
+      `[autoTrainer] Iteration #${iteration} REJECTED: No improvement. Reverted.`,
+    );
   }
 
   saveReport(report);
@@ -213,9 +305,10 @@ export async function train(): Promise<void> {
  * Loads report history from disk.
  */
 function loadReportHistory(): any[] {
+  if (!fs) return [];
   try {
     if (!fs.existsSync(REPORT_FILE)) return [];
-    const content = JSON.parse(fs.readFileSync(REPORT_FILE, 'utf8'));
+    const content = JSON.parse(fs.readFileSync(REPORT_FILE, "utf8"));
     return Array.isArray(content) ? content : [content];
   } catch (e) {
     return [];
@@ -226,15 +319,18 @@ function loadReportHistory(): any[] {
  * Appends iteration report to the learning report history.
  */
 function saveReport(report: any): void {
+  if (!fs || !path) return;
   try {
     const dir = path.dirname(REPORT_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const history = loadReportHistory();
     history.push(report);
-    fs.writeFileSync(REPORT_FILE, JSON.stringify(history, null, 2), 'utf8');
-    console.log(`[autoTrainer] Report saved: learning-report.json (${history.length} iterations)`);
+    fs.writeFileSync(REPORT_FILE, JSON.stringify(history, null, 2), "utf8");
+    console.log(
+      `[autoTrainer] Report saved: learning-report.json (${history.length} iterations)`,
+    );
   } catch (error) {
-    console.error('[autoTrainer] Failed to save report:', error);
+    console.error("[autoTrainer] Failed to save report:", error);
   }
 }
 
@@ -242,6 +338,7 @@ function saveReport(report: any): void {
  * Saves learned rules to disk.
  */
 export function saveRules(rules: LearnedRule[]): void {
+  if (!fs || !path) return;
   try {
     const dir = path.dirname(RULES_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -252,11 +349,13 @@ export function saveRules(rules: LearnedRule[]): void {
       finalRules = [...rules]
         .sort((a, b) => (b.hits ?? 0) - (a.hits ?? 0))
         .slice(0, MAX_RULES);
-      console.log(`[autoTrainer] Pruned ${rules.length - MAX_RULES} low-usage rules (cap: ${MAX_RULES})`);
+      console.log(
+        `[autoTrainer] Pruned ${rules.length - MAX_RULES} low-usage rules (cap: ${MAX_RULES})`,
+      );
     }
 
-    fs.writeFileSync(RULES_FILE, JSON.stringify(finalRules, null, 2), 'utf8');
+    fs.writeFileSync(RULES_FILE, JSON.stringify(finalRules, null, 2), "utf8");
   } catch (error) {
-    console.error('[autoTrainer] Failed to save rules:', error);
+    console.error("[autoTrainer] Failed to save rules:", error);
   }
 }

@@ -1,10 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import dotenv from 'dotenv';
+// Node-only modules
+const fs = typeof window === 'undefined' ? require('fs') : null;
+const path = typeof window === 'undefined' ? require('path') : null;
+const dotenv = typeof window === 'undefined' ? require('dotenv') : null;
 
-// Load env before anything else
-const envPath = path.resolve(process.cwd(), '.env.local');
-dotenv.config({ path: envPath });
+// Load env before anything else (only on server)
+if (typeof window === 'undefined') {
+  const envPath = path.resolve(process.cwd(), '.env.local');
+  dotenv.config({ path: envPath });
+}
 
 // Types from core
 import { ProductRefs } from '../core/types';
@@ -40,12 +43,13 @@ const mapping: Record<string, string[]> = {
 };
 
 export async function runEvaluation(silent = false) {
+  if (!fs || !path) return 0;
   // Dynamic imports to ensure env is loaded
   const { detectIntent } = await import('../core/intentDetector');
   const { handleMessageModular, INITIAL_STATE } = await import('../core/responseEngine');
   const { saveFailure } = await import('../lib/logger/learningLogger');
 
-  const filePath = path.join(__dirname, '../data/training/conversations.json');
+  const filePath = path.join(process.cwd(), 'src/data/training/conversations.json');
   const conversations = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
   const report: any = {
@@ -180,7 +184,7 @@ export async function runEvaluation(silent = false) {
   report.summary.accuracy = (report.summary.intentAccuracy + report.summary.allergyAccuracy + report.summary.constraintsAccuracy) / 3;
 
   if (!silent) {
-    const reportPath = path.join(__dirname, '../../evaluation-report.json');
+    const reportPath = path.join(process.cwd(), 'evaluation-report.json');
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
     console.log('=== EVALUATION SUMMARY ===');

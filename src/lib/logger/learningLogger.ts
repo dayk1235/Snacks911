@@ -1,5 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+// Node-only modules
+const fs = typeof window === 'undefined' ? require('fs') : null;
+const path = typeof window === 'undefined' ? require('path') : null;
 
 export interface FailureEntry {
   input: string;
@@ -9,7 +10,7 @@ export interface FailureEntry {
   timestamp: string;
 }
 
-const FAILURES_FILE = path.join(process.cwd(), 'src/data/learning/failures.json');
+const FAILURES_FILE = (fs && path) ? path.join(process.cwd(), 'src/data/learning/failures.json') : "";
 
 /**
  * Saves a failure entry to failures.json for later training/learning.
@@ -21,6 +22,7 @@ export async function saveFailure(
   failureType: string,
   output: string
 ): Promise<void> {
+  if (!fs || !path) return;
   try {
     // Ensure directory exists
     const dir = path.dirname(FAILURES_FILE);

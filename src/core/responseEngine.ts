@@ -9,12 +9,14 @@
  *   5. OUTPUT → { text, actions?, nextState }
  */
 
-import { dbGetProducts } from '@/lib/db';
-import { filterProducts } from './allergyFilter';
-import { extractFoodIntent, rankProductsByIntent } from './contextRanker';
-import { detectIntent } from './intentDetector';
-import { applyLoopStrategy, getNextStrategy } from './antojo';
-import { getBotResponse } from './botEngine';
+import { dbGetProducts } from "@/lib/db";
+import { getCustomerProfileFromDB } from "@/lib/server/supabaseServer";
+import { filterProducts } from "./allergyFilter";
+import { extractFoodIntent, rankProductsByIntent } from "./contextRanker";
+import { detectIntent } from "./intentDetector";
+import { applyLoopStrategy, getNextStrategy } from "./antojo";
+import { buildPersonalizedResponse } from "./botEngine";
+import { getContext, updateContext } from "./userContext";
 import type {
   ConversationState,
   ResponseOutput,
@@ -23,22 +25,22 @@ import type {
   PromptContext,
   Intent,
   Stage,
-} from './types';
-import { getThermostatSettings } from './salesThermostat';
-import { validateResponseOutput } from './responseValidator';
-
+} from "./types";
+import { getThermostatSettings } from "./salesThermostat";
+import { validateResponseOutput } from "./responseValidator";
+import { recordFallback } from "./autoTrainer";
 
 export const INITIAL_STATE: ConversationState = {
-  stage: 'inicio',
-  lastIntent: 'mixto',
+  stage: "inicio",
+  lastIntent: "mixto",
   lastResponse: null,
   comboSelected: false,
-  upsellStep: 'none',
-  deliveryStep: 'none',
-  customerName: '',
-  customerAddress: '',
-  customerReference: '',
-  customerPayment: '',
+  upsellStep: "none",
+  deliveryStep: "none",
+  customerName: "",
+  customerAddress: "",
+  customerReference: "",
+  customerPayment: "",
   orderConfirmed: false,
   retryCount: 0,
   cart: [],
@@ -52,38 +54,39 @@ export const INITIAL_STATE: ConversationState = {
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function hasAny(text: string, terms: string[]): boolean {
-  return terms.some(term => text.includes(term));
+  return terms.some((term) => text.includes(term));
 }
 
 function inferComboAction(textInput?: string): string | undefined {
-  const lower = normalizeText(textInput ?? '');
+  const lower = normalizeText(textInput ?? "");
   if (!lower) return undefined;
 
-  if (hasAny(lower, ['callejero'])) return 'accept_combo_callejero';
-  if (hasAny(lower, ['boneless', 'inferno', 'clasico'])) return 'accept_combo_boneless';
-  if (hasAny(lower, ['combo 911', '911'])) return 'accept_combo_911';
-  if (lower === 'combo' || lower.includes('combo')) return 'accept_combo_911';
+  if (hasAny(lower, ["callejero"])) return "accept_combo_callejero";
+  if (hasAny(lower, ["boneless", "inferno", "clasico"]))
+    return "accept_combo_boneless";
+  if (hasAny(lower, ["combo 911", "911"])) return "accept_combo_911";
+  if (lower === "combo" || lower.includes("combo")) return "accept_combo_911";
 
   return undefined;
 }
 
 function finalizeOrder(next: ConversationState) {
-  next.deliveryStep = 'done';
+  next.deliveryStep = "done";
   next.orderConfirmed = true;
-  next.stage = 'post_venta';
+  next.stage = "post_venta";
   next.orderTimestamp = Date.now();
 
   if (next.cart.length > 0 && next.customerName && next.customerAddress) {
-    const items = next.cart.map(i => `• ${i}`).join('\n');
-    const msg = `🔥 *Nuevo Pedido Snacks 911*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cartTotal}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || 'N/A'}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
+    const items = next.cart.map((i) => `• ${i}`).join("\n");
+    const msg = `🔥 *Nuevo Pedido Snacks 911*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cartTotal}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || "N/A"}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
     next.whatsappUrl = `https://wa.me/525584507458?text=${encodeURIComponent(msg)}`;
   }
 }
@@ -93,54 +96,90 @@ function inferActionFromText(
   intent: Intent,
   textInput?: string,
 ): string | undefined {
-  const lower = normalizeText(textInput ?? '');
+  const lower = normalizeText(textInput ?? "");
 
   if (!lower) {
     return undefined;
   }
 
-  if (state.deliveryStep === 'payment') {
-    if (hasAny(lower, ['efectivo', 'cash', 'contado'])) return 'payment_cash';
-    if (hasAny(lower, ['qr', 'transferencia', 'transfer', 'tarjeta'])) return 'payment_qr';
+  if (state.deliveryStep === "payment") {
+    if (hasAny(lower, ["efectivo", "cash", "contado"])) return "payment_cash";
+    if (hasAny(lower, ["qr", "transferencia", "transfer", "tarjeta"]))
+      return "payment_qr";
   }
 
   if (!state.comboSelected && state.cart.length === 0) {
     const comboAction = inferComboAction(lower);
     if (comboAction) return comboAction;
-    if (intent === 'aceptacion' && state.stage !== 'ordenando') return 'accept_combo_911';
+    if (intent === "aceptacion" && state.stage !== "ordenando")
+      return "accept_combo_911";
   }
 
-  if (!state.comboSelected || state.deliveryStep !== 'none') {
+  if (!state.comboSelected || state.deliveryStep !== "none") {
     return undefined;
   }
 
-  if (state.upsellStep === 'none' || state.upsellStep === 'papas') {
-    if (hasAny(lower, ['papas', 'loaded', 'gajo'])) return 'add_papas';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_papas';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_papas';
+  if (state.upsellStep === "none" || state.upsellStep === "papas") {
+    if (hasAny(lower, ["papas", "loaded", "gajo"])) return "add_papas";
+    if (intent === "rechazo" || intent === "rechazo_fuerte")
+      return "skip_papas";
+    if (intent === "aceptacion" || intent === "pedido") return "add_papas";
   }
 
-  if (state.upsellStep === 'bebida') {
-    if (hasAny(lower, ['refresco', 'bebida', 'coca', 'sprite', 'fanta', 'manzanita'])) return 'add_bebida';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_bebida';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_bebida';
+  if (state.upsellStep === "bebida") {
+    if (
+      hasAny(lower, [
+        "refresco",
+        "bebida",
+        "coca",
+        "sprite",
+        "fanta",
+        "manzanita",
+      ])
+    )
+      return "add_bebida";
+    if (intent === "rechazo" || intent === "rechazo_fuerte")
+      return "skip_bebida";
+    if (intent === "aceptacion" || intent === "pedido") return "add_bebida";
   }
 
-  if (state.upsellStep === 'postre') {
-    if (hasAny(lower, ['brownie', 'helado', 'postre', 'churro', 'dulce'])) return 'add_postre';
-    if (intent === 'rechazo' || intent === 'rechazo_fuerte') return 'skip_postre';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'add_postre';
+  if (state.upsellStep === "postre") {
+    if (hasAny(lower, ["brownie", "helado", "postre", "churro", "dulce"]))
+      return "add_postre";
+    if (intent === "rechazo" || intent === "rechazo_fuerte")
+      return "skip_postre";
+    if (intent === "aceptacion" || intent === "pedido") return "add_postre";
   }
 
-  if (state.upsellStep === 'done') {
-    if (hasAny(lower, ['confirma', 'confirmar', 'envia', 'enviar', 'listo'])) return 'confirm_order';
-    if (intent === 'aceptacion' || intent === 'pedido') return 'confirm_order';
+  if (state.upsellStep === "done") {
+    if (hasAny(lower, ["confirma", "confirmar", "envia", "enviar", "listo"]))
+      return "confirm_order";
+    if (intent === "aceptacion" || intent === "pedido") return "confirm_order";
   }
 
-  if (intent === 'edicion') {
-    if (!state.cart.some(item => item.includes('Papas')) && hasAny(lower, ['papas', 'loaded', 'gajo'])) return 'add_papas';
-    if (!state.cart.some(item => item.includes('Refresco')) && hasAny(lower, ['refresco', 'bebida', 'coca', 'sprite', 'fanta', 'manzanita'])) return 'add_bebida';
-    if (!state.cart.some(item => item.includes('Brownie')) && hasAny(lower, ['brownie', 'helado', 'postre', 'churro', 'dulce'])) return 'add_postre';
+  if (intent === "edicion") {
+    if (
+      !state.cart.some((item) => item.includes("Papas")) &&
+      hasAny(lower, ["papas", "loaded", "gajo"])
+    )
+      return "add_papas";
+    if (
+      !state.cart.some((item) => item.includes("Refresco")) &&
+      hasAny(lower, [
+        "refresco",
+        "bebida",
+        "coca",
+        "sprite",
+        "fanta",
+        "manzanita",
+      ])
+    )
+      return "add_bebida";
+    if (
+      !state.cart.some((item) => item.includes("Brownie")) &&
+      hasAny(lower, ["brownie", "helado", "postre", "churro", "dulce"])
+    )
+      return "add_postre";
   }
 
   return undefined;
@@ -151,47 +190,52 @@ function inferActionFromText(
 function getPromptByStage(
   intent: Intent,
   stage: Stage,
-  upsellStep: ConversationState['upsellStep'],
-): { text: (ctx: PromptContext) => string; actions?: QuickAction[] | ((ctx: PromptContext) => QuickAction[]); type?: 'text' | 'buttons' | 'products' } {
-
+  upsellStep: ConversationState["upsellStep"],
+): {
+  text: (ctx: PromptContext) => string;
+  actions?: QuickAction[] | ((ctx: PromptContext) => QuickAction[]);
+  type?: "text" | "buttons" | "products";
+} {
   // ── rechazo_fuerte: soft reset, zero pressure ────────────────────────────
-  if (intent === 'rechazo_fuerte') {
+  if (intent === "rechazo_fuerte") {
     return {
       text: () => `Sin presión. Cuando se te antoje, aquí seguimos. 🤘`,
     };
   }
 
   // ── pago_problema: payment alternatives, keep purchasing flow ────────────
-  if (intent === 'pago_problema') {
+  if (intent === "pago_problema") {
     return {
-      text: () => `Sin bronca. Aceptamos **transferencia** o **QR**.\n\n¿Cuál te va mejor?`,
+      text: () =>
+        `Sin bronca. Aceptamos **transferencia** o **QR**.\n\n¿Cuál te va mejor?`,
       actions: [
-        { label: '📱 QR', value: 'payment_qr' },
-        { label: '💳 Transferencia', value: 'payment_transfer' },
+        { label: "📱 QR", value: "payment_qr" },
+        { label: "💳 Transferencia", value: "payment_transfer" },
       ],
     };
   }
 
   // ── rechazo: reduce pressure, offer 3 different alternatives ────────────
-  if (intent === 'rechazo') {
+  if (intent === "rechazo") {
     return {
       text: () => `Entendido. ¿Algo diferente?`,
       actions: [
-        { label: '🍗 Alitas', value: 'show_alitas' },
-        { label: '🥡 Boneless', value: 'show_boneless' },
-        { label: '🔥 Ver combos', value: 'exploracion' },
+        { label: "🍗 Alitas", value: "show_alitas" },
+        { label: "🥡 Boneless", value: "show_boneless" },
+        { label: "🔥 Ver combos", value: "exploracion" },
       ],
     };
   }
 
   switch (stage) {
-
     // ── INICIO ────────────────────────────────────────────────────────────────
-    case 'inicio':
-      if (intent === 'gratitud') {
-        return { text: () => `¡De nada! 🔥 Cuando quieras repetir, aquí estamos.` };
+    case "inicio":
+      if (intent === "gratitud") {
+        return {
+          text: () => `¡De nada! 🔥 Cuando quieras repetir, aquí estamos.`,
+        };
       }
-      if (intent === 'despedida') {
+      if (intent === "despedida") {
         return { text: () => `¡Hasta luego! Que lo disfrutes. 🤘` };
       }
       // Default: ANTOJO hook → direct recommendation → single clear CTA
@@ -201,31 +245,33 @@ function getPromptByStage(
             `🔥 **Crujientes, jugosos, recién hechos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más pedido.\n\n¿Lo preparo?`,
             `🤤 **Huele increíble por aquí.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que todos piden.\n\n¿Va?`,
             `🔥 **Todo recién salido del horno.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El clásico que no falla.\n\n¿Lo preparo?`,
-            `⚡ **Listo en 2 minutos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más vendido de la semana.\n\n¿Va?`
+            `⚡ **Listo en 2 minutos.**\n\n👉 **${ctx.comboName}** — $${ctx.comboPrice}. El más vendido de la semana.\n\n¿Va?`,
           ];
-          return welcomeVariants[Math.floor(Math.random() * welcomeVariants.length)];
+          return welcomeVariants[
+            Math.floor(Math.random() * welcomeVariants.length)
+          ];
         },
         actions: [
-          { label: '🔥 Sí, dámelo', value: 'accept_combo_911' },
-          { label: '🍗 Boneless', value: 'accept_combo_boneless' },
-          { label: '🌮 Callejero', value: 'accept_combo_callejero' },
+          { label: "🔥 Sí, dámelo", value: "accept_combo_911" },
+          { label: "🍗 Boneless", value: "accept_combo_boneless" },
+          { label: "🌮 Callejero", value: "accept_combo_callejero" },
         ],
       };
 
     // ── EXPLORANDO ────────────────────────────────────────────────────────────
-    case 'explorando':
-      if (intent === 'exploracion') {
+    case "explorando":
+      if (intent === "exploracion") {
         return {
           text: () =>
             `Lo que hay:\n\n• 🔥 Combos — los más pedidos\n• 🍗 Alitas BBQ y Buffalo\n• 🥡 Boneless Clásico e Inferno\n• 🍟 Papas Gajo y Loaded\n• 🌭 Banderillas\n• 🍫 Postres\n\n¿Qué se te antoja?`,
           actions: [
-            { label: '🔥 Combo 911', value: 'accept_combo_911' },
-            { label: '🍗 Alitas', value: 'show_alitas' },
-            { label: '🥡 Boneless', value: 'show_boneless' },
+            { label: "🔥 Combo 911", value: "accept_combo_911" },
+            { label: "🍗 Alitas", value: "show_alitas" },
+            { label: "🥡 Boneless", value: "show_boneless" },
           ],
         };
       }
-      if (intent === 'browsing') {
+      if (intent === "browsing") {
         return {
           text: (ctx) =>
             `Dale, mira. El **${ctx.comboName}** está cuando lo quieras. 🔥`,
@@ -234,36 +280,36 @@ function getPromptByStage(
       return {
         text: (ctx) =>
           `👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que todos eligen.`,
-        actions: [{ label: '🔥 Va, dámelo', value: 'accept_combo_911' }],
+        actions: [{ label: "🔥 Va, dámelo", value: "accept_combo_911" }],
       };
 
     // ── DECIDIENDO ────────────────────────────────────────────────────────────
-    case 'decidiendo':
+    case "decidiendo":
       // duda → BOT DECIDES. No question. Direct push.
-      if (intent === 'duda') {
+      if (intent === "duda") {
         return {
           text: (ctx) =>
             `Te decido yo: **${ctx.comboName}** — $${ctx.comboPrice}. Crujiente, caliente, todo incluido. 🔥\n\n¿Va?`,
-          actions: [{ label: '🔥 Va, dámelo', value: 'accept_combo_911' }],
+          actions: [{ label: "🔥 Va, dámelo", value: "accept_combo_911" }],
         };
       }
-      if (intent === 'precio') {
+      if (intent === "precio") {
         return {
           text: (ctx) =>
             `El que más conviene: **${ctx.comboBonelessName}** — $${ctx.comboBonelessPrice}.\n\nAhorras $${ctx.ahorroBoneless} vs individual. ¿Va?`,
           actions: [
-            { label: '🔥 Sí, va', value: 'accept_combo_boneless' },
-            { label: '🌮 Callejero $89', value: 'accept_combo_callejero' },
+            { label: "🔥 Sí, va", value: "accept_combo_boneless" },
+            { label: "🌮 Callejero $89", value: "accept_combo_callejero" },
           ],
         };
       }
-      if (intent === 'hambre' || intent === 'pedido') {
+      if (intent === "hambre" || intent === "pedido") {
         return {
           text: (ctx) =>
             `🔥 **${ctx.comboName}** — $${ctx.comboPrice}. Recién hecho, caliente.\n\n¿Lo preparo?`,
           actions: [
-            { label: '🔥 Sí, dámelo', value: 'accept_combo_911' },
-            { label: '🍗 Boneless', value: 'accept_combo_boneless' },
+            { label: "🔥 Sí, dámelo", value: "accept_combo_911" },
+            { label: "🍗 Boneless", value: "accept_combo_boneless" },
           ],
         };
       }
@@ -271,76 +317,94 @@ function getPromptByStage(
       return {
         text: (ctx) =>
           `👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que mejor sabe.\n\n¿Va?`,
-        actions: [{ label: '🔥 Sí, dámelo', value: 'accept_combo_911' }],
+        actions: [{ label: "🔥 Sí, dámelo", value: "accept_combo_911" }],
       };
 
     // ── ORDENANDO ─────────────────────────────────────────────────────────────
-    case 'ordenando':
+    case "ordenando":
       // UPSELL 1: PAPAS - Tecnica Pie en la Puerta + Anclaje
-      if (upsellStep === 'none' || upsellStep === 'papas') {
+      if (upsellStep === "none" || upsellStep === "papas") {
         return {
           text: (ctx) =>
             `🍟 ¡Excelente elección! \n\nAcompaña tus ${ctx.comboName} con unas papas loaded extra crujientes. \n\n🔥 Solo +$${ctx.papasPrice}.`,
-          type: 'products',
+          type: "products",
           actions: (ctx) => [
-            { label: '🍟 Sí, agrégalas', value: 'add_papas', price: ctx.papasPrice, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
-            { label: '🤔 Por ahora no', value: 'skip_papas' },
+            {
+              label: "🍟 Sí, agrégalas",
+              value: "add_papas",
+              price: ctx.papasPrice,
+              image:
+                "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
+            },
+            { label: "🤔 Por ahora no", value: "skip_papas" },
           ],
         };
       }
       // UPSELL 2: BEBIDA - Aversión a la perdida
-      if (upsellStep === 'bebida') {
+      if (upsellStep === "bebida") {
         return {
           text: (ctx) =>
             `🥤 ¡Refrescante! \n\nUn refresco bien frío para acompañar. Casi todo el mundo lo agrega.\n\n💡 +$${ctx.bebidaPrice}.`,
-          type: 'products',
+          type: "products",
           actions: (ctx) => [
-            { label: '🥤 Sí, dámelo', value: 'add_bebida', price: ctx.bebidaPrice, image: 'https://images.unsplash.com/photo-1596803244618-5d346399c390?auto=format&fit=crop&w=400' },
-            { label: '🤔 Paso', value: 'skip_bebida' },
+            {
+              label: "🥤 Sí, dámelo",
+              value: "add_bebida",
+              price: ctx.bebidaPrice,
+              image:
+                "https://images.unsplash.com/photo-1596803244618-5d346399c390?auto=format&fit=crop&w=400",
+            },
+            { label: "🤔 Paso", value: "skip_bebida" },
           ],
         };
       }
       // UPSELL 3: POSTRE - Prueba Social + Reciprocidad
-      if (upsellStep === 'postre') {
+      if (upsellStep === "postre") {
         return {
           text: (ctx) =>
             `🍫 ¡El toque final! \n\nUn brownie caliente con helado para cerrar con broche de oro. \n\n✨ +$${ctx.postrePrice}.`,
-          type: 'products',
+          type: "products",
           actions: (ctx) => [
-            { label: '🍫 ¡SÍ, QUIERO!', value: 'add_postre', price: ctx.postrePrice, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' },
-            { label: '🤔 Por ahora no', value: 'skip_postre' },
+            {
+              label: "🍫 ¡SÍ, QUIERO!",
+              value: "add_postre",
+              price: ctx.postrePrice,
+              image:
+                "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
+            },
+            { label: "🤔 Por ahora no", value: "skip_postre" },
           ],
         };
       }
       // upsellStep === 'done' → close
-      if (upsellStep === 'done') {
+      if (upsellStep === "done") {
         return {
           text: (ctx) =>
             `🔥 Pedido listo. Total: **$${ctx.currentTotal}**\n\n¿Confirmamos?`,
           actions: [
-            { label: '✅ Confirmar', value: 'confirm_order' },
-            { label: '🔄 Otro pedido', value: 'order_again' },
+            { label: "✅ Confirmar", value: "confirm_order" },
+            { label: "🔄 Otro pedido", value: "order_again" },
           ],
         };
       }
 
       // Non-upsell intents within ordenando
-      if (intent === 'edicion') {
+      if (intent === "edicion") {
         return {
           text: (ctx) =>
             `Claro. ¿Qué agrego?\n\n• Papas Loaded — $${ctx.papasPrice}\n• Refresco — $${ctx.bebidaPrice}\n• Brownie — $${ctx.postrePrice}`,
           actions: [
-            { label: '🍟 Papas', value: 'add_papas' },
-            { label: '🥤 Refresco', value: 'add_bebida' },
-            { label: '🍫 Brownie', value: 'add_postre' },
+            { label: "🍟 Papas", value: "add_papas" },
+            { label: "🥤 Refresco", value: "add_bebida" },
+            { label: "🍫 Brownie", value: "add_postre" },
           ],
         };
       }
-      if (intent === 'urgencia') {
+      if (intent === "urgencia") {
         return {
           text: (ctx) =>
             `🔥 **${ctx.comboName}** — el más rápido de preparar. ¿Lo envío?`,
-          actions: [{ label: '🔥 Rápido, dámelo', value: 'accept_combo_911' }],
+          actions: [{ label: "🔥 Rápido, dámelo", value: "accept_combo_911" }],
         };
       }
       // Guardia: nunca vacío en ordenando
@@ -348,20 +412,23 @@ function getPromptByStage(
         text: (ctx) =>
           `🔥 Pedido en progreso. Total: **$${ctx.currentTotal}**.\n\n¿Confirmamos?`,
         actions: [
-          { label: '✅ Confirmar', value: 'confirm_order' },
-          { label: 'Agregar algo', value: 'edicion' },
+          { label: "✅ Confirmar", value: "confirm_order" },
+          { label: "Agregar algo", value: "edicion" },
         ],
       };
 
     // ── POST_VENTA ────────────────────────────────────────────────────────────
-    case 'post_venta':
-      if (intent === 'edicion') {
-        return { text: (ctx) => `¡Claro! Todavía estamos a tiempo. Agregamos lo que faltó a tu pedido actual de $${ctx.currentTotal}. ¿Qué más le ponemos?` };
+    case "post_venta":
+      if (intent === "edicion") {
+        return {
+          text: (ctx) =>
+            `¡Claro! Todavía estamos a tiempo. Agregamos lo que faltó a tu pedido actual de $${ctx.currentTotal}. ¿Qué más le ponemos?`,
+        };
       }
-      if (intent === 'gratitud') {
+      if (intent === "gratitud") {
         return { text: () => `¡De nada! 🔥 Buen provecho. 🍗` };
       }
-      if (intent === 'despedida') {
+      if (intent === "despedida") {
         return { text: () => `¡Hasta luego! 🤘` };
       }
       return { text: () => `Aquí seguimos para lo que necesites. 😊` };
@@ -371,16 +438,16 @@ function getPromptByStage(
 // ─── Stage updater ─────────────────────────────────────────────────────────────
 
 function updateStage(intent: Intent, prevStage: Stage): Stage {
-  if (intent === 'rechazo_fuerte') return 'inicio';
-  if (intent === 'gratitud' || intent === 'despedida') {
-    return prevStage === 'ordenando' ? 'post_venta' : 'inicio';
+  if (intent === "rechazo_fuerte") return "inicio";
+  if (intent === "gratitud" || intent === "despedida") {
+    return prevStage === "ordenando" ? "post_venta" : "inicio";
   }
-  if (intent === 'aceptacion' || intent === 'pedido') return 'ordenando';
-  if (intent === 'exploracion' || intent === 'browsing') return 'explorando';
-  if (intent === 'duda' || intent === 'precio') return 'decidiendo';
-  if (intent === 'rechazo') return 'explorando';
-  if (intent === 'hambre') return 'decidiendo';
-  if (intent === 'edicion' || intent === 'pago_problema') return 'ordenando';
+  if (intent === "aceptacion" || intent === "pedido") return "ordenando";
+  if (intent === "exploracion" || intent === "browsing") return "explorando";
+  if (intent === "duda" || intent === "precio") return "decidiendo";
+  if (intent === "rechazo") return "explorando";
+  if (intent === "hambre") return "decidiendo";
+  if (intent === "edicion" || intent === "pago_problema") return "ordenando";
   return prevStage;
 }
 
@@ -402,14 +469,14 @@ function applyAntiLoop(
     // Note: In the original lib version, text === lastResponse triggers the loop.
     // Let's keep it consistent.
     if (!lastResponse) return { text, newRetryCount: 0 };
-    
+
     // Loop detected → apply next strategy
     const strategy = getNextStrategy(retryCount);
     const modifiedText = applyLoopStrategy(
       text,
       strategy,
       ctx.comboName,
-      'combos',
+      "combos",
       ctx.comboPrice,
       ctx.comboPrice + ctx.ahorroBoneless,
     );
@@ -429,7 +496,8 @@ function updateState(
   textInput?: string,
 ): ConversationState {
   const next = { ...state };
-  const resolvedAction = action ?? inferActionFromText(state, intent, textInput);
+  const resolvedAction =
+    action ?? inferActionFromText(state, intent, textInput);
   next.lastIntent = intent;
   next.reset = false;
 
@@ -437,84 +505,135 @@ function updateState(
 
   // ── Handling Post-Order Modification (10min window) ──────────────────────
   const TEN_MINUTES = 10 * 60 * 1000;
-  if (state.orderConfirmed && intent === 'edicion' && state.orderTimestamp) {
+  if (state.orderConfirmed && intent === "edicion" && state.orderTimestamp) {
     const elapsed = Date.now() - state.orderTimestamp;
     if (elapsed < TEN_MINUTES) {
       // Re-open order
       next.orderConfirmed = false;
-      next.deliveryStep = 'none';
-      next.stage = 'ordenando';
-      next.upsellStep = 'done'; // Go to confirmation/editing
+      next.deliveryStep = "none";
+      next.stage = "ordenando";
+      next.upsellStep = "done"; // Go to confirmation/editing
     }
   }
 
-  if (!resolvedAction && !action && intent === 'pedido' && !next.comboSelected && next.cart.length === 0) {
-    next.stage = 'decidiendo';
+  if (
+    !resolvedAction &&
+    !action &&
+    intent === "pedido" &&
+    !next.comboSelected &&
+    next.cart.length === 0
+  ) {
+    next.stage = "decidiendo";
   }
 
   // ── Button actions — ALL cart logic here ─────────────────────────────────
   if (resolvedAction) {
     const comboMap: Record<string, { name: string; price: number }> = {
-      accept_combo_911:      { name: '🔥 Combo 911', price: 119 },
-      accept_combo_boneless: { name: '🍗 Combo Boneless', price: 99 },
-      accept_combo_callejero:{ name: '🌮 Combo Callejero', price: 89 },
+      accept_combo_911: { name: "🔥 Combo 911", price: 119 },
+      accept_combo_boneless: { name: "🍗 Combo Boneless", price: 99 },
+      accept_combo_callejero: { name: "🌮 Combo Callejero", price: 89 },
     };
 
     if (comboMap[resolvedAction]) {
       next.comboSelected = true;
-      next.upsellStep = 'papas';
+      next.upsellStep = "papas";
       next.cart = [comboMap[resolvedAction].name];
       next.cartTotal = comboMap[resolvedAction].price;
-      next.stage = 'ordenando';
+      next.stage = "ordenando";
     }
 
-    if (resolvedAction === 'add_papas')    { next.upsellStep = 'bebida';  next.cart = [...next.cart, 'Papas Loaded']; next.cartTotal += 69; }
-    if (resolvedAction === 'skip_papas')   { next.upsellStep = 'bebida'; }
-    if (resolvedAction === 'add_bebida')   { next.upsellStep = 'postre';  next.cart = [...next.cart, 'Refresco 600ml']; next.cartTotal += 25; }
-    if (resolvedAction === 'skip_bebida')  { next.upsellStep = 'postre'; }
-    if (resolvedAction === 'add_postre')   { next.upsellStep = 'done';    next.cart = [...next.cart, 'Brownie con Helado']; next.cartTotal += 59; }
-    if (resolvedAction === 'skip_postre')  { next.upsellStep = 'done'; }
-
-    if (resolvedAction === 'confirm_order') {
-      next.deliveryStep = 'name';
-      next.stage = 'ordenando';
+    if (resolvedAction === "add_papas") {
+      next.upsellStep = "bebida";
+      next.cart = [...next.cart, "Papas Loaded"];
+      next.cartTotal += 69;
     }
-    if (resolvedAction === 'payment_qr' || resolvedAction === 'payment_transfer' || resolvedAction === 'payment_cash') {
+    if (resolvedAction === "skip_papas") {
+      next.upsellStep = "bebida";
+    }
+    if (resolvedAction === "add_bebida") {
+      next.upsellStep = "postre";
+      next.cart = [...next.cart, "Refresco 600ml"];
+      next.cartTotal += 25;
+    }
+    if (resolvedAction === "skip_bebida") {
+      next.upsellStep = "postre";
+    }
+    if (resolvedAction === "add_postre") {
+      next.upsellStep = "done";
+      next.cart = [...next.cart, "Brownie con Helado"];
+      next.cartTotal += 59;
+    }
+    if (resolvedAction === "skip_postre") {
+      next.upsellStep = "done";
+    }
+
+    if (resolvedAction === "confirm_order") {
+      next.deliveryStep = "name";
+      next.stage = "ordenando";
+    }
+    if (
+      resolvedAction === "payment_qr" ||
+      resolvedAction === "payment_transfer" ||
+      resolvedAction === "payment_cash"
+    ) {
       next.customerPayment =
-        resolvedAction === 'payment_cash'
-          ? 'Efectivo'
-          : resolvedAction === 'payment_transfer'
-            ? 'Transferencia'
-            : 'QR / Transferencia';
+        resolvedAction === "payment_cash"
+          ? "Efectivo"
+          : resolvedAction === "payment_transfer"
+            ? "Transferencia"
+            : "QR / Transferencia";
 
-      if (!next.customerName)            next.deliveryStep = 'name';
-      else if (!next.customerAddress)    next.deliveryStep = 'address';
-      else if (!next.customerReference)  next.deliveryStep = 'reference';
+      if (!next.customerName) next.deliveryStep = "name";
+      else if (!next.customerAddress) next.deliveryStep = "address";
+      else if (!next.customerReference) next.deliveryStep = "reference";
       else finalizeOrder(next);
     }
-    if (resolvedAction === 'order_again') {
+    if (resolvedAction === "order_again") {
       return { ...INITIAL_STATE, reset: true };
     }
-    if (resolvedAction === 'exploracion' || resolvedAction === 'show_alitas' || resolvedAction === 'show_boneless') {
-      next.stage = 'explorando';
+    if (
+      resolvedAction === "exploracion" ||
+      resolvedAction === "show_alitas" ||
+      resolvedAction === "show_boneless"
+    ) {
+      next.stage = "explorando";
     }
   }
 
   // ── Text-based acceptance without button (user types "sí", "va", etc.) ────
-  if (!resolvedAction && !action && intent === 'aceptacion' && !next.comboSelected && next.cart.length === 0) {
+  if (
+    !resolvedAction &&
+    !action &&
+    intent === "aceptacion" &&
+    !next.comboSelected &&
+    next.cart.length === 0
+  ) {
     next.comboSelected = true;
-    next.upsellStep = 'papas';
-    next.cart = ['🔥 Combo 911'];
+    next.upsellStep = "papas";
+    next.cart = ["🔥 Combo 911"];
     next.cartTotal = 119;
   }
 
   // ── Delivery text input ───────────────────────────────────────────────────
-  if (next.deliveryStep !== 'none' && next.deliveryStep !== 'done' && textInput) {
+  if (
+    next.deliveryStep !== "none" &&
+    next.deliveryStep !== "done" &&
+    textInput
+  ) {
     switch (next.deliveryStep) {
-      case 'name':      next.customerName = textInput;      next.deliveryStep = 'address';   break;
-      case 'address':   next.customerAddress = textInput;   next.deliveryStep = 'reference'; break;
-      case 'reference': next.customerReference = textInput; next.deliveryStep = 'payment';   break;
-      case 'payment':
+      case "name":
+        next.customerName = textInput;
+        next.deliveryStep = "address";
+        break;
+      case "address":
+        next.customerAddress = textInput;
+        next.deliveryStep = "reference";
+        break;
+      case "reference":
+        next.customerReference = textInput;
+        next.deliveryStep = "payment";
+        break;
+      case "payment":
         next.customerPayment = textInput;
         finalizeOrder(next);
         break;
@@ -526,22 +645,32 @@ function updateState(
 
 // ─── Delivery prompts (short, direct) ─────────────────────────────────────────
 
-function getDeliveryPrompt(step: ConversationState['deliveryStep']): { text: string; actions?: QuickAction[] } | null {
+function getDeliveryPrompt(
+  step: ConversationState["deliveryStep"],
+): { text: string; actions?: QuickAction[] } | null {
   switch (step) {
-    case 'name':      return { text: `📍 Tu **nombre** para el envío.` };
-    case 'address':   return { text: `📍 ¿Tu **dirección** de entrega?` };
-    case 'reference': return { text: `🏠 ¿Alguna **referencia** para llegar? (o escribe "ninguna")` };
-    case 'payment':   return {
-      text: `💰 ¿Cómo pagas?\n\n• Efectivo 💵\n• Transferencia/QR 📱`,
-      actions: [
-        { label: '💵 Efectivo', value: 'payment_cash' },
-        { label: '📱 QR/Transferencia', value: 'payment_qr' },
-      ],
-    };
-    case 'done': return {
-      text: `🔥 **Pedido confirmado.**\n\n👉 Preparando todo recién hecho. 🤤\n👉 Te avisamos en cuanto salga.\n\nGracias por Snacks 911. 🔥`,
-    };
-    default: return null;
+    case "name":
+      return { text: `📍 Tu **nombre** para el envío.` };
+    case "address":
+      return { text: `📍 ¿Tu **dirección** de entrega?` };
+    case "reference":
+      return {
+        text: `🏠 ¿Alguna **referencia** para llegar? (o escribe "ninguna")`,
+      };
+    case "payment":
+      return {
+        text: `💰 ¿Cómo pagas?\n\n• Efectivo 💵\n• Transferencia/QR 📱`,
+        actions: [
+          { label: "💵 Efectivo", value: "payment_cash" },
+          { label: "📱 QR/Transferencia", value: "payment_qr" },
+        ],
+      };
+    case "done":
+      return {
+        text: `🔥 **Pedido confirmado.**\n\n👉 Preparando todo recién hecho. 🤤\n👉 Te avisamos en cuanto salga.\n\nGracias por Snacks 911. 🔥`,
+      };
+    default:
+      return null;
   }
 }
 
@@ -563,6 +692,7 @@ export function handleMessage(
   products: ProductRefs,
   action?: string,
 ): ResponseOutput {
+  try {
   // 1. Detect intent and extract any allergies from "sin X" patterns
   const { intent, allergies: detectedAllergies } = detectIntent(text);
 
@@ -589,21 +719,28 @@ export function handleMessage(
   };
 
   // 3. Intercept delivery flow
-  if (nextState.deliveryStep !== 'none') {
+  if (nextState.deliveryStep !== "none") {
     const deliveryPrompt = getDeliveryPrompt(nextState.deliveryStep);
     if (deliveryPrompt) {
       nextState.lastResponse = deliveryPrompt.text;
-      return validateResponseOutput({ 
-        text: deliveryPrompt.text, 
-        type: deliveryPrompt.actions ? 'buttons' : 'text',
-        actions: deliveryPrompt.actions, 
-        nextState 
-      }, state);
+      return validateResponseOutput(
+        {
+          text: deliveryPrompt.text,
+          type: deliveryPrompt.actions ? "buttons" : "text",
+          actions: deliveryPrompt.actions,
+          nextState,
+        },
+        state,
+      );
     }
   }
 
   // 4. Get stage-aware prompt
-  const promptFn = getPromptByStage(intent, nextState.stage, nextState.upsellStep);
+  const promptFn = getPromptByStage(
+    intent,
+    nextState.stage,
+    nextState.upsellStep,
+  );
   let responseText = promptFn.text(ctx);
 
   // 5. Apply anti-loop (strategy rotation)
@@ -625,33 +762,77 @@ export function handleMessage(
   nextState.lastResponse = responseText;
 
   // STEP 3: Handle Exploracion intent for Products UI (Legacy Fallback)
-  if (intent === 'exploracion') {
-    return validateResponseOutput({
-      text: "¡Chécate estos favoritos! 👇",
-      type: 'products',
-      actions: [
-        { id: 'p1', label: 'Combo Mixto', value: 'add_combo_mixto', price: 120, image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400' },
-        { id: 'p5', label: 'Papas Gajo', value: 'add_papas_gajo', price: 80, image: 'https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400' },
-        { id: 'p3', label: 'Boneless Mango', value: 'add_boneless_mango', price: 130, image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400' }
-      ],
-      nextState,
-    }, state);
+  if (intent === "exploracion") {
+    return validateResponseOutput(
+      {
+        text: "¡Chécate estos favoritos! 👇",
+        type: "products",
+        actions: [
+          {
+            id: "p1",
+            label: "Combo Mixto",
+            value: "add_combo_mixto",
+            price: 120,
+            image:
+              "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400",
+          },
+          {
+            id: "p5",
+            label: "Papas Gajo",
+            value: "add_papas_gajo",
+            price: 80,
+            image:
+              "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
+          },
+          {
+            id: "p3",
+            label: "Boneless Mango",
+            value: "add_boneless_mango",
+            price: 130,
+            image:
+              "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
+          },
+        ],
+        nextState,
+      },
+      state,
+    );
   }
 
-  const resolvedActions = typeof promptFn.actions === 'function' ? promptFn.actions(ctx) : promptFn.actions;
+  const resolvedActions =
+    typeof promptFn.actions === "function"
+      ? promptFn.actions(ctx)
+      : promptFn.actions;
 
-  return validateResponseOutput({
-    text: responseText,
-    type: promptFn.type || (resolvedActions ? 'buttons' : 'text'),
-    actions: resolvedActions,
-    nextState,
-  }, state);
+  return validateResponseOutput(
+    {
+      text: responseText,
+      type: promptFn.type || (resolvedActions ? "buttons" : "text"),
+      actions: resolvedActions,
+      nextState,
+    },
+    state,
+  );
+  } catch (error) {
+    console.error("[responseEngine] FATAL ERROR in Legacy Pipeline:", error);
+    return validateResponseOutput(
+      {
+        text: `¡Hola! 🔥 El **${products.comboName}** ($${products.comboPrice}) es nuestra recomendación de hoy. ¿Te lo preparamos?`,
+        type: "text",
+        nextState: state,
+      },
+      state,
+    );
+  }
 }
 
 // ─── Exported helpers (used by ChatBot.tsx) ───────────────────────────────────
 
-export function buildDeliveryPrompt(state: ConversationState): { text: string; actions?: QuickAction[] } {
-  return getDeliveryPrompt(state.deliveryStep) ?? { text: '' };
+export function buildDeliveryPrompt(state: ConversationState): {
+  text: string;
+  actions?: QuickAction[];
+} {
+  return getDeliveryPrompt(state.deliveryStep) ?? { text: "" };
 }
 
 export function buildOrderConfirmation(
@@ -661,37 +842,43 @@ export function buildOrderConfirmation(
   const t = state.cartTotal || products.currentTotal;
   const items: string[] = [];
   if (state.comboSelected) items.push(`- ${products.comboName} x1`);
-  if (products.hasPapas)   items.push(`- ${products.papasName} x1`);
-  if (products.hasBebida)  items.push(`- ${products.bebidaName} x1`);
-  if (products.hasPostre)  items.push(`- ${products.postreName} x1`);
+  if (products.hasPapas) items.push(`- ${products.papasName} x1`);
+  if (products.hasBebida) items.push(`- ${products.bebidaName} x1`);
+  if (products.hasPostre) items.push(`- ${products.postreName} x1`);
 
   return {
-    text: `🧾 **Tu pedido:**\n\n${items.join('\n')}\n\n💰 **Total: $${t}**\n\n👉 20-30 min\n\n¿Confirmas? ✅`,
+    text: `🧾 **Tu pedido:**\n\n${items.join("\n")}\n\n💰 **Total: $${t}**\n\n👉 20-30 min\n\n¿Confirmas? ✅`,
     actions: [
-      { label: '✅ Confirmar', value: 'confirm_order' },
-      { label: '🔄 Otro pedido', value: 'order_again' },
+      { label: "✅ Confirmar", value: "confirm_order" },
+      { label: "🔄 Otro pedido", value: "order_again" },
     ],
   };
 }
 /**
  * handleMessageModular() — NEW Modular Sales System Engine Integration.
- * 
+ *
  * Orchestrates the full pipeline using specialized agents.
  */
 function parseUserRequest(text: string) {
-  const lower = text.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // Remove accents
-  
+  const lower = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, ""); // Remove accents
+
   // Extract include keywords (e.g., "quiero papas", "dame alitas", "papas")
-  const includeMatch = lower.match(/\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i) || 
-                       lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin)\s+|$)/i);
-  
+  const includeMatch =
+    lower.match(
+      /\b(?:con|quiero|dame)\s+([a-z\s]+?)(?=\s+(?:pero|sin)\s+|$)/i,
+    ) || lower.match(/^([a-z\s]+?)(?=\s+(?:sin|pero sin)\s+|$)/i);
+
   let includeWords: string[] = [];
   if (includeMatch) {
-    includeWords = includeMatch[1].trim().split(/\s+/).filter(w => w.length > 2);
+    includeWords = includeMatch[1]
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
   }
-  
+
   // Expand allergy patterns (Normalized: no accents)
   const allergyPatterns = [
     /\b(?:sin|pero sin)\s+([a-z\s]+)(?=\s+|$|[,.])\b/i,
@@ -702,63 +889,430 @@ function parseUserRequest(text: string) {
   for (const pattern of allergyPatterns) {
     const match = lower.match(pattern);
     if (match) {
-      const extracted = match[1].trim()
+      const extracted = match[1]
+        .trim()
         .split(/\s+/)
-        .filter(w => !['la', 'el', 'los', 'las', 'un', 'una'].includes(w.toLowerCase()) && w.length > 2);
+        .filter(
+          (w) =>
+            !["la", "el", "los", "las", "un", "una"].includes(
+              w.toLowerCase(),
+            ) && w.length > 2,
+        );
       excludeWords = [...excludeWords, ...extracted];
     }
   }
-  
+
   return { includeWords, excludeWords: Array.from(new Set(excludeWords)) };
+}
+
+function normalizeConstraintList(
+  values: Array<string | undefined | null>,
+): string[] {
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.toLowerCase().trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function extractProductEntities(
+  intentResult: any,
+  includeWords: string[],
+): string[] {
+  return normalizeConstraintList([
+    ...(intentResult.entities?.products || []),
+    ...(intentResult.entities?.product ? [intentResult.entities.product] : []),
+    ...includeWords,
+  ]);
+}
+
+function extractCategoryEntities(intentResult: any): string[] {
+  return normalizeConstraintList([
+    ...(intentResult.entities?.categories || []),
+    ...(intentResult.category && intentResult.category !== "none"
+      ? [intentResult.category]
+      : []),
+  ]);
+}
+
+function applySafetyFilter(products: any[], constraints: string[]): any[] {
+  if (!constraints || constraints.length === 0) {
+    return products;
+  }
+  return filterProducts(products, constraints);
+}
+
+function applyFallback(
+  intent: string,
+  matchedProducts: any[],
+  safeProducts: any[],
+  allProducts: any[],
+): any[] {
+  if (safeProducts && safeProducts.length > 0) {
+    return safeProducts;
+  }
+  if (matchedProducts && matchedProducts.length > 0) {
+    return matchedProducts;
+  }
+  const topGlobal = allProducts ? allProducts.slice(0, 5) : [];
+  if (topGlobal.length > 0) {
+    return topGlobal;
+  }
+  return allProducts || [];
+}
+
+function buildRecommendations(
+  products: any[],
+  constraints: string[] = [],
+): any[] {
+  const safeProducts = applySafetyFilter(products, constraints);
+
+  const combos = safeProducts.filter(
+    (p) => String(p.category).toLowerCase() === "combos",
+  );
+  const proteina = safeProducts.filter((p) => {
+    const cat = String(p.category).toLowerCase();
+    return cat === "proteina" || cat === "alitas" || cat === "boneless";
+  });
+  const papas = safeProducts.filter((p) => {
+    const cat = String(p.category).toLowerCase();
+    const name = String(p.name).toLowerCase();
+    return cat === "papas" || name.includes("papas");
+  });
+
+  const selected = new Set<any>();
+
+  if (combos.length > 0) selected.add(combos[0]);
+  if (proteina.length > 0) selected.add(proteina[0]);
+  if (papas.length > 0) selected.add(papas[0]);
+
+  // Si falta alguno, rellenar con los mejores productos restantes hasta tener 5
+  for (const p of safeProducts) {
+    if (selected.size >= 5) break;
+    selected.add(p);
+  }
+
+  return Array.from(selected).slice(0, 5);
+}
+
+function matchProducts(
+  intent: string,
+  entities: { product?: string[]; category?: string[] },
+  products: any[],
+): any[] {
+  let filtered = [...products];
+  const productEntities = entities.product || [];
+  const categoryEntities = entities.category || [];
+
+  // si intent = SHOW_CATEGORY: devolver todos los de la categoría
+  if (intent === "SHOW_CATEGORY" && categoryEntities.length > 0) {
+    return filtered.filter((p) => {
+      const cat = String(p.category || "").toLowerCase();
+      return categoryEntities.some((c) => cat.includes(c) || c.includes(cat));
+    });
+  }
+
+  // si intent = ADD_TO_CART: priorizar coincidencias exactas
+  if (intent === "ADD_TO_CART" && productEntities.length > 0) {
+    const exactMatches = filtered.filter((p) => {
+      const name = String(p.name || "").toLowerCase();
+      return productEntities.some((e) => name === e);
+    });
+    if (exactMatches.length > 0) return exactMatches;
+  }
+
+  // si entities.category: filtrar por categoría
+  if (categoryEntities.length > 0) {
+    filtered = filtered.filter((p) => {
+      const cat = String(p.category || "").toLowerCase();
+      return categoryEntities.some((c) => cat.includes(c) || c.includes(cat));
+    });
+  }
+
+  // si entities.product: filtrar productos por nombre similar
+  if (productEntities.length > 0) {
+    filtered = filtered.filter((p) => {
+      const searchSpace =
+        `${p.name || ""} ${p.description || ""}`.toLowerCase();
+      return productEntities.some((e) => searchSpace.includes(e));
+    });
+  }
+
+  // si intent = RECOMMEND: devolver subset amplio (no exact match)
+  if (intent === "RECOMMEND") {
+    return filtered.length > 0 ? filtered : products;
+  }
+
+  return filtered.length > 0 ? filtered : products;
+}
+
+function sanitizeRestrictedMentions(
+  responseText: string,
+  allProducts: any[],
+  safeProducts: any[],
+  hasActiveRestrictions: boolean,
+) {
+  if (!hasActiveRestrictions) return responseText;
+
+  const prohibitedProducts = allProducts.filter(
+    (product) =>
+      !safeProducts.some((safeProduct) => safeProduct.id === product.id),
+  );
+
+  return prohibitedProducts.reduce((text, product) => {
+    const name = String(product.name || "").trim();
+    if (!name) return text;
+
+    const namePattern = new RegExp(
+      `\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      "gi",
+    );
+    return text.replace(namePattern, "[opción segura]");
+  }, responseText);
 }
 
 /**
  * handleMessageModular() — NEW Modular Sales System Engine Integration.
- * 
+ *
  * Orchestrates the full pipeline using specialized agents.
  */
-import { AdminProduct } from '@/lib/adminTypes';
+import { AdminProduct } from "@/lib/adminTypes";
 
 export async function handleMessageModular(
   text: string,
   state: ConversationState,
   products: ProductRefs,
   action?: string,
-  allProductsOverride?: AdminProduct[]
+  allProductsOverride?: AdminProduct[],
 ): Promise<ResponseOutput> {
-  console.log("[responseEngine] MODULAR PIPELINE START");
-  
-  // 1. Detectar Intent
+  try {
+    console.log("[responseEngine] MODULAR PIPELINE START");
+
+  const userId = String(state.phone || "anonymous");
+  const userCtx = getContext(userId);
+
+  // 1. Detectar intent
   const intentResult = detectIntent(text);
-  const baseIntent = intentResult.intent;
-  const { excludeWords } = parseUserRequest(text);
-  
-  // 2. Detectar Constraints (Merge State + Real-time Allergies & Filters)
-  const allConstraints = Array.from(new Set([
-    ...(state.allergies || []), 
-    ...(intentResult.allergies || []), 
+  const { includeWords, excludeWords } = parseUserRequest(text);
+
+  // 2. Extraer entidades (producto, categoría)
+  const productEntities = extractProductEntities(intentResult, includeWords);
+  const categoryEntities = extractCategoryEntities(intentResult);
+
+  // 3. Extraer restricciones (alergias, "sin", etc.)
+  const allConstraints = normalizeConstraintList([
+    ...(state.allergies || []),
+    ...(intentResult.allergies || []),
     ...(intentResult.filters || []),
-    ...excludeWords
-  ]));
-  
+    ...(intentResult.entities?.restrictions || []),
+    ...excludeWords,
+  ]);
+  const hasActiveRestrictions = allConstraints.length > 0;
   const nextState = { ...state, allergies: allConstraints };
 
-  // 3. Filtrar Productos (Safety First + Ranking)
-  const allProducts = allProductsOverride || await dbGetProducts();
-  const safeProducts = filterProducts(allProducts as any, allConstraints);
+  // 4. Obtener productos base desde DB
+  const allProducts = allProductsOverride || (await dbGetProducts());
 
-  const foodIntent = extractFoodIntent(text);
-  const rankedProducts = rankProductsByIntent(safeProducts, foodIntent);
+  // 5. Aplicar match por intención
+  const matchedProducts = matchProducts(
+    intentResult.intent,
+    { product: productEntities, category: categoryEntities },
+    allProducts as any[],
+  );
+
+  // 6. Aplicar filtro de seguridad SOLO si hay restricciones
+  const safeProducts = applySafetyFilter(
+    matchedProducts as any,
+    allConstraints,
+  );
+
+  let responseProducts: any[] = [];
+  const safeAllProductsBase = applySafetyFilter(
+    allProducts as any[],
+    allConstraints,
+  );
+
+  switch (intentResult.intent.toUpperCase()) {
+    case "SHOW_MENU":
+      responseProducts = safeAllProductsBase;
+      break;
+    case "SHOW_CATEGORY":
+      if (categoryEntities.length > 0) {
+        responseProducts = safeAllProductsBase.filter((p: any) =>
+          categoryEntities.some((c) =>
+            String(p.category).toLowerCase().includes(c.toLowerCase()),
+          ),
+        );
+      } else {
+        responseProducts = safeAllProductsBase;
+      }
+      break;
+    case "ADD_TO_CART":
+      responseProducts =
+        safeProducts.length > 0 ? safeProducts : safeAllProductsBase;
+      break;
+    case "RECOMMEND":
+      responseProducts = buildRecommendations(
+        allProducts as any[],
+        allConstraints,
+      );
+      break;
+    default:
+      const fallbackProducts = applyFallback(
+        intentResult.intent,
+        matchedProducts as any[],
+        safeProducts as any[],
+        allProducts as any[],
+      );
+      const foodIntent = extractFoodIntent(text);
+      responseProducts = rankProductsByIntent(
+        fallbackProducts as any,
+        foodIntent,
+      );
+      break;
+  }
+
+  if (!responseProducts || responseProducts.length === 0) {
+    responseProducts = applyFallback(
+      intentResult.intent,
+      matchedProducts as any[],
+      safeProducts as any[],
+      allProducts as any[],
+    );
+  }
+  if (!responseProducts || responseProducts.length === 0) {
+    responseProducts = allProducts.slice(0, 5);
+  }
+
+  // 8.4 Record fallback for auto-training if no specific products matched
+  if (matchedProducts.length === 0 && safeProducts.length === 0) {
+    recordFallback(text, intentResult.intent, matchedProducts, safeProducts);
+  }
+
+  // 8.5 Evitar repetición de productos (Rotar o mezclar si son los mismos)
+  const currentIds = responseProducts
+    .map((p: any) => String(p.id))
+    .sort()
+    .join(",");
+  const lastIds = [...(userCtx.lastProductsShown || [])].sort().join(",");
+
+  if (currentIds === lastIds && responseProducts.length > 0) {
+    const safeAll = applySafetyFilter(allProducts as any[], allConstraints);
+    const unused = safeAll.filter(
+      (p: any) => !userCtx.lastProductsShown.includes(String(p.id)),
+    );
+
+    if (unused.length > 0) {
+      const take = Math.min(unused.length, responseProducts.length);
+      responseProducts = [
+        ...unused.slice(0, take),
+        ...responseProducts.slice(0, responseProducts.length - take),
+      ];
+    } else {
+      const first = responseProducts.shift();
+      if (first) responseProducts.push(first);
+    }
+  }
+
+  // 8.6 Revalidación de seguridad final
+  responseProducts = applySafetyFilter(responseProducts, allConstraints);
+
+  if (!responseProducts || responseProducts.length === 0) {
+    responseProducts = safeAllProductsBase.slice(0, 5);
+  }
+  if (!responseProducts || responseProducts.length === 0) {
+    responseProducts = allProducts.slice(0, 5);
+  }
   
-  console.log(`[responseEngine] Total: ${allProducts.length} | Safe: ${safeProducts.length}`);
-  
-  // 4. Generar Respuesta (via botEngine)
-  const responseText = await getBotResponse({ message: text, phone: state.phone });
-  
-  return validateResponseOutput({
-    text: responseText,
-    type: 'text',
-    nextState,
-  }, state);
+  // FINAL SAFETY GUARD: If everything failed to yield products, use hardcoded IDs or all available
+  if (!responseProducts || responseProducts.length === 0) {
+    responseProducts = allProducts;
+  }
+  if (!responseProducts || responseProducts.length === 0) {
+    // If even allProducts is empty, we must ensure we don't return an empty UI
+    console.warn("[responseEngine] EMPTY DB DETECTED. Using emergency fallback.");
+    responseProducts = [{ id: '911', name: 'Combo 911', price: 119, category: 'combos' }];
+  }
+
+  let profile = null;
+  if (state.phone) {
+    try {
+      profile = await getCustomerProfileFromDB(
+        String(state.phone).replace(/\D/g, ""),
+      );
+    } catch {
+      profile = null;
+    }
+  }
+
+  console.log("INPUT:", text);
+  console.log("INTENT:", intentResult.intent);
+  console.log("ENTITIES:", {
+    product: productEntities,
+    category: categoryEntities,
+  });
+  console.log("CONSTRAINTS:", allConstraints);
+  console.log("MATCHED:", matchedProducts);
+  console.log("SAFE:", safeProducts);
+  console.log("FINAL:", responseProducts);
+
+  // 9. Construir respuesta final
+  let responseText = await buildPersonalizedResponse(
+    text,
+    state.phone,
+    responseProducts,
+    profile,
+    allProducts.length,
+    allConstraints,
+  );
+
+  const safeAllProducts = applySafetyFilter(allProducts as any, allConstraints);
+  responseText = sanitizeRestrictedMentions(
+    responseText,
+    allProducts as any[],
+    safeAllProducts as any[],
+    hasActiveRestrictions,
+  );
+
+  updateContext(userId, {
+    lastIntent: intentResult.intent,
+    lastCategory:
+      categoryEntities.length > 0 ? categoryEntities[0] : userCtx.lastCategory,
+    constraints: allConstraints,
+    lastProductsShown: responseProducts.map((p: any) => String(p.id)),
+  });
+
+  return validateResponseOutput(
+    {
+      text: responseText || "¡Hola! 🔥 ¿Qué se te antoja hoy? Chécate estas opciones.",
+      type: "text",
+      nextState,
+    },
+    state,
+  );
+  } catch (error) {
+    console.error("[responseEngine] FATAL ERROR in Modular Pipeline:", error);
+    // Absolute fallback to keep the user engaged
+    const fallbackProducts = (allProductsOverride && allProductsOverride.length > 0) 
+      ? allProductsOverride 
+      : (await dbGetProducts()).slice(0, 5);
+      
+    return validateResponseOutput(
+      {
+        text: "¡Hola! 👋 Hubo un pequeño salto en la conexión, pero aquí seguimos. ¿Qué te gustaría ordenar?",
+        type: "products",
+        actions: fallbackProducts.map(p => ({
+          id: String(p.id),
+          label: p.name,
+          value: `add_${p.id}`,
+          price: p.price
+        })),
+        nextState: state,
+      },
+      state,
+    );
+  }
 }
-
