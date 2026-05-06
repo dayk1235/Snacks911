@@ -32,7 +32,6 @@ const PRODUCT_ALIASES: Record<string, string> = {
   'fuego': 'Alitas Fuego 911',
   'combo mixto': 'Combo Mixto 911',
   'mixto': 'Combo Mixto 911',
-  'combo 911': 'Combo Mixto 911',
   'combo callejero': 'Combo Callejero 911',
   'callejero': 'Combo Callejero 911',
   'banderilla suprema': 'Combo Banderilla Suprema',
@@ -135,19 +134,21 @@ export function detectIntent(rawText: string): DetectionResult {
     return { intent: 'SHOW_MENU', entities: {}, confidence: 'HIGH' };
   }
 
+  // ── Extract category once ──────────────────────────────────────────────────
+  const cat = extractCategory(n);
+
   // ── Menu browsing ─────────────────────────────────────────────────────────
   const menuTriggers = ['menu', 'carta', 'tienen', 'que hay', 'que venden', 'que tienen', 'ver todo'];
   if (menuTriggers.some(t => n.includes(t))) {
-    const cat = extractCategory(n);
     if (cat) return { intent: 'SHOW_CATEGORY', entities: { category: cat }, confidence: 'HIGH' };
     return { intent: 'SHOW_MENU', entities: {}, confidence: 'HIGH' };
   }
 
-  // ── Show category ────────────────────────────────────────────────────────
-  const cat = extractCategory(n);
+  // ── Show category ────────────────────────────────────────────────
   if (cat && (n.includes('ver') || n.includes('mostrar') || n.includes('que') || n.includes('lista'))) {
     return { intent: 'SHOW_CATEGORY', entities: { category: cat }, confidence: 'HIGH' };
   }
+
 
   // ── Product info ─────────────────────────────────────────────────────────
   const infoTriggers = ['cuanto cuesta', 'que incluye', 'que trae', 'que tiene', 'precio', 'costo', 'vale'];
@@ -160,6 +161,12 @@ export function detectIntent(rawText: string): DetectionResult {
   const sauce = extractSauce(n);
   if (sauce) {
     return { intent: 'SELECT_SAUCE', entities: { sauce }, confidence: 'HIGH' };
+  }
+
+  // ── Browse category (ver, mostrar, lista, todos, etc.) ──────────────────────
+  const browseWords = ['ver', 'mostrar', 'lista', 'todos', 'que tienes', 'que hay'];
+  if (cat && browseWords.some(w => n.includes(w))) {
+    return { intent: 'SHOW_CATEGORY', entities: { category: cat }, confidence: 'HIGH' };
   }
 
   // ── Add to cart ──────────────────────────────────────────────────────────
