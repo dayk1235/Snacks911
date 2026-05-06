@@ -54,29 +54,40 @@ export function extractFoodIntent(input: string): FoodIntent {
 export function rankProductsByIntent(products: Product[], intent: FoodIntent): Product[] {
   const scoredProducts = products.map(product => {
     let score = 0;
+    const searchText = `${product.name} ${product.description || ''}`.toLowerCase();
 
+    // STRONG PRIORITY: Exact category match
     if (product.category && intent.categories.includes(product.category)) {
-      score += 3;
+      score += 5;
     }
 
+    // EXTRA STRONG: Name includes exact category keyword
+    intent.categories.forEach(cat => {
+      if (product.name.toLowerCase().includes(cat)) {
+        score += 10;
+      }
+    });
+
+    // Keyword matches in searchText (weaker)
+    intent.keywords.forEach(keyword => {
+      if (searchText.includes(keyword)) {
+        score += CATEGORY_KEYWORDS.has(keyword) ? 2 : 1;
+      }
+    });
+
+    // Dietary tags
     if (product.dietaryTags) {
       product.dietaryTags.forEach(tag => {
         if (intent.dietary.includes(tag)) score += 2;
       });
     }
 
+    // Attributes
     if (product.attributes) {
       product.attributes.forEach(attr => {
         if (intent.attributes.includes(attr)) score += 1;
       });
     }
-
-    const searchText = `${product.name} ${product.description || ''}`.toLowerCase();
-    intent.keywords.forEach(keyword => {
-      if (searchText.includes(keyword)) {
-        score += CATEGORY_KEYWORDS.has(keyword) ? 2 : 1;
-      }
-    });
 
     return { product, score };
   });

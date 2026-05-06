@@ -109,5 +109,37 @@ test('specific case: papas sin salchicha', () => {
   console.log('  Top 5:', top3.map(p => p.name));
 });
 
+test('ranks boneless products first when user mentions boneless', () => {
+  const intent = extractFoodIntent('quiero boneless');
+  const ranked = rankProductsByIntent(MOCK_PRODUCTS, intent);
+
+  expect(ranked[0].category).toBe('boneless');
+  expect(ranked[0].name.toLowerCase()).toContain('boneless');
+});
+
+test('does NOT return Combo Mixto first when user asks for boneless', () => {
+  const intent = extractFoodIntent('quiero boneless');
+  const ranked = rankProductsByIntent(MOCK_PRODUCTS, intent);
+
+  expect(ranked[0].name).not.toBe('Combo Mixto');
+  expect(ranked[0].category).toBe('boneless');
+});
+
+test('ranks alitas products first when user mentions alitas', () => {
+  const intent = extractFoodIntent('quiero alitas');
+  const ranked = rankProductsByIntent(MOCK_PRODUCTS, intent);
+
+  expect(ranked[0].category).toBe('alitas');
+  expect(ranked[0].name.toLowerCase()).toContain('alitas');
+});
+
+test('does NOT return Combo Mixto first when user asks for alitas', () => {
+  const intent = extractFoodIntent('quiero alitas');
+  const ranked = rankProductsByIntent(MOCK_PRODUCTS, intent);
+
+  expect(ranked[0].name).not.toBe('Combo Mixto');
+  expect(ranked[0].category).toBe('alitas');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
