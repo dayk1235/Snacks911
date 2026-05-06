@@ -11,27 +11,24 @@ export function isProductSafe(product: Product, allergies: string[] = []): boole
   const lowerAllergies = allergies.map(a => a.toLowerCase().trim()).filter(a => a.length > 0);
   if (lowerAllergies.length === 0) return true;
 
-  const name = (product.name || '').toLowerCase();
-  const description = (product.description || '').toLowerCase();
+  // RULE: Check ONLY ingredients, ignore name/description
   const ingredients = (product.ingredients || []).map(i => i.toLowerCase().trim());
   
-  // Create a combined content string for searching
-  const content = `${name} ${description} ${ingredients.join(' ')}`;
-  
-  // Log de diagnóstico
-  console.log(`[allergyFilter] Revisando: "${product.name}", Alergias: [${lowerAllergies.join(', ')}]`);
+  // Log de diagnóstico: mostrar producto, ingredientes y alergias
+  console.log(`[allergyFilter] Revisando: "${product.name}", Ingredientes: [${ingredients.join(', ')}], Alergias: [${lowerAllergies.join(', ')}]`);
   
   for (const allergy of lowerAllergies) {
-    // 1. Direct match in content (name, description, ingredients)
-    // We only check if the product CONTENT contains the allergy keyword
-    if (content.includes(allergy)) {
-      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por coincidencia con: "${allergy}"`);
+    // 1. Direct match in ingredients: find the exact ingredient that conflicts
+    // Check both directions: ingredient contains allergy OR allergy contains ingredient
+    const conflictingIngredient = ingredients.find(ing => ing.includes(allergy) || allergy.includes(ing));
+    if (conflictingIngredient) {
+      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por ingrediente conflictivo: "${conflictingIngredient}" (alergia: "${allergy}")`);
       return false;
     }
 
     // 2. Special rule: "salchicha" also blocks "banderilla"
-    if (allergy === 'salchicha' && content.includes('banderilla')) {
-      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por regla especial: salchicha -> banderilla`);
+    if (allergy === 'salchicha' && ingredients.includes('banderilla')) {
+      console.log(`[allergyFilter] RECHAZADO: "${product.name}" por regla especial: salchicha -> banderilla (ingrediente: "banderilla")`);
       return false;
     }
   }

@@ -32,13 +32,20 @@ export interface UpsellOption {
  */
 export async function getEntryRecommendation(
   intent: Intent,
-  profile?: CustomerProfile
+  profile?: CustomerProfile,
+  allergies: string[] = []
 ): Promise<Product | null> {
   const allProducts = await dbGetProducts() as unknown as Product[];
   
+  // Merge profile restrictions with current session allergies
+  const allRestrictions = Array.from(new Set([
+    ...(profile?.restrictions || []),
+    ...allergies
+  ]));
+
   // Filter products by restrictions
-  const safeProducts = profile?.restrictions?.length
-    ? allProducts.filter(p => isProductSafe(p, profile.restrictions))
+  const safeProducts = allRestrictions.length
+    ? allProducts.filter(p => isProductSafe(p, allRestrictions))
     : allProducts;
 
   // 1. Personalized Recommendation (Priority)
@@ -80,7 +87,8 @@ export async function getEntryRecommendation(
  */
 export async function getBestUpsell(
   currentCart: CartItem[],
-  customerProfile?: CustomerProfile
+  customerProfile?: CustomerProfile,
+  allergies: string[] = []
 ): Promise<UpsellOption | null> {
   if (getCurrentLevel() === 'ECO') return null;
   if (!currentCart || currentCart.length === 0) return null;
@@ -161,10 +169,15 @@ export async function getBestUpsell(
 
   if (error || !candidates || candidates.length === 0) return null;
 
-  // Filter by restrictions if they exist
-  if (customerProfile?.restrictions?.length) {
+  // Filter by restrictions if they exist (combined profile + current)
+  const allRestrictions = Array.from(new Set([
+    ...(customerProfile?.restrictions || []),
+    ...allergies
+  ]));
+
+  if (allRestrictions.length > 0) {
     const candidateProduct = allProducts.find(p => p.name === candidates[0].name);
-    if (candidateProduct && !isProductSafe(candidateProduct, customerProfile.restrictions)) {
+    if (candidateProduct && !isProductSafe(candidateProduct, allRestrictions)) {
       return null; // Skip unsafe upsell
     }
   }

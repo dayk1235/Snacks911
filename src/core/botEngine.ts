@@ -92,19 +92,25 @@ export async function getBotResponse({ message, phone }: { message: string; phon
 }
 
 async function buildPersonalizedResponse(message: string, phone: string | undefined, products: any[], profile?: any) {
-  // GLOBAL ALLERGY FILTER
-  const safeProducts = filterProducts(products, profile?.restrictions || []);
-
-  // CONTEXT RANKING
-  const intent = extractFoodIntent(message);
-  console.log("[INTENT]", intent);
-  
-  const rankedProducts = rankProductsByIntent(safeProducts, intent);
-  console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
-  console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
-
   const lower = message.toLowerCase();
   const detected = detectIntent(message);
+  const { intent, allergies: detectedAllergies } = detected;
+
+  // GLOBAL ALLERGY FILTER - merge profile restrictions with detected allergies from message
+  const allRestrictions = Array.from(new Set([
+    ...(profile?.restrictions || []),
+    ...(detectedAllergies || [])
+  ]));
+  
+  const safeProducts = filterProducts(products, allRestrictions);
+
+  // CONTEXT RANKING
+  const foodIntent = extractFoodIntent(message);
+  console.log("[INTENT]", foodIntent);
+  
+  const rankedProducts = rankProductsByIntent(safeProducts, foodIntent);
+  console.log("[RANKING] safe:", safeProducts.length, "→ ranked:", rankedProducts.length);
+  console.log("[TOP PRODUCTS]", rankedProducts.slice(0, 5).map(p => p.name));
 
   // MULTI-INTENT: Parse "quiero X pero sin Y"
   const multiIntent = parseMultiIntent(message, safeProducts);
@@ -204,7 +210,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   // 2. FAVORITO
   if (/favorito|preferido/i.test(message)) {
     const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
-    const isCompatibleFav = favProduct && isProductSafe(favProduct, profile?.restrictions || []);
+    const isCompatibleFav = favProduct && isProductSafe(favProduct, allRestrictions);
     return `${greeting}${profile?.favorite_product && isCompatibleFav ? `Tu combo favorito es: ${profile.favorite_product} 🌟` : 'Aún no tengo tu favorito registrado.'}`;
   }
 
@@ -214,9 +220,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     lower.includes('solo combos');
 
   if (wantsCombos) {
-    const filtered = products
-      .filter(p => p.category === 'combos')
-      .filter(p => isProductSafe(p, profile?.restrictions || []));
+    const filtered = safeProducts.filter(p => p.category === 'combos');
 
     // Ensure uniqueness by name
     const uniqueFiltered = Array.from(
@@ -234,13 +238,9 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     return comboText;
   }
 
-  // 3. SOLO COMBOS
-  let currentProducts = safeProducts;
-
-  const isOrderIntent = /quiero|dame|ordenar|pedir/i.test(message);
+  // 3. PRODUCT RECOMMENDATION & MENU
   const isConfirming = (lower.includes("si") || lower.includes("sí")) && phone;
-  
-  const foundProduct = currentProducts.find(p => lower.includes(p.name.toLowerCase()));
+  const foundProduct = safeProducts.find(p => lower.includes(p.name.toLowerCase()));
   
   // FALLBACK TRIGGER: Only if NO intent AND NO safe products available
   const isGenericIntent = detected.intent === 'other' || !detected.intent;
@@ -286,12 +286,7 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
     }
   }
 
-  // If isConfirming was true but no order existed, treat as normal message
-  if (isConfirming && !isConfirmingWithOrder) {
-    // Fall through to normal processing
-  }
-
-  if (!currentProducts || currentProducts.length === 0) return "Ahorita no tengo productos disponibles 😔";
+  if (safeProducts.length === 0) return "Ahorita no tengo productos disponibles compatibles con tus restricciones 😔";
 
   if (foundProduct) {
     const qty = extractQty(message);
@@ -304,10 +299,10 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
   }
 
   if (['duda', 'hambre', 'exploracion'].includes(detected.intent) || /recomienda|sugiere/i.test(message)) {
-    let rec = await getEntryRecommendation(detected.intent, profile);
+    let rec = await getEntryRecommendation(detected.intent, profile, allRestrictions);
 
-    if (rec && !isProductSafe(rec, profile?.restrictions || [])) {
-      console.log('[botEngine] BLOCKED unsafe recommendation:', rec.name);
+    if (rec && !isProductSafe(rec, allRestrictions)) {
+      console.log('[botEngine] BLOCKED unsafe recommendation (secondary check):', rec.name);
       rec = safeProducts[0] || null;
     }
 
@@ -319,10 +314,10 @@ async function buildPersonalizedResponse(message: string, phone: string | undefi
 
   let text = `${greeting}🔥 MENÚ Snacks 911 🔥\n\n`;
   const favProduct = safeProducts.find(p => p.name === profile?.favorite_product);
-  if (favProduct && isProductSafe(favProduct, profile?.restrictions || [])) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
+  if (favProduct) text += `Te recomendamos tu favorito: ${favProduct.name} 🌟\n\n`;
 
-  for (const p of currentProducts) {
-    if (isProductSafe(p, profile?.restrictions) && p.name !== profile?.favorite_product) {
+  for (const p of safeProducts) {
+    if (p.name !== profile?.favorite_product) {
       text += `🍗 ${p.name} - $${p.price}\n`;
     }
   }

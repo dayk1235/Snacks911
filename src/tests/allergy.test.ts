@@ -93,18 +93,29 @@ async function testCase(input: string, forbidden: string[]) {
   console.log('-----------------------------------');
 }
 
+// Helper to support both Jest and standalone tsx execution
+const _test = typeof describe !== 'undefined' ? it : (name: string, fn: () => Promise<void>) => {
+  fn().catch(e => { console.error(`✗ ${name}\n  ${e.message}`); process.exit(1); });
+};
+
 async function runTests() {
-  console.log('=== ALLERGY FILTER TEST (DB PRODUCTS) ===\n');
   const forbidden = ["salchipapas", "banderilla", "salchicha"];
 
-  await testCase("soy alergico a la salchicha", forbidden);
-  await testCase("alérgico a salchicha", forbidden);
-  await testCase("no puedo comer salchicha", forbidden);
-  await testCase("papas sin salchicha", forbidden);
-  await testCase("quiero algo que no tenga salchicha", forbidden);
-  await testCase("busco algo sin salchicha", forbidden);
-  await testCase("salchicha", forbidden); // Direct mention
-  await testCase("dame un combo", forbidden); // Should not recommend Salchipapas or Banderilla combos
+  _test("soy alergico a la salchicha", () => testCase("soy alergico a la salchicha", forbidden));
+  _test("alérgico a salchicha", () => testCase("alérgico a salchicha", forbidden));
+  _test("no puedo comer salchicha", () => testCase("no puedo comer salchicha", forbidden));
+  _test("papas sin salchicha", () => testCase("papas sin salchicha", forbidden));
+  _test("quiero algo que no tenga salchicha", () => testCase("quiero algo que no tenga salchicha", forbidden));
+  _test("busco algo sin salchicha", () => testCase("busco algo sin salchicha", forbidden));
+  _test("salchicha (mención directa)", () => testCase("salchicha", forbidden));
+  _test("dame un combo (excluye prohibidos)", () => testCase("dame un combo", forbidden));
 }
 
-runTests().catch(console.error);
+if (typeof describe === 'undefined') {
+  console.log('=== ALLERGY FILTER TEST (DB PRODUCTS) ===\n');
+  runTests();
+} else {
+  describe('Allergy Filter System', () => {
+    runTests();
+  });
+}

@@ -12,6 +12,7 @@ import { Intent } from './types';
 export interface IntentResult {
   intent: Intent;
   confidence: number;
+  allergies?: string[];
 }
 
 interface IntentRule {
@@ -225,10 +226,14 @@ const INTENT_RULES: IntentRule[] = [
  * detectIntent() — Scored intent detection using keywords and patterns.
  * 
  * Highest score wins. Confidence is normalized (0-1).
+ * Also extracts allergies from "sin X" patterns.
  */
 export function detectIntent(message: string): IntentResult {
   const lower = message.toLowerCase().trim();
-  if (!lower) return { intent: 'other', confidence: 0 };
+  if (!lower) return { intent: 'other', confidence: 0, allergies: [] };
+
+  // Extract allergies from "sin X" patterns
+  const allergies = extractAllergies(message);
 
   let bestScore = 0;
   let bestIntent: Intent = 'other';
@@ -262,8 +267,61 @@ export function detectIntent(message: string): IntentResult {
 
   return { 
     intent: mappedIntent, 
-    confidence: Math.min(bestScore / 10, 1) 
+    confidence: Math.min(bestScore / 10, 1),
+    allergies: allergies.length > 0 ? allergies : undefined
   };
+}
+
+/**
+ * Extract allergies from "sin X" patterns in text.
+ * Handles: "sin salchicha", "sin salchicha y papas", "sin salchicha, papas y queso"
+ * Also handles: "soy alérgico a X", "no puedo comer X"
+ */
+export function extractAllergies(message: string): string[] {
+  const lower = message.toLowerCase();
+  const allergies: string[] = [];
+
+  // Pattern 1: "sin [alergia]" or "sin [alergia1], [alergia2] y [alergia3]"
+  const sinPatterns = [
+    /sin\s+([a-záéíóúñü,\s]+?)(?:\s+(?:pero|pero sin|y|e)\s+|$)/gi,
+    /sin\s+([a-záéíóúñü,\s]+)/gi,
+  ];
+
+  for (const pattern of sinPatterns) {
+    const matches = [...lower.matchAll(pattern)];
+    for (const match of matches) {
+      if (match[1]) {
+        const items = match[1]
+          .split(/[,\sy]+/)
+          .map(s => s.trim())
+          .filter(s => s.length > 2 && !['sin', 'y', 'e', 'la', 'el', 'los', 'las', 'una', 'un'].includes(s));
+        allergies.push(...items);
+      }
+    }
+  }
+
+  // Pattern 2: "soy alérgico a X" / "soy alergico a X"
+  const allergicMatch = lower.match(/soy\s+al[ée]rgic[oa]\s+a\s+([a-záéíóúñü\s]+?)(?:\s*[,.]|$)/i);
+  if (allergicMatch && allergicMatch[1]) {
+    const items = allergicMatch[1]
+      .split(/\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 2);
+    allergies.push(...items);
+  }
+
+  // Pattern 3: "no puedo comer X"
+  const noComerMatch = lower.match(/no\s+puedo\s+comer\s+([a-záéíóúñü\s]+?)(?:\s*[,.]|$)/i);
+  if (noComerMatch && noComerMatch[1]) {
+    const items = noComerMatch[1]
+      .split(/\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 2);
+    allergies.push(...items);
+  }
+
+  // Remove duplicates and return
+  return [...new Set(allergies)];
 }
 
 function mapLegacyIntent(intent: Intent): Intent {

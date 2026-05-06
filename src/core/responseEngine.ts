@@ -563,8 +563,8 @@ export function handleMessage(
   products: ProductRefs,
   action?: string,
 ): ResponseOutput {
-  // 1. Detect intent
-  const { intent } = detectIntent(text);
+  // 1. Detect intent and extract any allergies from "sin X" patterns
+  const { intent, allergies: detectedAllergies } = detectIntent(text);
 
   // 2. Update state
   const nextState = updateState(state, intent, action, text);
@@ -728,15 +728,18 @@ export async function handleMessageModular(
 ): Promise<ResponseOutput> {
   console.log("ENGINE USED:", "MODULAR");
   
-  // 1. Extract Allergies/Exclusions and update state
+  // 1. Extract Allergies/Exclusions from intent detector & manual parser
+  const { intent: baseIntent, allergies: detectedAllergies } = detectIntent(text);
   const { includeWords, excludeWords } = parseUserRequest(text);
   const nextState = { ...state };
   
-  if (excludeWords.length > 0) {
-    nextState.allergies = [...(state.allergies || []), ...excludeWords];
-    // Remove duplicates
-    nextState.allergies = Array.from(new Set(nextState.allergies));
-  }
+  // Merge allergies from detectIntent with excludeWords
+  const allAllergies = [
+    ...(state.allergies || []), 
+    ...(detectedAllergies || []), 
+    ...excludeWords
+  ];
+  nextState.allergies = Array.from(new Set(allAllergies));
 
   // 2. Filter all products for safety
   const allProducts = allProductsOverride || await dbGetProducts();
