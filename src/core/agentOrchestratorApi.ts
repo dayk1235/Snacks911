@@ -27,12 +27,16 @@ export async function agentOrchestrator(input: {
 }): Promise<Pick<ResponseOutput, 'text'> & { nextState: ConversationState }> {
   const prevState = stateByPhone.get(input.phone) ?? INITIAL_STATE;
 
+  const items = Array.isArray(prevState.cart?.items)
+    ? prevState.cart.items
+    : [];
+
   const output = await handleMessageModular(input.message, prevState, {
     ...productRefs,
     currentTotal: prevState.cartTotal,
-    hasPapas: prevState.cart.includes('Papas Loaded'),
-    hasBebida: prevState.cart.some((i) => i.includes('Refresco')),
-    hasPostre: prevState.cart.some((i) => i.includes('Brownie')),
+    hasPapas: items.some(i => i.name?.includes('Papas')),
+    hasBebida: items.some(i => i.name?.includes('Refresco')),
+    hasPostre: items.some(i => i.name?.includes('Brownie')),
   });
 
   stateByPhone.set(input.phone, output.nextState);

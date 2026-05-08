@@ -47,11 +47,19 @@ export async function PUT(req: Request) {
   if (!db) return NextResponse.json({ error: 'No db' }, { status: 500 });
 
   const body = await req.json();
-  const { id, ...updates } = body;
-  updates.updated_at = new Date().toISOString();
+  const { id } = body;
+  const { productToRow } = await import('@/lib/db');
+  const row = await productToRow(body);
+  
+  // Ensure we don't try to update the ID
+  delete row.id;
+  row.updated_at = new Date().toISOString();
 
-  const { error } = await db.from('products').update(updates).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { error } = await db.from('products').update(row).eq('id', id);
+  if (error) {
+    console.error('[API Products PUT] Error:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

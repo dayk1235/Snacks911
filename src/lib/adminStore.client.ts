@@ -8,6 +8,7 @@ import type {
   SaleRecord, BusinessSettings, CustomCategory,
   Customer, AuditLog,
 } from './adminTypes';
+import { createUuid } from '@/lib/utils/core';
 
 const isServer = typeof window === 'undefined';
 const IS_TEST = process.env.NODE_ENV === 'test';
@@ -48,17 +49,6 @@ const TTL = {
   PRODUCTS:   2 * 60 * 1000, // 2 min
   CATEGORIES: 5 * 60 * 1000, // 5 min
 };
-
-function createUuid() {
-  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 // ─── AdminStore ───────────────────────────────────────────────
 export const AdminStore = {

@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
+import { parseCookie } from '@/lib/utils/core';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }
-
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
 
 async function getSession(req: Request) {
   const adminToken = parseCookie(req, ADMIN_SESSION_COOKIE);

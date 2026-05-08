@@ -1,23 +1,48 @@
 [
   {
+    "input": "bnls porfavor",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
+    "input": "agregar alitas",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
+    "input": "pon un combo mixto",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
+    "input": "manda boneles",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
     "input": "q me pones unas papas",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
+    "input": "añade un refresco",
+    "expected": "ADD_TO_CART",
+    "got": "SHOW_CATEGORY"
+  },
+  {
+    "input": "ponme salchipapas",
     "expected": "ADD_TO_CART",
     "got": "SHOW_CATEGORY"
   },
   {
     "input": "metele una banderilla",
     "expected": "ADD_TO_CART",
-    "got": "RECOMMEND"
+    "got": "VIEW_CART"
   },
   {
     "input": "que tienen de papas",
     "expected": "SHOW_CATEGORY",
     "got": "SHOW_MENU"
-  },
-  {
-    "input": "opciones de bebidas",
-    "expected": "SHOW_CATEGORY",
-    "got": "ADD_TO_CART"
   },
   {
     "input": "k tienen de proteina",
@@ -30,13 +55,23 @@
     "got": "SHOW_CATEGORY"
   },
   {
-    "input": "dame algo barato",
-    "expected": "RECOMMEND",
-    "got": "ADD_TO_CART"
-  },
-  {
     "input": "no se que pedir",
     "expected": "RECOMMEND",
     "got": "VIEW_CART"
+  },
+  {
+    "input": "si",
+    "expected": "CONFIRM_ORDER",
+    "got": "RECOMMEND"
+  },
+  {
+    "input": "ya confirmame",
+    "expected": "CONFIRM_ORDER",
+    "got": "VIEW_CART"
+  },
+  {
+    "input": "dale",
+    "expected": "CONFIRM_ORDER",
+    "got": "RECOMMEND"
   }
 ]

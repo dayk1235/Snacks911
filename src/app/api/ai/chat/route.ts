@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getBotResponse } from '@/core/botEngine'
-import { getSystemMode, getSystemState } from '@/core/selfHealingEngine'
-import { rateLimit, RATE_LIMIT_CONFIG } from '@/lib/rateLimit'
+import { getSystemMode } from '@/core/selfHealingEngine'
+import { rateLimit } from '@/lib/rateLimit'
 
 export async function POST(req: Request) {
   try {
     const { message, phone } = await req.json()
     const userId = phone || 'web-user'
 
-    const { allowed, retryAfter } = rateLimit(userId, RATE_LIMIT_CONFIG)
+    const allowed = rateLimit(userId)
     if (!allowed) {
       return NextResponse.json(
-        { error: 'Rate limit exceeded', retryAfter },
+        { error: 'Rate limit exceeded' },
         { status: 429 }
       )
     }
@@ -21,16 +21,11 @@ export async function POST(req: Request) {
       phone: userId
     })
 
-    const systemState = {
-      mode: getSystemMode(),
-      errors: getSystemState().errors,
-      consecutiveErrors: getSystemState().consecutiveErrors,
-      lastRecovery: getSystemState().lastRecovery,
-    }
+    const mode = await getSystemMode()
 
     return NextResponse.json({
       ...result,
-      system_state: systemState
+      system_state: { mode }
     })
   } catch (e) {
     console.error('AI CHAT ERROR', e)

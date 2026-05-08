@@ -132,7 +132,9 @@ export async function getBestStrategy(): Promise<AntiLoopStrategy> {
       return strategies[0].strategy as AntiLoopStrategy;
     }
   } catch (err) {
-    console.warn("[STRATEGY] Analytics fetch failed:", err);
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("[STRATEGY] Analytics fetch failed:", err);
+    }
   }
   return getNextStrategy(0); // Fallback to rotation
 }
@@ -149,14 +151,20 @@ export function getBestStrategySync(): AntiLoopStrategy {
   }
 
   // Refresh in background
-  getBestStrategy().then(s => {
-    cachedStrategy = s;
-    lastFetch = now;
-    console.log("[STRATEGY] Updated best strategy to:", s);
-  }).catch(() => {});
+  if (process.env.NODE_ENV !== 'test') {
+    getBestStrategy().then(s => {
+      cachedStrategy = s;
+      lastFetch = now;
+      if (process.env.NODE_ENV !== "test") {
+        console.log("[STRATEGY] Updated best strategy to:", s);
+      }
+    }).catch(() => {});
+  }
 
   const selected = cachedStrategy || getNextStrategy(0);
-  console.log("[STRATEGY] Selected strategy:", selected);
+  if (process.env.NODE_ENV !== "test") {
+    console.log("[STRATEGY] Selected strategy:", selected);
+  }
   return selected;
 }
 

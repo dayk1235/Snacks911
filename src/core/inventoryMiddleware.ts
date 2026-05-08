@@ -42,10 +42,22 @@ export function inventoryFilter<T extends { id?: string; stock?: number | null }
 export async function checkStock(itemIds: string[]): Promise<StockCheck[]> {
   if (!itemIds || itemIds.length === 0) return [];
 
-  const { data, error } = await supabase
+  // 1. Try selecting with 'stock' column
+  let { data, error } = await supabase
     .from('products')
     .select('id, is_available, stock')
     .in('id', itemIds);
+
+  // 2. Fallback: If 'stock' column is missing, retry without it
+  if (error && error.message.includes('column products.stock does not exist')) {
+    const fallback = await supabase
+      .from('products')
+      .select('id, is_available')
+      .in('id', itemIds);
+    
+    data = fallback.data as typeof data;
+    error = fallback.error;
+  }
 
   if (error) {
     console.error('InventoryMiddleware: Error fetching stock:', error.message);

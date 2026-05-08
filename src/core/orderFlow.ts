@@ -4,6 +4,11 @@ export type OrderState =
   | 'BUILDING_CART'
   | 'REVIEWING'
   | 'CONFIRMING'
+  | 'AWAITING_PAYMENT'
+  | 'PAYMENT_CONFIRMED'
+  | 'PAYMENT_EXPIRED'
+  | 'AWAITING_REVIEW'
+  | 'AWAITING_REVIEW_COMMENT'
   | 'COMPLETED';
 
 export interface FlowContext {
@@ -58,8 +63,17 @@ export function resolveNextState(
       return 'REVIEWING';
 
     case 'CONFIRMING':
-      if (upperIntent === 'CONFIRM_ORDER') return 'COMPLETED';
+      if (upperIntent === 'CONFIRM_ORDER') return 'AWAITING_PAYMENT';
       return 'CONFIRMING';
+
+    case 'AWAITING_PAYMENT':
+      return 'AWAITING_PAYMENT';
+
+    case 'PAYMENT_CONFIRMED':
+      return 'IDLE';
+
+    case 'PAYMENT_EXPIRED':
+      return 'IDLE';
 
     case 'COMPLETED':
       return 'IDLE';

@@ -1,9 +1,11 @@
 import type { Product } from '@/data/products';
 
-export interface CartItem extends Product {
-  quantity: number;
-  /** Names of extras the user chose when adding this product (shown as notes in cart) */
+// CartItem is defined in @/core/types — re-exported here for backwards-compat imports
+export type { CartItem } from '@/core/types';
+
+// Legacy type kept for components that still extend Product
+export interface LegacyProductCartItem extends Product {
+  quantity?: number;
   linkedExtras?: string[];
-  /** True if this item is a standalone extra (not tied to a main product) */
   isStandaloneExtra?: boolean;
 }

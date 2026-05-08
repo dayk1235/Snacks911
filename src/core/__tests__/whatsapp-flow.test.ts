@@ -1,3 +1,6 @@
+jest.mock('@/lib/db.server', () => ({ dbGetProducts: jest.fn().mockResolvedValue([{ id: '1', name: 'Wings', price: 120, category: 'wings', available: true }, { id: '2', name: 'Boneless', price: 100, category: 'boneless', available: true }, { id: '3', name: 'Papas', price: 60, category: 'papas', available: true }]), dbSaveOrder: jest.fn().mockResolvedValue({ id: 'order-1' }), saveAiLog: jest.fn().mockResolvedValue(null), getDbModule: jest.fn().mockReturnValue({ dbGetProducts: jest.fn().mockResolvedValue([]) }) }));
+jest.mock('@/lib/db', () => ({ dbGetProducts: jest.fn().mockResolvedValue([]), rowToProduct: jest.fn(r => r), createUuid: jest.fn(() => 'test-uuid') }));
+
 import '../../tests/env-setup';
 import { getBotResponse } from '../botEngine';
 import { filterProducts } from '../allergyFilter';
@@ -62,10 +65,7 @@ export async function runBot(input: string) {
   };
 }
 
-async function runFlowTest() {
-  console.log('🚀 INICIANDO TEST DE FLUJO MODULAR CON EVALUATOR\n');
-
-  const cases: EvalCase[] = [
+const cases: EvalCase[] = [
     // ── Original 5 ────────────────────────────────────────────────────────
     { input: 'hola',                        expectedIntent: 'SHOW_MENU' },
     { input: 'quiero boneless',             expectedIntent: 'ADD_TO_CART' },
@@ -133,9 +133,13 @@ async function runFlowTest() {
     { input: 'dale',                     expectedIntent: 'CONFIRM_ORDER' },
   ];
 
+async function runFlowTest(cases: EvalCase[]) {
+  console.log('🚀 INICIANDO TEST DE FLUJO MODULAR CON EVALUATOR\n');
+
   const result = await evaluateBot(cases, runBot);
 
-  console.log(`
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`
 === EVALUATION ===
 Intent Accuracy:  ${(result.intentAccuracy  * 100).toFixed(1)}%
 Cart Accuracy:    ${(result.cartAccuracy    * 100).toFixed(1)}%
@@ -143,9 +147,19 @@ Flow Completion:  ${(result.flowCompletion  * 100).toFixed(1)}%
 Upsell Success:   ${(result.upsellSuccess   * 100).toFixed(1)}%
 Total Cases:      ${result.total}
 `);
+  }
 }
 
-runFlowTest().catch(err => {
-  console.error('❌ ERROR DURANTE EL TEST:', err);
-  process.exit(1);
-});
+if (process.env.NODE_ENV === 'test') {
+  describe('Flow', () => {
+    beforeEach(() => jest.clearAllMocks());
+    test('completo', async () => {
+      await runFlowTest(cases);
+    }, 30000);
+  });
+} else {
+  runFlowTest(cases).catch(err => {
+    console.error('❌ ERROR DURANTE EL TEST:', err);
+    process.exit(1);
+  });
+}

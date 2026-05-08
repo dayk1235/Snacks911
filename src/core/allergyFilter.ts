@@ -22,9 +22,11 @@ export function isProductSafe(
   );
 
   // Log de diagnóstico: mostrar producto, ingredientes y alergias
-  console.log(
-    `[allergyFilter] Revisando: "${product.name}", Ingredientes: [${ingredients.join(", ")}], Alergias: [${lowerAllergies.join(", ")}]`,
-  );
+  if (process.env.NODE_ENV !== "test") {
+    console.log(
+      `[allergyFilter] Revisando: "${product.name}", Ingredientes: [${ingredients.join(", ")}], Alergias: [${lowerAllergies.join(", ")}]`,
+    );
+  }
 
   for (const allergy of lowerAllergies) {
     // 1. Direct match in ingredients: find the exact ingredient that conflicts
@@ -33,17 +35,21 @@ export function isProductSafe(
       (ing) => ing.includes(allergy) || allergy.includes(ing),
     );
     if (conflictingIngredient) {
-      console.log(
-        `[allergyFilter] RECHAZADO: "${product.name}" por ingrediente conflictivo: "${conflictingIngredient}" (alergia: "${allergy}")`,
-      );
+      if (process.env.NODE_ENV !== "test") {
+        console.log(
+          `[allergyFilter] RECHAZADO: "${product.name}" por ingrediente conflictivo: "${conflictingIngredient}" (alergia: "${allergy}")`,
+        );
+      }
       return false;
     }
 
     // 2. Special rule: "salchicha" also blocks "banderilla"
     if (allergy === "salchicha" && ingredients.includes("banderilla")) {
-      console.log(
-        `[allergyFilter] RECHAZADO: "${product.name}" por regla especial: salchicha -> banderilla (ingrediente: "banderilla")`,
-      );
+      if (process.env.NODE_ENV !== "test") {
+        console.log(
+          `[allergyFilter] RECHAZADO: "${product.name}" por regla especial: salchicha -> banderilla (ingrediente: "banderilla")`,
+        );
+      }
       return false;
     }
   }

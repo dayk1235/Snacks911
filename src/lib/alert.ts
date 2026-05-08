@@ -3,6 +3,8 @@
  * Sends notifications to external webhooks (Slack, Discord, etc.)
  */
 export async function sendAlert(message: string) {
+  if (process.env.NODE_ENV === 'test') return;
+
   const webhookUrl = process.env.ALERT_WEBHOOK_URL;
   
   if (!webhookUrl) {

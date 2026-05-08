@@ -24,6 +24,8 @@ const EMERGENCY_THRESHOLD = 8;
  * syncWithDB() — Pull latest state and apply recovery logic
  */
 async function syncWithDB() {
+  if (process.env.NODE_ENV === 'test') return;
+
   try {
     const dbState = await dbGetSystemState();
     if (dbState) {
@@ -56,6 +58,8 @@ async function syncWithDB() {
 }
 
 async function handleModeChangeAlert(oldMode: SystemMode, newMode: SystemMode) {
+  if (process.env.NODE_ENV === 'test') return;
+
   if (oldMode === newMode) return;
   
   if (newMode === 'EMERGENCY_MODE') {
@@ -81,7 +85,9 @@ export async function registerErrorEvent(errorType: string, component: string): 
     localState.mode = 'SAFE_MODE';
   }
 
-  console.log(`[HEALTH] ${localState.mode} | Errors: ${localState.error_count} | Source: ${component}`);
+  if (process.env.NODE_ENV !== "test") {
+    console.log(`[HEALTH] ${localState.mode} | Errors: ${localState.error_count} | Source: ${component}`);
+  }
 
   if (prevMode !== localState.mode) {
     await handleModeChangeAlert(prevMode, localState.mode);
@@ -94,7 +100,9 @@ export async function registerErrorEvent(errorType: string, component: string): 
       mode: localState.mode
     });
   } catch (err) {
-    console.warn("[HEALTH] Persistent state update failed", err);
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("[HEALTH] Persistent state update failed", err);
+    }
   }
 }
 

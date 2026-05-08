@@ -63,7 +63,23 @@ export async function POST(req: NextRequest) {
 
     for (const entry of body.entry) {
       for (const change of entry.changes || []) {
+        const metadata = change.value?.metadata;
+        const displayPhoneNumber = metadata?.display_phone_number;
         const messages = change.value?.messages || [];
+
+        // 0. Resolve Tenant
+        if (!displayPhoneNumber) {
+           console.error("[WA] Missing display_phone_number in metadata");
+           continue;
+        }
+        
+        const { getTenantByWhatsAppNumber } = await import('@/lib/tenant/tenantResolver');
+        const tenant = await getTenantByWhatsAppNumber(displayPhoneNumber);
+
+        if (!tenant) {
+          console.error(`[WA] No active tenant found for number: ${displayPhoneNumber}`);
+          continue;
+        }
 
         for (const msg of messages) {
           const from = msg.from;
@@ -71,7 +87,6 @@ export async function POST(req: NextRequest) {
           // Rate Limit Check (per phone number)
           if (from && !rateLimit(from, 5, 10000)) {
             console.warn("[RATE LIMIT] WhatsApp sender:", from);
-            // Return 429 to signal back-off
             return new Response("Too many requests", { status: 429 });
           }
 
@@ -86,7 +101,6 @@ export async function POST(req: NextRequest) {
           }
 
           const userInput = text || buttonId || listId;
-
           if (!userInput || !from) continue;
 
           // DB-level deduplication
@@ -96,36 +110,34 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
-          // 1. Recibir mensaje (handled above in userInput)
-          console.log('[WA] Processing:', { from, text: userInput });
+          console.log('[WA] Processing:', { from, text: userInput, tenant: tenant.business_name });
 
-          // 2. Detectar intent (NLU Layer)
+          // 2. Detect Intent
           const nlu = detectIntent(userInput);
-          console.log('[WA] Intent detected:', nlu.intent);
 
-          // 4. Ejecutar brain unificado (Modular Pipeline)
+          // 4. Execute brain (Multi-tenant aware)
           const output = await getBotResponse({
             message: userInput,
-            phone: from
+            phone: from,
+            tenantId: tenant.id
           });
 
-          // 5. Actualizar contexto & Insights
+          // 5. Update context
           await logConversation({
             phone: from,
             user_message: userInput,
             bot_response: output.text,
-            intent: nlu.intent
+            intent: nlu.intent,
+            tenant_id: tenant.id
           });
 
-          // Persistent memory insights (background)
+          // Persistent memory (scoped)
           extractAndSaveInsights(from, userInput, output.text).catch((e) => 
             console.error('[WA] Insight error:', e)
           );
 
-          console.log("[WA FINAL RESPONSE]:", output.text);
-
-          // 6. Enviar respuesta
-          await sendWhatsAppMessage(from, output.text);
+          // 6. Send Response
+          await sendWhatsAppMessage(from, output.text, tenant.whatsapp_token, metadata.phone_number_id);
         }
       }
     }
@@ -179,19 +191,22 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
     Send WhatsApp Message
 ========================= */
 
-async function sendWhatsAppMessage(phone: string, text: string): Promise<boolean> {
-  if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
-    console.error('[WA] Missing credentials');
+async function sendWhatsAppMessage(phone: string, text: string, token?: string, phoneNumberId?: string): Promise<boolean> {
+  const activeToken = token || WHATSAPP_TOKEN;
+  const activeId = phoneNumberId || PHONE_NUMBER_ID;
+
+  if (!activeToken || !activeId) {
+    console.error('[WA] Missing credentials for tenant');
     return false;
   }
 
   try {
     const response = await fetch(
-      `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/${API_VERSION}/${activeId}/messages`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${activeToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

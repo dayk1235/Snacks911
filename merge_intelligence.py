@@ -12,7 +12,8 @@ def main():
     sem_nodes = [
         {"id": "concept_self_healing", "label": "Sistema de Auto-Recuperación", "type": "concept", "source_file": "src/core/selfHealingEngine.ts", "description": "Gestión de salud y modos de emergencia"},
         {"id": "concept_sales_psychology", "label": "Psicología de Ventas", "type": "concept", "source_file": "src/core/antojo.ts", "description": "Estrategias de Antojo, FOMO y Anclaje"},
-        {"id": "concept_safety_layer", "label": "Capa de Seguridad Blindada", "type": "concept", "source_file": "src/core/allergyFilter.ts", "description": "Validación estricta de alergias y restricciones"}
+        {"id": "concept_safety_layer", "label": "Capa de Seguridad Blindada", "type": "concept", "source_file": "src/core/allergyFilter.ts", "description": "Validación estricta de alergias y restricciones"},
+        {"id": "concept_stability_hardening", "label": "Estabilización de Producción", "type": "concept", "source_file": "src/core/responseEngine.ts", "description": "Gating de ambiente, manejo de errores y pipeline de ventas resiliente"}
     ]
     
     sem_edges = [
@@ -22,7 +23,10 @@ def main():
         {"source": "src_core_salesthermostat_ts", "target": "concept_sales_psychology", "relation": "modulates"},
         {"source": "concept_sales_psychology", "target": "src_core_responseengine_ts", "relation": "drives"},
         {"source": "src_core_allergyfilter_ts", "target": "concept_safety_layer", "relation": "defines"},
-        {"source": "concept_safety_layer", "target": "src_core_botengine_ts", "relation": "sanitizes"}
+        {"source": "concept_safety_layer", "target": "src_core_botengine_ts", "relation": "sanitizes"},
+        {"source": "src_core_responseengine_ts", "target": "concept_stability_hardening", "relation": "implements"},
+        {"source": "src_core_botengine_ts", "target": "concept_stability_hardening", "relation": "supported_by"},
+        {"source": "concept_stability_hardening", "target": "concept_self_healing", "relation": "strengthens"}
     ]
     
     # 3. Fusionar

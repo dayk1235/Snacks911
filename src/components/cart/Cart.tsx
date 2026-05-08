@@ -7,7 +7,7 @@ import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
 import { track } from '@/lib/analytics';
 import { getProductImage } from '@/data/products';
-import type { CartItem } from '@/types';
+import type { CartItem } from '@/core/types';
 import type { AdminProduct } from '@/lib/adminTypes';
 import type { Product } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
@@ -517,7 +517,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
     // Build product lines with their chosen extras
     const productLines = mainItems.map(i => {
-      let line = `• ${i.name} x${i.quantity} — $${i.price * i.quantity}`;
+      let line = `• ${i.name} x${i.quantity ?? 1} — $${i.price * (i.quantity ?? 1)}`;
       if (i.linkedExtras && i.linkedExtras.length > 0) {
         line += `\n   ↳ Con extras: ${i.linkedExtras.join(', ')}`;
       }
@@ -526,7 +526,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
 
     // Build standalone extras block
     const extraLines = extraItems.map(i =>
-      `  + ${i.name} x${i.quantity} — $${i.price * i.quantity}`
+      `  + ${i.name} x${i.quantity ?? 1} — $${i.price * (i.quantity ?? 1)}`
     );
 
     let message = `🚨 *PEDIDO SNACKS 911*\n\n`;
@@ -581,7 +581,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     // Track customer stats for CRM
     if (customerPhone && customerPhone.length >= 10) {
       const topItem = items.reduce<{ name: string; qty: number }>(
-        (best, i) => i.quantity > best.qty ? { name: i.name, qty: i.quantity } : best,
+        (best, i) => (i.quantity ?? 1) > best.qty ? { name: i.name, qty: i.quantity ?? 1 } : best,
         { name: '', qty: 0 }
       );
       AdminStore.trackCustomerOrder(
@@ -828,7 +828,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                           color: '#FF4500', fontWeight: 900,
                           fontSize: isExtra ? '0.88rem' : '1rem',
                           marginTop: '0.3rem',
-                        }}>${item.price * item.quantity}</div>
+                        }}>${item.price * (item.quantity ?? 1)}</div>
                       </div>
 
                       {/* Quantity controls */}
@@ -848,7 +848,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                           fontWeight: 700, minWidth: '16px',
                           textAlign: 'center', fontSize: '0.85rem',
                         }}>
-                          {item.quantity}
+                          {item.quantity ?? 1}
                         </span>
                         <Button
                           onClick={() => onUpdateQuantity(item.id, 1)}

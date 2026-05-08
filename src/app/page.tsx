@@ -57,7 +57,7 @@ function UpsellPopup({
     } else if (product.category === 'combos') {
       ids.push('6'); // Papas Loaded
     }
-    return products.filter(p => ids.includes(p.id));
+    return products.filter(p => ids.includes(p.id as string));
   }, [product]);
 
   if (suggestions.length === 0) return null;
@@ -188,7 +188,7 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(14,14,14,0.6) 0%, transparent 50%)' }} />
               {/* Badge Priority Logic */}
               {(() => {
-                const isBest = item.popular || item.badges?.some(b => typeof b === 'string' && (b.includes('vendido') || b.includes('pedido')));
+                const isBest = item.popular || item.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
                 const savings = item.originalPrice ? item.originalPrice - item.price : 0;
                 
                 let displayBadge = null;
@@ -222,14 +222,14 @@ function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
                   onClick={() => onAdd(item)}
                   style={{
                     fontSize: '0.72rem', fontWeight: 700, color: '#fff',
-                    background: item.category === 'combos' && item.badges?.some(b => typeof b === 'string' && b.includes('Más pedido'))
+                    background: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
                       ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
                       : 'var(--accent)',
                     padding: '0.35rem 0.85rem',
                     borderRadius: '12px', border: 'none',
                     cursor: 'pointer', fontFamily: 'var(--font-body)',
                     transition: 'transform 0.15s ease',
-                    boxShadow: item.category === 'combos' && item.badges?.some(b => typeof b === 'string' && b.includes('Más pedido'))
+                    boxShadow: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
                       ? '0 0 12px rgba(255,69,0,0.3)'
                       : 'none',
                   }}
@@ -380,7 +380,7 @@ function MenuCTASection() {
   );
 }
 
-export default function Page() {
+export default function TiendaPage() {
   const { items: cartItems, totalItems, totalPrice, addToCart: storeAddToCart, updateQuantity, clearCart: handleClearCart, removeFromCart } = useCartStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);

@@ -3,6 +3,7 @@ const fs = typeof window === 'undefined' ? require('fs') : null;
 const path = typeof window === 'undefined' ? require('path') : null;
 
 import { Intent } from "./types";
+import { normalizeText } from '@/lib/utils/core';
 
 interface FailureEntry {
   input: string;
@@ -22,18 +23,6 @@ interface LearnedRule {
 }
 
 const MAX_RULES = 100;
-
-/**
- * Normalizes text: lowercase, no accents, trim, no symbols.
- */
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove accents
-    .replace(/[^\w\s]/gi, "") // Remove symbols
-    .trim();
-}
 
 const FAILURES_FILE = (fs && path) ? path.join(
   process.cwd(),

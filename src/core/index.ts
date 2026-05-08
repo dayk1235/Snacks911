@@ -37,7 +37,7 @@ export {
   buildDeliveryPrompt,
   buildOrderConfirmation,
   INITIAL_STATE,
-} from './responseEngine';
+} from './response';
 
 export { filterProducts, isProductSafe } from './allergyFilter';
 

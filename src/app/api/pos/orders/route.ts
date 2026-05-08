@@ -7,8 +7,13 @@
 import { NextResponse } from 'next/server';
 import { authGuard } from '@/middleware/authGuard';
 import { validateOrderItems } from '@/core/validationService';
+import { supabaseAnon } from '@/lib/db.server';
 
-const getDb = () => getSupabaseAdmin() || supabaseAnon;
+function isUuid(value: string) {
+  return typeof value === 'string' && value.length > 10;
+}
+
+const getDb = () => supabaseAnon;
 
 // Auth is handled per-method using authGuard
 
@@ -18,8 +23,8 @@ export async function GET(req: Request) {
     const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
     if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
-    const db = getSupabaseAdmin() || supabaseAnon;
-    console.log('[API/Orders/GET] Init. Client:', db === getSupabaseAdmin() ? 'ADMIN' : 'ANON');
+    const db = getDb();
+    console.log('[API/Orders/GET] Init. Client: ANON');
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
   const today = new Date();

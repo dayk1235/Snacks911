@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { handleMessageModular, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
 import { products as allProducts } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
-import { createUuid } from '@/lib/uuid';
+import { createUuid } from '@/lib/utils/core';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Msg {
@@ -31,8 +31,6 @@ export default function OrderBot() {
   const [thinking, setThinking] = useState(false);
   const [state, setState] = useState<ConversationState>({
     ...INITIAL_STATE,
-    cart: [],
-    cartTotal: 0,
     messages: [],
   });
   const [engine, setEngine] = useState<EngineType>('modular');
@@ -117,25 +115,27 @@ export default function OrderBot() {
       });
 
       if (itemsToSubmit.length > 0) {
-        try {
-          await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: createUuid(),
-              status: 'pending',
-              channel: 'WEB',
-              total: state.cartTotal,
-              createdAt: new Date().toISOString(),
-              customerName: state.customerName || 'Cliente',
-              customerPhone: 'web-user',
-              whatsappConfirmed: false,
-              items: itemsToSubmit
-            }),
-          });
-        } catch(err) {
-          console.error('[OrderBot] Error saving order:', err?.message || err);
-        }
+        (async () => {
+          try {
+            await fetch('/api/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: createUuid(),
+                status: 'pending',
+                channel: 'WEB',
+                total: state.cartTotal,
+                createdAt: new Date().toISOString(),
+                customerName: state.customerName || 'Cliente',
+                customerPhone: 'web-user',
+                whatsappConfirmed: false,
+                items: itemsToSubmit
+              }),
+            });
+          } catch(err) {
+            console.error('[OrderBot] Error saving order:', (err as Error)?.message || err);
+          }
+        })();
       }
       window.open(state.whatsappUrl, '_blank');
     }

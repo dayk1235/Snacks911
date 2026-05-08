@@ -51,10 +51,35 @@ export interface Entities {
   restrictions: string[];
 }
 
+function entitiesToRecord(e: Entities): Record<string, string> {
+  return {
+    products: JSON.stringify(e.products),
+    categories: JSON.stringify(e.categories),
+    qty: JSON.stringify(e.qty),
+    sauces: JSON.stringify(e.sauces),
+    restrictions: JSON.stringify(e.restrictions),
+  };
+}
+
+export function parseEntitiesRecord(r: Record<string, string> | undefined): Entities {
+  if (!r) return { products: [], categories: [], qty: [], sauces: [], restrictions: [] };
+  try {
+    return {
+      products: JSON.parse(r.products || '[]'),
+      categories: JSON.parse(r.categories || '[]'),
+      qty: JSON.parse(r.qty || '[]'),
+      sauces: JSON.parse(r.sauces || '[]'),
+      restrictions: JSON.parse(r.restrictions || '[]'),
+    };
+  } catch {
+    return { products: [], categories: [], qty: [], sauces: [], restrictions: [] };
+  }
+}
+
 export interface IntentResult {
   intent: Intent;
-  entities: Entities;
-  confidence: 'HIGH' | 'LOW';
+  confidence: number;
+  entities: Record<string, string>;
   action?: ActionType;
   filters?: string[];
   category?: CategoryType;
@@ -420,8 +445,8 @@ export function detectIntent(message: string, context?: any): IntentResult {
   const n = normalizeText(message);
   if (!n) return {
     intent: 'other',
-    entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
-    confidence: 'LOW',
+    entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+    confidence: 0.3,
     action: 'other',
     filters: [],
     category: 'none',
@@ -431,8 +456,8 @@ export function detectIntent(message: string, context?: any): IntentResult {
   if (isGreetingOnly(message)) {
     return {
       intent: 'SHOW_MENU',
-      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
-      confidence: 'HIGH',
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
       action: 'ver',
       filters: [],
       category: 'none',
@@ -448,8 +473,8 @@ export function detectIntent(message: string, context?: any): IntentResult {
   if (/(ver carrito|mi pedido|ver orden|que llevo|que pedi)/i.test(n)) {
     return {
       intent: 'VIEW_CART',
-      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
-      confidence: 'HIGH',
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
       action: 'ver',
       filters: [],
       category: 'none',
@@ -461,8 +486,8 @@ export function detectIntent(message: string, context?: any): IntentResult {
   if (/^(menu|ver menu|muestrame el menu|que hay de comer|que tienen|ver todo|carta|que venden|hola|buen dia|buenas tardes|buenas noches)/i.test(n)) {
     return {
       intent: 'SHOW_MENU',
-      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
-      confidence: 'HIGH',
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
       action: 'ver',
       filters: [],
       category: 'none',
@@ -474,9 +499,48 @@ export function detectIntent(message: string, context?: any): IntentResult {
   if (/(sorprendeme|recomiendame|que es lo mejor|algo rico|no se que pedir|tu dime)/i.test(n)) {
     return {
       intent: 'RECOMMEND',
-      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
-      confidence: 'HIGH',
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
       action: 'duda',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // 💛 LOYALTY_QUERY — "mis puntos", "saldo", "nivel", "estado de puntos", etc.
+  if (/(mis puntos|ver puntos|saldo de puntos|cuantos puntos|puntos tengo|mi nivel|estado de lealtad|puntos de lealtad|programa de puntos)/i.test(n)) {
+    return {
+      intent: 'LOYALTY_QUERY' as any,
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
+      action: 'ver',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // 💰 REDEEM_POINTS — "canjear", "usar mis puntos", "descuento puntos", etc.
+  if (/(canjear|canjeame|canjea|usar mis puntos|usar puntos|redimir|quiero mi descuento|aplicar descuento|descuento de puntos|si canjear|sí canjear)/i.test(n)) {
+    return {
+      intent: 'REDEEM_POINTS' as any,
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
+      action: 'aceptacion',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // 🎁 APPLY_REFERRAL — "WINGS-XXXX" or "tengo un código"
+  if (n.includes('wings-') || n.includes('tengo un codigo') || n.includes('mi codigo') || n.includes('descuento referido')) {
+    return {
+      intent: 'APPLY_REFERRAL' as any,
+      entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
+      confidence: 1.0,
+      action: 'quiero',
       filters: [],
       category: 'none',
       allergies: []
@@ -739,6 +803,11 @@ export function detectIntent(message: string, context?: any): IntentResult {
     'que más': 'exploracion',
   };
 
+  // ── APPLY_REFERRAL: "WINGS-XXXX" or "tengo un código" ────────────────────
+  if (n.includes('wings-') || n.includes('tengo un codigo') || n.includes('mi codigo')) {
+    addScore('APPLY_REFERRAL', 1000);
+  }
+
   for (const [verb, intent] of Object.entries(strongVerbs)) {
     if (n.startsWith(verb) || n.includes(` ${verb} `) || n.includes(` ${verb}`)) {
       let verbIntent = intent;
@@ -797,9 +866,11 @@ export function detectIntent(message: string, context?: any): IntentResult {
 
   let mappedIntent = bestScore > 0 ? (sortedScores[0][0] as Intent) : ('UNKNOWN' as any);
 
-  console.log("INPUT:", n);
-  console.log("SCORES:", scores);
-  console.log("INTENT:", mappedIntent);
+  if (process.env.NODE_ENV !== "test") {
+    console.log("INPUT:", n);
+    console.log("SCORES:", scores);
+    console.log("INTENT:", mappedIntent);
+  }
 
   if (
     category !== 'none' &&
@@ -832,8 +903,8 @@ export function detectIntent(message: string, context?: any): IntentResult {
 
   return {
     intent: mappedIntent,
-    entities,
-    confidence: bestScore > 3 ? 'HIGH' : 'LOW',
+    entities: entitiesToRecord(entities),
+    confidence: bestScore > 3 ? 1.0 : 0.3,
     action,
     filters,
     category,

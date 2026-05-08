@@ -1,58 +1,114 @@
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+/**
+ * PRODUCTION SECURE MIDDLEWARE (MODERN SSR)
+ * Multi-tenant SaaS with JWT validation and Tenant Injection
+ */
 
-  const isAdminRoute = pathname.startsWith('/admin');
-  const isOrdersRoute = pathname.startsWith('/orders');
-  const isLoginRoute = pathname === '/login';
-  const isLegacyAdminLogin = pathname === '/admin/login';
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY;
+const PROTECTED_PATHS = ['/admin', '/orders', '/api/protected'];
 
-  // Legacy admin login → redirect to new login
-  if (isLegacyAdminLogin) {
-    const url = request.nextUrl.clone();
+export async function middleware(req: NextRequest) {
+  let res = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
+
+  const { pathname } = req.nextUrl;
+
+  // 1. ADMIN API PROTECTION (Secret Key)
+  if (pathname.startsWith('/api/admin')) {
+    const authHeader = req.headers.get('authorization');
+    if (!ADMIN_SECRET_KEY || authHeader !== `Bearer ${ADMIN_SECRET_KEY}`) {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized Admin Access' }), { 
+        status: 401, 
+        headers: { 'content-type': 'application/json' } 
+      });
+    }
+    return res;
+  }
+
+  // 2. INITIALIZE SUPABASE SSR CLIENT
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          req.cookies.set({ name, value, ...options });
+          res = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          req.cookies.set({ name, value: '', ...options });
+          res = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          res.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // 3. TENANT RESOLUTION & SPOOF PROTECTION
+  let tenantId: string | null = null;
+
+  if (session?.user) {
+    tenantId = (session.user.app_metadata?.tenant_id as string) || 
+               (session.user.user_metadata?.tenant_id as string);
+  } else {
+    const host = req.headers.get('host') || '';
+    const subdomain = host.split('.')[0];
+    if (subdomain && !['localhost', 'www', 'myapp', 'snacks911'].includes(subdomain)) {
+      tenantId = subdomain; 
+    }
+  }
+
+  // 4. PATH-BASED AUTHENTICATION
+  const isProtectedPath = PROTECTED_PATHS.some(path => pathname.startsWith(path));
+  
+  // Custom check for employee session if Supabase session is missing
+  const adminCookie = req.cookies.get('snacks911_admin_session')?.value;
+  const employeeCookie = req.cookies.get('snacks911_employee_session')?.value;
+  const hasCustomSession = !!(adminCookie || employeeCookie);
+
+  if (isProtectedPath && !session && !hasCustomSession) {
+    const url = req.nextUrl.clone();
     url.pathname = '/login';
+    url.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(url);
   }
 
-  // Public routes
-  if (!isAdminRoute && !isOrdersRoute) {
-    return NextResponse.next();
+  // 5. TENANT-BASED RATE LIMITING & HEADER INJECTION
+  if (tenantId) {
+    const { rateLimit } = await import('@/lib/rateLimit');
+    // Limit: 60 requests per minute per tenant
+    const allowed = rateLimit(`tenant-${tenantId}`, 60, 60000);
+    if (!allowed) {
+      return new NextResponse('Too Many Requests (Tenant Limit)', { status: 429 });
+    }
+    
+    res.headers.set('x-tenant-id', tenantId);
+    req.headers.set('x-tenant-id', tenantId);
   }
 
-  // Verify session
-  const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  const empToken = request.cookies.get(EMPLOYEE_SESSION_COOKIE)?.value;
-  const session = await verifySessionToken(adminToken) || await verifySessionToken(empToken);
-
-  // Not authenticated → redirect to login
-  if (!session) {
-    if (isLoginRoute) return NextResponse.next();
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
-
-  // On login page but already authenticated → redirect to their dashboard
-  if (isLoginRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = session.role === 'admin' ? '/admin' : '/orders';
-    return NextResponse.redirect(url);
-  }
-
-  // Role-based access: /admin requires admin role
-  if (isAdminRoute && session.role !== 'admin') {
-    // Employee trying to access admin → redirect to orders
-    const url = request.nextUrl.clone();
-    url.pathname = '/orders';
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/orders/:path*', '/login'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

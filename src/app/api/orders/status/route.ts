@@ -65,6 +65,12 @@ export async function PATCH(req: Request) {
     }
     
     const currentStatus = String(existingOrder.status || '');
+    
+    // Idempotency check: If already in target status, return success
+    if (currentStatus === status) {
+      return NextResponse.json({ success: true, message: 'Status already up to date' });
+    }
+
     const allowedNext = ALLOWED_TRANSITIONS[currentStatus];
     if (!allowedNext || !allowedNext.has(status)) {
       return NextResponse.json(
@@ -73,9 +79,14 @@ export async function PATCH(req: Request) {
       );
     }
     
+    const updatePayload: Record<string, any> = { status };
+    if (status === 'delivered') {
+      updatePayload.delivered_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update(updatePayload)
       .eq('id', id)
       .eq('status', currentStatus)
       .select('*')

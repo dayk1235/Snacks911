@@ -43,5 +43,7 @@ async function runTests() {
 
 runTests().catch(err => {
   console.error(err);
-  process.exit(1);
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
 });

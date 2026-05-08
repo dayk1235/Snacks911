@@ -1,11 +1,12 @@
 import { supabaseAdmin as admin } from './supabaseAdmin';
 import * as server from './server/supabaseServer';
+import { createUuid } from '@/lib/utils/core';
 export type { Customer } from './adminTypes';
 
 const isServer = typeof window === 'undefined';
 
 if (!isServer) {
-  throw new Error(
+  console.warn(
     'db.server.ts is server-only. Do not import in React components or client code.'
   );
 }
@@ -19,6 +20,7 @@ export const getCustomerProfileFromDB = isServer ? server.getCustomerProfileFrom
 export const upsertCustomerProfile = isServer ? server.upsertCustomerProfile : (async () => {});
 
 export async function getSystemState() {
+  if (!isServer) return { mode: 'NORMAL' };
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('system_state')
@@ -30,6 +32,7 @@ export async function getSystemState() {
 }
 
 export async function updateSystemState(updates: any) {
+  if (!isServer) return;
   const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('system_state')
@@ -46,6 +49,7 @@ export async function saveAiCost(data: {
   intent?: string;
   order_id?: string;
 }) {
+  if (!isServer) return;
   const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('ai_costs')
@@ -163,7 +167,7 @@ export const dbSaveOrder = async (order: any) => {
 
     let recalculatedTotal = 0;
     const itemsWithVerifiedPrices = order.items.map((item: any) => {
-      const dbProd = dbProducts.find(p => String(p.id) === String(item.productId));
+      const dbProd = dbProducts.find((p: any) => String(p.id) === String(item.productId));
       const verifiedPrice = dbProd ? Number(dbProd.price) : 0;
       recalculatedTotal += verifiedPrice * Number(item.quantity || 1);
       return {
@@ -227,7 +231,7 @@ export const productToRow = async (p: any) => {
   return m.productToRow(p);
 };
 
-export { createUuid } from './uuid';
+export { createUuid };
 
 /**
  * Lightweight single-user check: did this user ADD_TO_CART
@@ -239,6 +243,7 @@ export async function checkCartAbandonment(
   userId: string,
   windowMs: number,
 ): Promise<{ abandoned: boolean; lastCartAt?: string; cartValue?: number }> {
+  if (!isServer) return { abandoned: false };
   try {
     const supabase = getSupabaseAdmin();
     const since = new Date(Date.now() - windowMs * 2).toISOString();
@@ -304,6 +309,7 @@ export async function checkCartAbandonment(
 }
 
 export async function saveAiLog(log: any): Promise<{ success: boolean; error?: string }> {
+  if (!isServer) return { success: true };
   try {
     const supabase = getSupabaseAdmin();
 

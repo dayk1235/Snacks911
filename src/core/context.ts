@@ -6,8 +6,12 @@
 import { OrderState } from './orderFlow';
 import { Cart, CartItem, UserContext as CoreUserContext } from './types';
 
+export type PaymentStatus = 'awaiting_payment' | 'payment_confirmed' | 'payment_expired';
+
 export interface UserContext extends CoreUserContext {
   phone: string;
+  tenantId: string;
+  businessName: string;
   lastIntent?: string;
   lastCategory?: string;
   constraints?: string[];
@@ -17,6 +21,27 @@ export interface UserContext extends CoreUserContext {
   lastAddedProductId?: string | number;
   lastAddTimestamp?: number;
   flowState?: OrderState;
+  paymentUrl?: string;
+  conektaOrderId?: string;
+  paymentExpiresAt?: string;
+  paymentOrderId?: string;
+  paymentStatus?: PaymentStatus;
+  /** Rule IDs already shown this session — prevents repeating upsells */
+  upsellShownRules?: string[];
+  /** Serialized UpsellSuggestion waiting for customer reply */
+  pendingUpsell?: any;
+  /** Pending loyalty redemption data { points, amount, tempOrderId } */
+  pendingLoyaltyDiscount?: { points: number; amount: number; tempOrderId: string };
+  /** Flag to prevent repeating the loyalty prompt at checkout */
+  loyaltyPromptShown?: boolean;
+  /** Order ID currently being reviewed */
+  lastReviewOrderId?: string;
+  /** Pending referral discount amount */
+  pendingReferralDiscount?: number;
+  /** Referral code used */
+  appliedReferralCode?: string;
+  /** Flag to track if we've asked for a referral code in this session */
+  referralPromptShown?: boolean;
 }
 
 const sessionStore = new Map<string, UserContext>();
@@ -34,31 +59,38 @@ export function isValidCart(cart: any): cart is Cart {
 }
 
 /**
- * Retrieves or creates a session for the given phone number.
+ * Retrieves or creates a session for the given phone number and tenant.
  */
-export function getContext(phone: string): UserContext {
+export function getContext(phone: string, tenantId?: string, businessName?: string): UserContext {
   const cleanPhone = phone.replace(/\D/g, '');
+  const activeTenantId = tenantId || 'snacks911';
+  const activeBusinessName = businessName || 'Snacks 911';
   
   if (!sessionStore.has(cleanPhone)) {
     sessionStore.set(cleanPhone, {
       userId: cleanPhone,
       phone: cleanPhone,
+      tenantId: activeTenantId,
+      businessName: activeBusinessName,
       state: 'inicio',
       cart: { items: [], total: 0 },
       lastInteraction: Date.now(),
       recommendedProducts: []
-    });
+    } as any);
   }
   
   const ctx = sessionStore.get(cleanPhone)!;
-  ctx.lastInteraction = Date.now();
-
-  // Enforce valid structure
-  if (!isValidCart(ctx.cart)) {
-    console.warn("[CONTEXT] Resetting invalid cart for:", cleanPhone);
+  
+  // If tenant mismatch, reset session
+  if (tenantId && ctx.tenantId !== tenantId) {
+    console.warn(`[CONTEXT] Tenant mismatch for ${cleanPhone}. Resetting session.`);
+    ctx.tenantId = tenantId;
+    ctx.businessName = activeBusinessName;
     ctx.cart = { items: [], total: 0 };
+    ctx.state = 'inicio';
   }
 
+  ctx.lastInteraction = Date.now();
   return ctx;
 }
 
@@ -66,7 +98,7 @@ export function getContext(phone: string): UserContext {
  * Updates context for a given phone number with partial data.
  */
 export function updateContext(phone: string, data: Partial<UserContext>): void {
-  const ctx = getContext(phone);
+  const ctx = getContext(phone, data.tenantId, data.businessName);
 
   if (data.cart && !isValidCart(data.cart)) {
     console.warn("[CONTEXT] Rejected invalid cart update for:", phone);

@@ -1,4 +1,4 @@
-import { normalizeText } from '@/lib/stringUtils';
+import { normalizeText } from '@/lib/utils/core';
 
 export interface RankEntities {
   product?: string[];

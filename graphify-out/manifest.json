@@ -1,0 +1,882 @@
+{
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/middleware/authGuard.ts": {
+    "mtime": 1778204317.441875,
+    "hash": "4df180c151a91589887afcc24d4f9060"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/types/index.ts": {
+    "mtime": 1778207928.1572397,
+    "hash": "43b125abd0e77c0957b52f3c3414d5e1"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/salesThermostat.ts": {
+    "mtime": 1777446507.4748924,
+    "hash": "01e37789c4c6bbb7017ea9b209c6e3c2"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/evaluator.ts": {
+    "mtime": 1778125818.6503308,
+    "hash": "dc10f5ca20c9449f48db56f01bd67176"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/healthMetrics.ts": {
+    "mtime": 1778208275.7218406,
+    "hash": "9550db9904f7f6dc42490325b21dc1d6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/fallbackEngine.ts": {
+    "mtime": 1777539525.3676558,
+    "hash": "06021de36999dcc8238623db8a6c5d0a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/inventoryMiddleware.ts": {
+    "mtime": 1778250334.405575,
+    "hash": "f9a272f910b5b7ce2925587a20eed20a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/whatsappClient.ts": {
+    "mtime": 1777658993.6937113,
+    "hash": "35ceeb9b4b25a5e15154c7b7d6354693"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/analytics.ts": {
+    "mtime": 1778208906.1656282,
+    "hash": "3bd6883c1959157fc74dd11b1812b810"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/allergyFilter.ts": {
+    "mtime": 1778214072.439967,
+    "hash": "b3359a55da12357f496413b51e06a7e7"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/humanHandoff.ts": {
+    "mtime": 1777447095.7580433,
+    "hash": "0353a6e5e91bf5b6f8de6a3ed56c50c4"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/telemetryEmitter.ts": {
+    "mtime": 1778169757.1003368,
+    "hash": "a9193950af72acc4305b1a7f455bb0e9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/antojo.ts": {
+    "mtime": 1778215626.0674174,
+    "hash": "7a5b55f73d53a3e95960841da68b3cfe"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/responseEngine.ts": {
+    "mtime": 1778219737.0297747,
+    "hash": "2306f6a2cb7575d414b6f639a1c18793"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/inventoryFilter.ts": {
+    "mtime": 1778203915.5840693,
+    "hash": "9fea9798e4d24e7a8878d1f1ba27ba8f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/intentDetector.ts": {
+    "mtime": 1778251940.5893974,
+    "hash": "509a26e13de62c165fdf9f0ff7093ec9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/revenueMetrics.ts": {
+    "mtime": 1778200528.6409857,
+    "hash": "88043fef837ed10fc5d67f3f73e3849b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/selfHealingEngine.ts": {
+    "mtime": 1778214041.0462558,
+    "hash": "c0eb453a563a959c39f756f83efd59d0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/context.ts": {
+    "mtime": 1778252263.8053226,
+    "hash": "9aa847cb58b973df564f1afc014bd271"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/offerAgent.ts": {
+    "mtime": 1778169733.4828188,
+    "hash": "c3ffd8037a515f5887d38e6a75c52dff"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/eventLogger.ts": {
+    "mtime": 1778169564.5769844,
+    "hash": "64f89d6f65b89ae212ec274c63aaf9b2"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/botEngine.ts": {
+    "mtime": 1778256341.3421798,
+    "hash": "94c3a371410cb22210ee4535a466388e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/nluBaseline.ts": {
+    "mtime": 1778199385.6398652,
+    "hash": "19834c3b0aaf622537452b97aec04f32"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/consultativeMatrix.ts": {
+    "mtime": 1777447227.4130967,
+    "hash": "decbb50f2a1aa66da28c8476ec4caa02"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/agentOrchestrator.ts": {
+    "mtime": 1778169295.6662107,
+    "hash": "f6d4ab055cb1cb110ebf94ec027e556c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/types.ts": {
+    "mtime": 1778251911.0430791,
+    "hash": "f84728d25621a50e134bb6fb26d34ce1"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/conversationLogger.ts": {
+    "mtime": 1778166933.0214624,
+    "hash": "7fb253e98d66d6f68285b941e8cd575d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/abandonmentRecovery.ts": {
+    "mtime": 1778208924.3406782,
+    "hash": "b6f839cdaa0861d9a7848ceb9e45eecb"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/responseValidator.ts": {
+    "mtime": 1777599223.1928542,
+    "hash": "6eee236663961ef63b7276c061f42b11"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/agentOrchestratorApi.ts": {
+    "mtime": 1778208172.3516421,
+    "hash": "717c9f1656fb3845edaf38d6219abd9f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/circuitBreaker.ts": {
+    "mtime": 1777447433.5566533,
+    "hash": "0bed84ef65ddb09a5b342fd42d7027b0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/orderFlow.ts": {
+    "mtime": 1778251242.4651883,
+    "hash": "672e5d936dce72e83fc5da29b5435ae6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/responseBuilder.ts": {
+    "mtime": 1778188284.8881366,
+    "hash": "c5365626ad4a60bc88e775112e18b176"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/validationService.ts": {
+    "mtime": 1778210967.854269,
+    "hash": "c92b9ea66aa2dd716db4e27d30c92b7c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/alertEngine.ts": {
+    "mtime": 1778169798.9241328,
+    "hash": "edd52d845de2e2feaa504d3ba8cdcaaf"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/index.ts": {
+    "mtime": 1778219743.363843,
+    "hash": "39309635cd3bd1386d11a29dc2e3b87e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/autoTrainer.ts": {
+    "mtime": 1778218488.2912285,
+    "hash": "ba3e11b3c992079512ad85cfc94e25c2"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/contextStore.ts": {
+    "mtime": 1778196689.5212004,
+    "hash": "b94ead3d6452d3c56be7cb9845d63b14"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/runBot.ts": {
+    "mtime": 1778169208.9647517,
+    "hash": "8b81e675c2f8309e9f3c726ef09f932d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/costGuardAI.ts": {
+    "mtime": 1778169790.1425793,
+    "hash": "263e36cac3b22d5877565e24b7103cbb"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/contextRanker.ts": {
+    "mtime": 1778051193.109971,
+    "hash": "fa00ecba3590dcf6630f5dcb61c78276"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/productRanker.ts": {
+    "mtime": 1778218588.2627962,
+    "hash": "80dde74b7b0b5aee0d254f2afc38d5e1"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/customerProfileStore.ts": {
+    "mtime": 1778169118.5569553,
+    "hash": "8e86e700f0455fc713501370916686d8"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/cartEngine.ts": {
+    "mtime": 1778207943.828391,
+    "hash": "2eb4be0a7a0687e802eac768c67cdd98"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/errorHandler.ts": {
+    "mtime": 1778219145.4652386,
+    "hash": "3a126cd7a3dc92bca8ec8a150f7819c3"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/messageBuilder.ts": {
+    "mtime": 1778219382.0201886,
+    "hash": "2a2f248af3d62f8d668c91a6e35bb1b0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/formatting.ts": {
+    "mtime": 1778219150.6034732,
+    "hash": "0b38e6a0a9b10ea424fa126e7965e94e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/flowController.ts": {
+    "mtime": 1778254267.5650644,
+    "hash": "97b77225f07abf5674a05a191aa6c4c9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/aiHandler.ts": {
+    "mtime": 1778219207.3552673,
+    "hash": "c3923809577608178b9c3bd7d46fe3bd"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/response/index.ts": {
+    "mtime": 1778219731.4712439,
+    "hash": "10a4e4e67ef674ca8dcab0c53a14c822"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/tests/inventory.test.ts": {
+    "mtime": 1778212531.9308453,
+    "hash": "150349c2bf5b80cf1f90a30fb1d3747f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/tests/orderFlow.test.ts": {
+    "mtime": 1778212540.8757272,
+    "hash": "6efdb718350dd1c20bf3acb105347404"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/tests/cartEngine.test.ts": {
+    "mtime": 1778212543.9016466,
+    "hash": "f2b6c600e7128c1d65b8f8de5a6a01c5"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/tests/strategy.test.ts": {
+    "mtime": 1778212537.987239,
+    "hash": "a2208c33ce18d1575c439656273481ee"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/__tests__/allergyFilter.test.ts": {
+    "mtime": 1778052765.8483214,
+    "hash": "b52eb1e000da5712d3ca97e09370a8f7"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/__tests__/manual-flow-check.ts": {
+    "mtime": 1778169292.6864839,
+    "hash": "18b644a9e1fe3a37ee1d69fc887581bd"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/__tests__/whatsapp-flow.test.ts": {
+    "mtime": 1778217103.8176484,
+    "hash": "2a84fc9671e5051859dddd80c35aed09"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/__tests__/intentDetector.test.ts": {
+    "mtime": 1778053950.7167082,
+    "hash": "6b41b61f7fd9d09f98208b2912aacc35"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/core/ai/memoryAgent.ts": {
+    "mtime": 1778170898.8904421,
+    "hash": "ff82a0681c1c25d0c6a9a1584b31467e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/layout.tsx": {
+    "mtime": 1777505277.958204,
+    "hash": "323dd23939d85820de2862186eeae2c9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/page.tsx": {
+    "mtime": 1778252235.3771584,
+    "hash": "05835921028890c8d09598dee26d9c29"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/layout.tsx": {
+    "mtime": 1777489073.6775417,
+    "hash": "8b47d329c6821716543acf4d3f35f071"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/page.tsx": {
+    "mtime": 1778169242.58598,
+    "hash": "61a3d613460e4cc84db8fe585ae46401"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/settings/page.tsx": {
+    "mtime": 1777278404.086104,
+    "hash": "d8a531a6d5a503acca44cc2be59f70f2"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/products/page.tsx": {
+    "mtime": 1778085550.7036362,
+    "hash": "ce48994ef3fa80a1586faae610773911"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/optimize/page.tsx": {
+    "mtime": 1778050774.8547952,
+    "hash": "642d44099ed80b95ae16f04083e7e235"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/sales/page.tsx": {
+    "mtime": 1778089780.622379,
+    "hash": "b2d8c8e8638c574df38b59d2dfceb6bc"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/cash/page.tsx": {
+    "mtime": 1777487314.876795,
+    "hash": "1c12cd2161ebdc3d7a67ce1eefd98c05"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/pos/page.tsx": {
+    "mtime": 1777583478.172139,
+    "hash": "b68e1b2c7ef22698c4171e119f7db943"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/audit/page.tsx": {
+    "mtime": 1777432544.6870537,
+    "hash": "1e73be27c5e274d1f410fac8356f33a7"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/menu/page.tsx": {
+    "mtime": 1777423726.3690476,
+    "hash": "16ce6853ef6841975fcf30b051b0b240"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/staff/page.tsx": {
+    "mtime": 1777410625.086114,
+    "hash": "52e1700818d17d117667a499b706ea24"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/orders/page.tsx": {
+    "mtime": 1778169240.4476547,
+    "hash": "b7e6e60097aef90fbd78dca780e35cd2"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/login/page.tsx": {
+    "mtime": 1775939728.5159152,
+    "hash": "7f1a867483c3d983d9d68e3a658e7dd3"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/admin/reports/page.tsx": {
+    "mtime": 1777423726.409492,
+    "hash": "af8fd44b31779c16708442fbc9decf18"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/menu/page.tsx": {
+    "mtime": 1778207972.5905335,
+    "hash": "b508ed4c1a54aa91269a85781d2eea61"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/settings/route.ts": {
+    "mtime": 1778167795.567351,
+    "hash": "c999067659d7e35130cc90e4aa2ae33d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/payments/webhook/route.ts": {
+    "mtime": 1778252017.6808572,
+    "hash": "a54d06c2c460b632bd064c6b8e25cec8"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/payments/create/route.ts": {
+    "mtime": 1778249190.314441,
+    "hash": "7012424d6c33f776c4d9e2bbccb36216"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/learn/route.ts": {
+    "mtime": 1778184618.6668394,
+    "hash": "32f720830f6b4afeb429517fe35da4f8"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/products/route.ts": {
+    "mtime": 1778216170.2825706,
+    "hash": "69f2592f0221478683fd30879f69efe0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/products/seed/route.ts": {
+    "mtime": 1778169306.855988,
+    "hash": "2303459580ff70091b81296236ac8590"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/products/delete-all/route.ts": {
+    "mtime": 1778169305.5952845,
+    "hash": "19e0ec53ebddcf31aab98ecf2daa4fb6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/products/toggle/route.ts": {
+    "mtime": 1778204329.1290696,
+    "hash": "047e75619ce79e304a36c016584bb237"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/products/check/route.ts": {
+    "mtime": 1778169319.7907672,
+    "hash": "a30267f303de8938e87583895f2f5cfa"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/auth/logout/route.ts": {
+    "mtime": 1775852934.0920253,
+    "hash": "5abdcc7b9ee7944f95271a964621f119"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/auth/reset-request/route.ts": {
+    "mtime": 1778169324.4672859,
+    "hash": "780a3f457ddd7d850bafa3c9cf3fe27b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/auth/me/route.ts": {
+    "mtime": 1775916176.8465161,
+    "hash": "5d074197e2d5eb60073df3e796d070bf"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/auth/reset-password/route.ts": {
+    "mtime": 1778169326.4987156,
+    "hash": "8aaf230d85f31eb511ebd5db0d36d740"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/auth/login/route.ts": {
+    "mtime": 1775917750.4246027,
+    "hash": "554bda3981754ef5500310f147848153"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/cash/route.ts": {
+    "mtime": 1778204388.6377385,
+    "hash": "c351413ac0a319301dce02ddadba7026"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/health/route.ts": {
+    "mtime": 1778205493.0371628,
+    "hash": "611a37b2e2dc43453d51f0bff9b5ca17"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/admin/logout/route.ts": {
+    "mtime": 1775901340.8818622,
+    "hash": "0dc400065ca52a8178fb2224251f17e8"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/admin/me/route.ts": {
+    "mtime": 1778169331.7588146,
+    "hash": "b0abe76c38168585eb3dbcc31d3b1510"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/admin/staff/route.ts": {
+    "mtime": 1778204376.2109725,
+    "hash": "c47cad0b835e43711453526e258447f0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/admin/login/route.ts": {
+    "mtime": 1775916183.750432,
+    "hash": "8d0ce5cf03ece0f37a7db0042ddda4dd"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/admin/reset-codes/route.ts": {
+    "mtime": 1778204381.9768271,
+    "hash": "47cc1d2461dd5cd7cd87e289e4eaa601"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/orders-list/route.ts": {
+    "mtime": 1778169321.2029414,
+    "hash": "3dc01ea4b413b5594246ef4b85baa8dc"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/pos/orders/route.ts": {
+    "mtime": 1778207480.3481398,
+    "hash": "38b3481dbd4c4a38fb0ce77e13211250"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/ai/chat/route.ts": {
+    "mtime": 1778206765.5995505,
+    "hash": "17b20b5188bf32ceea27f1fc411d1161"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/ai/approve/route.ts": {
+    "mtime": 1778169328.4760733,
+    "hash": "d4c31aa44f41963587dce34b40857440"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/menu/parse/route.ts": {
+    "mtime": 1775929000.8967173,
+    "hash": "cb35361c7de1429b35dea95b97796d72"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/menu/save/route.ts": {
+    "mtime": 1778204323.3243265,
+    "hash": "8527821c02d781043e42adb48ffc4c1f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/log/route.ts": {
+    "mtime": 1778167469.6437893,
+    "hash": "641b9d95ae7072a5ec3c910a5cc6414d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/orders/route.ts": {
+    "mtime": 1778169314.2309911,
+    "hash": "c7d37d6a7a9c532d061b90d33f81c2c9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/orders/confirm/route.ts": {
+    "mtime": 1778169315.2079425,
+    "hash": "c116f78cf2d7a78a2e9262cc7608fde0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/orders/status/route.ts": {
+    "mtime": 1778251283.9700756,
+    "hash": "459f6896d4b1e93a51ca8ce2cd275936"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/whatsapp/webhook/route.ts": {
+    "mtime": 1778252140.4365141,
+    "hash": "eddcd04ab89609db952dbbaf44b9fb50"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/whatsapp/health/route.ts": {
+    "mtime": 1778169312.4294832,
+    "hash": "835e0148a08d416e60002477d68a0ad9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/analytics/route.ts": {
+    "mtime": 1778204919.563084,
+    "hash": "e55e0eaa7f4666446f8d7cf2ea20a48d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/store/settings/route.ts": {
+    "mtime": 1778218519.617329,
+    "hash": "cd0b48b9d744c6c45ff122d524364ad6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/api/store/status/route.ts": {
+    "mtime": 1778218533.2346697,
+    "hash": "bf3f348005ad09c92be558ab16f414de"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/reset-password/page.tsx": {
+    "mtime": 1777432544.693443,
+    "hash": "a37dbb3c4acff01101d3c4395a0dc2af"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/orders/page.tsx": {
+    "mtime": 1778169241.5168767,
+    "hash": "2aedaf21e1ca6270f1376659b5aa8a34"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/login/page.tsx": {
+    "mtime": 1777423726.374371,
+    "hash": "a3ed69c6841414dad4b1dc5aac954d7d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/env-setup.ts": {
+    "mtime": 1778165724.8328288,
+    "hash": "78b9f6006e51ed02e6d6f7a992dd73b4"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/auto-evaluator.ts": {
+    "mtime": 1778088696.7929697,
+    "hash": "2d08c116520c9f9cc61637601262821f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/db-allergy.test.ts": {
+    "mtime": 1778169126.2026434,
+    "hash": "ddd6b3c900566fd7dd92a105fd7a3e01"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/response.test.ts": {
+    "mtime": 1778088213.935884,
+    "hash": "83988992f17918d3917a96c22138d85a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/allergy.test.ts": {
+    "mtime": 1778058110.7610908,
+    "hash": "3b090136a56c1fefea1110c693255399"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/contextRanking.test.ts": {
+    "mtime": 1778054483.446342,
+    "hash": "f8dfb3e60a15b2546597f242f8610fa4"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/verify-env.ts": {
+    "mtime": 1778092210.1525486,
+    "hash": "3ab952d30f7bfdc5894e4d4c286562c0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/e2e/botEdgeCases.test.ts": {
+    "mtime": 1778256347.636053,
+    "hash": "1c8ea2c4e8f5b964415831879e67a342"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/tests/e2e/botFlow.test.ts": {
+    "mtime": 1778213390.886959,
+    "hash": "7f9711aac7095ba81262409340417c68"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/ui/Button.tsx": {
+    "mtime": 1777423726.4110184,
+    "hash": "584f45eccec89dd440772c25f8509c5d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/Hero.tsx": {
+    "mtime": 1778196928.5423186,
+    "hash": "4fd7451875fbaaa18adc48bfa4c49a78"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/SocialProof.tsx": {
+    "mtime": 1777755854.6949892,
+    "hash": "052790e48005528dd9ea8256b7cc601e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/CombosSection.tsx": {
+    "mtime": 1778196892.2813108,
+    "hash": "7df982da869eb876e28c14ddcd8badab"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/ReviewSection.tsx": {
+    "mtime": 1777441383.6691277,
+    "hash": "15ca5cda6747f8b142a5bd6eafbf4f5f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/ComboShowcase.tsx": {
+    "mtime": 1778196979.3029962,
+    "hash": "a765455948797edba7c2a703ddd5698b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/sections/ContactSection.tsx": {
+    "mtime": 1777441866.951805,
+    "hash": "35dd2173bc59fbd7f7c008550614d201"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/chat/OrderBot.tsx": {
+    "mtime": 1778218576.1810503,
+    "hash": "4306710bed5b2454c524cc82f15a2711"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/chat/ChatBot.tsx": {
+    "mtime": 1778196854.8407896,
+    "hash": "20a86f0692e5c7651a8d65e1436a687c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/layout/SiteFooter.tsx": {
+    "mtime": 1775939747.955454,
+    "hash": "09e1f24581dda8b873468418eb4014ad"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/layout/Navbar.tsx": {
+    "mtime": 1777423726.3778603,
+    "hash": "b3103deffec612338ab8c36acac4da52"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/layout/CustomCursor.tsx": {
+    "mtime": 1777270247.4860158,
+    "hash": "e42b2856751dd06e7e5071a8520f4e63"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/layout/ScrollCTA.tsx": {
+    "mtime": 1777423726.4107838,
+    "hash": "96f1177032c750461eeb3125889eadd7"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/modals/OrderAlertModal.tsx": {
+    "mtime": 1777441292.6846554,
+    "hash": "ffcc960bd1a508ca8de082f6c0e8ed30"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/modals/UpsellModal.tsx": {
+    "mtime": 1778051146.5362206,
+    "hash": "0a973d1a71a4308b31392652740fc40e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/modals/WelcomeModal.tsx": {
+    "mtime": 1777440702.845514,
+    "hash": "934e9190262d6c78cb3a07baa49e88b6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/modals/ProductCustomizerModal.tsx": {
+    "mtime": 1777441321.0321681,
+    "hash": "847ebd4d1ad62edc072aada2dcd87eaa"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/modals/ComboSelectorModal.tsx": {
+    "mtime": 1777441278.4554682,
+    "hash": "8aa2ad4ab64020767dbf36e26c2cb996"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/common/DecisionLock.tsx": {
+    "mtime": 1777441197.3508425,
+    "hash": "ab0ac38816b77c07f86bfd59c93b20ca"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/common/ProductCard.tsx": {
+    "mtime": 1778196946.1890447,
+    "hash": "0ec716d424c4095382ea607fb86ae983"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/common/PromoBanner.tsx": {
+    "mtime": 1777441248.483208,
+    "hash": "c45084229cacc427a69c2e69e9e18763"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/cart/Cart.tsx": {
+    "mtime": 1778207956.9340909,
+    "hash": "bf00fee4c8d965fd1cf3df5acc4d3e2e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/cart/CartUpsellBanner.tsx": {
+    "mtime": 1778051074.6905973,
+    "hash": "2d8169d02b44bc3ec66563386862513a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/cart/CartUpsell.tsx": {
+    "mtime": 1778059733.7396698,
+    "hash": "393e367dd3fc7861aee230b0774ede7c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/kitchen/KitchenPanel.tsx": {
+    "mtime": 1778169239.361039,
+    "hash": "f9856d509f5f8ba0588ce92c7f93418c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/components/effects/FireCanvas.tsx": {
+    "mtime": 1777441221.5756142,
+    "hash": "0874bd08a15f43ff5be5ed5f14ae83ce"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scratch/stress-test.ts": {
+    "mtime": 1778169243.7066774,
+    "hash": "13e298d5119c2a50f6913a81d2849318"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scratch/smoke-test-db.ts": {
+    "mtime": 1778173770.6212022,
+    "hash": "302c86fe1cca914138ebb0fb0c1615de"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scratch/testGemini.ts": {
+    "mtime": 1777752151.9637072,
+    "hash": "4806f4553183d052392c42a41ce887f7"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scratch/testLearning.ignore.ts": {
+    "mtime": 1778169302.8159933,
+    "hash": "a7f93fba67168e32a2491969bd8e70c5"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/ai/runtime/salesAgent.ts": {
+    "mtime": 1777410625.0824018,
+    "hash": "3b8b4767cc44a84668cb083386e02d56"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/ai/runtime/intentAgent.ts": {
+    "mtime": 1777410625.081901,
+    "hash": "b4c6bc3e2bec799aacca232b521aee5f"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/ai/runtime/flowEngine.ts": {
+    "mtime": 1777410625.0815263,
+    "hash": "cd1c969700021bb63084d41b54ba47b5"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/ai/runtime/contextBuilder.ts": {
+    "mtime": 1777355455.514891,
+    "hash": "d877436bdab6ce12f5d4fbd9e9136aa0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/ai/runtime/decisionRouter.ts": {
+    "mtime": 1777355930.2452972,
+    "hash": "2f51d4a0a54cc5c528e5576f981dbc85"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scripts/reviewConversations.ts": {
+    "mtime": 1777764301.6908162,
+    "hash": "17cef38ee6133b660a1db13a13949070"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scripts/upsert-products.ts": {
+    "mtime": 1778053179.7996583,
+    "hash": "1cc4d38e9f64a5bc7f1faa694c4e93fe"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scripts/train.ts": {
+    "mtime": 1778064315.994356,
+    "hash": "a337c0b4a52f20795ebd747f056644c0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scripts/test-profile.ts": {
+    "mtime": 1778050544.2328022,
+    "hash": "7799f6c9a7cecc1f69d2be45fec3c6dc"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/scripts/dataset-review.ts": {
+    "mtime": 1778124759.5127692,
+    "hash": "e6990803be341d798b03fb390d18b9a9"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/promos.ts": {
+    "mtime": 1776047846.6961462,
+    "hash": "ae2cf610d992fd64f6ea7722afa8cb01"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/alert.ts": {
+    "mtime": 1778212421.7508597,
+    "hash": "563e8913171aa654a09c101fafb405a5"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/adminStore.client.ts": {
+    "mtime": 1778218644.8910737,
+    "hash": "c7e11e64ead31294d01b1e229b3cf44a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/cartStore.ts": {
+    "mtime": 1778101957.5736153,
+    "hash": "95297e0c1d4f29604dd8df01a2886457"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/uuid.ts": {
+    "mtime": 1778218383.209729,
+    "hash": "1b5b6e93b656ae28855feaa6cac894e0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/cashStore.ts": {
+    "mtime": 1778197171.2445033,
+    "hash": "75792b001db46fdcd981e856e822768e"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/adminStore.ts": {
+    "mtime": 1778089786.428051,
+    "hash": "de2be32cc7bb57e60ef66225bc2081c1"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/menu-generator.ts": {
+    "mtime": 1775928986.536779,
+    "hash": "451fab5ba356d6c6226a696eaf5e50e6"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/simpleIntentParser.ts": {
+    "mtime": 1777423726.4114947,
+    "hash": "bcadf58a5b5faaaf2cacbc259f10294a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/analytics.ts": {
+    "mtime": 1775901630.5576737,
+    "hash": "b0f3fd3c4283ca934bf652b590d25367"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/adminStore.server.ts": {
+    "mtime": 1778089731.1985662,
+    "hash": "854b25179d906e21b54e79f0e1f7d20b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsappSession.ts": {
+    "mtime": 1777587018.4206355,
+    "hash": "c29d7dfc6781f24ab28994de9368f49d"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/adminTypes.ts": {
+    "mtime": 1778202042.0431654,
+    "hash": "99e7088e6cb40e2c95fccd169c1d764b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/aiExamples.ts": {
+    "mtime": 1777767797.1655552,
+    "hash": "89d929f614dcd8baf0d2c94993f20a3b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/multiAiOrchestrator.ts": {
+    "mtime": 1776063002.02574,
+    "hash": "c20dba611f06ca75bf887e6f9652d6a0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/prompts.ts": {
+    "mtime": 1776079001.8462796,
+    "hash": "a0966f6d8de59f321d66b5362ee59628"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/logger.ts": {
+    "mtime": 1778253473.850688,
+    "hash": "e286e58cda9eb4f75c8b84b02ad269bf"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/rateLimit.ts": {
+    "mtime": 1778204191.171925,
+    "hash": "4f1da2241a41b19e445f550d796b6c68"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/posStore.ts": {
+    "mtime": 1778197135.7154467,
+    "hash": "125dddf0abbf27bc6b4c51c1525c473b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/multiAiRouter.ts": {
+    "mtime": 1776079127.1515589,
+    "hash": "d498951626242fe63bf59793cb4f47ad"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/productStore.ts": {
+    "mtime": 1778197122.7023878,
+    "hash": "91d9c76eb4871eb9df09312f2e252277"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/stringUtils.ts": {
+    "mtime": 1778219773.9433725,
+    "hash": "ee834d4a1229200c00892442abd5b942"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/db.client.ts": {
+    "mtime": 1778169199.026229,
+    "hash": "172336f6c65692eeb02dcd6cddf3046b"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/dbServer.ts": {
+    "mtime": 1778169226.2673137,
+    "hash": "61c0220db24cfc0f360dbcd8be822501"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/supabaseAdmin.ts": {
+    "mtime": 1778256326.4246335,
+    "hash": "bc9405c0c44a5b7a9415c62d0e2d1c1a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/supabase.ts": {
+    "mtime": 1778050129.1731534,
+    "hash": "226b48cedc3958cc6de665eec53fe0c4"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/salesOptimizer.ts": {
+    "mtime": 1776042775.9525328,
+    "hash": "3e97f0f0f3e7da4d6f951410c93792e0"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/db.server.ts": {
+    "mtime": 1778218466.2986293,
+    "hash": "365363de6fc845758fa23374d7215ab4"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/storeSettingsStore.ts": {
+    "mtime": 1778197146.1632636,
+    "hash": "804820668fb10cf67366df1c20948c32"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/conversionTracker.ts": {
+    "mtime": 1778169217.0949266,
+    "hash": "6b8cb929eb02eb257ed66f5f49ac2635"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/db.ts": {
+    "mtime": 1778218441.9597418,
+    "hash": "63bba449ee3bf1973c5243b997a1b787"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/chatStore.ts": {
+    "mtime": 1777423726.4111948,
+    "hash": "c8e2c4b21481a042c2c17ff077a94721"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/customerProfileStore.ts": {
+    "mtime": 1778050292.4129906,
+    "hash": "d5e7e6e023f074307aa07a1bc85862e8"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/sound.ts": {
+    "mtime": 1775902553.868121,
+    "hash": "f9e5283087cc95051791d475d278201a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/payments/paymentMessages.ts": {
+    "mtime": 1778249167.9063118,
+    "hash": "2a73787086834d28f15e6d2552fe3cbc"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/payments/conekta.ts": {
+    "mtime": 1778249152.0026338,
+    "hash": "69a5d4c0e21c02fa6e1322e4ba3620e1"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/payments/paymentChecker.ts": {
+    "mtime": 1778250060.158711,
+    "hash": "e1fd3bf5b934717a66b0850f9800f7ac"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/logger/learningLogger.ts": {
+    "mtime": 1778088679.7164671,
+    "hash": "f2f380dc26dd7c2950fcc0fe1857dffd"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/server/supabaseServer.ts": {
+    "mtime": 1778256334.2363064,
+    "hash": "68eec644a37e3ec8d3676f53049fdc88"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/server/employeeStore.ts": {
+    "mtime": 1778173606.775307,
+    "hash": "deab8656c30f458f9fbb6f9ecff84c36"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/server/adminSession.ts": {
+    "mtime": 1775916443.3160017,
+    "hash": "a441c24a3973088144de0a9535722823"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/server/persistence.ts": {
+    "mtime": 1775901946.9572773,
+    "hash": "41e8a007099404f1417deed3c93972c3"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/server/apiAuth.ts": {
+    "mtime": 1778218506.3607209,
+    "hash": "c7b90c01a2c8534fdb4132ee6236341a"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/utils/core.ts": {
+    "mtime": 1778218350.610388,
+    "hash": "68231e6b8e5345fe3935f4833b5a89bf"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/tips/tipModule.ts": {
+    "mtime": 1778250380.31575,
+    "hash": "a51cf8100c21eebb75c379ff5028131c"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/metaClient.ts": {
+    "mtime": 1777342501.2062855,
+    "hash": "2b7443ad7b72058e914d61671721c090"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/salesPlaybooks.ts": {
+    "mtime": 1777279921.6574197,
+    "hash": "e2dc243810d10b1e3bb6b37447a11b99"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/intentDetector.ts": {
+    "mtime": 1778217540.0454865,
+    "hash": "7ef6515fb1250cf71a806c3008eeb446"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/botEngine.ts": {
+    "mtime": 1778217210.0992699,
+    "hash": "4bbafb30802c733c57a7c6ad6d2a8831"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/aiService.ts": {
+    "mtime": 1777758381.2730227,
+    "hash": "b5d9706af5a7042df6f71250e4c92771"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/sessionManager.ts": {
+    "mtime": 1778176928.4057045,
+    "hash": "5d9b434b188e16eb1ccb60f885d96af5"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/formatter.ts": {
+    "mtime": 1778087099.252326,
+    "hash": "7b4724dbf4337d7df556a68da24ca6db"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/lib/whatsapp/linkGenerator.ts": {
+    "mtime": 1777423726.411671,
+    "hash": "7bb8df71a0af87af86ee62cda9148864"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/data/menu.ts": {
+    "mtime": 1778048130.968765,
+    "hash": "9b1a99556325ff91834dcb51a90824cb"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/data/products.ts": {
+    "mtime": 1778050194.649576,
+    "hash": "8ed2b8a888bf54c13663e6b9e06bc725"
+  },
+  "/Users/theboy/Downloads/Documentencion Sancks 911/Pagina web /Snacks-911-WebApp/snacks911-web/src/app/icon.svg": {
+    "mtime": 1775773599.0002542,
+    "hash": "7e12f642addc8d3670ee39eb00364ae5"
+  }
+}

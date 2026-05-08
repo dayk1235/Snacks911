@@ -5,8 +5,6 @@
  * UI components only import from here, never from lib/ directly.
  */
 
-import type { Product } from '@/data/products';
-
 // ─── Chat/Order Types ────────────────────────────────────────────────────────
 
 export type Intent =
@@ -41,6 +39,9 @@ export type Intent =
   | 'RECOMMEND'
   | 'UNKNOWN'
   | 'SHOW_CATEGORY'
+  | 'LOYALTY_QUERY'
+  | 'REDEEM_POINTS'
+  | 'APPLY_REFERRAL'
   | 'other';
 
 export type ActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
@@ -57,8 +58,8 @@ export interface Entities {
 
 export interface IntentResult {
   intent: Intent;
-  entities: Entities;
-  confidence: 'HIGH' | 'LOW';
+  confidence: number;
+  entities: Record<string, string>;
   action?: ActionType;
   filters?: string[];
   category?: CategoryType;
@@ -90,7 +91,7 @@ export interface ConversationState {
   customerPayment: string;
   orderConfirmed: boolean;
   retryCount: number;
-  cart: string[];
+  cart: Cart;
   cartTotal: number;
   whatsappUrl: string | null;
   phone?: string;
@@ -144,11 +145,30 @@ export interface Product {
   stock: number;
 }
 
+/**
+ * Canonical CartItem — single source of truth.
+ *
+ * UI layer (cartEngine) populates: id, name, price, quantity, category, image, description, ingredients, linkedExtras, isStandaloneExtra
+ * Bot engine layer populates: productId, qty (aliasing id/quantity)
+ *
+ * All fields except name and price are optional to allow both shapes.
+ */
 export interface CartItem {
-  productId: string;
+  // UI / cartEngine primary fields
+  id: string;
   name: string;
   price: number;
-  qty: number;
+  quantity: number;
+  // Optional UI fields
+  description?: string;
+  category?: string;
+  image?: string;
+  ingredients?: string[];
+  linkedExtras?: string[];
+  isStandaloneExtra?: boolean;
+  // Bot engine aliases (populated alongside id/quantity when coming from bot)
+  productId?: string;
+  qty?: number;
 }
 
 export interface Cart {
@@ -258,5 +278,6 @@ export interface ResponseOutput {
   text: string;
   type?: 'text' | 'buttons' | 'products';
   actions?: QuickAction[];
+  cart?: Cart;
   nextState: ConversationState;
 }

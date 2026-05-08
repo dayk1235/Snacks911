@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +19,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setReady(true);
-    // CSS entrance animation via class
     requestAnimationFrame(() => {
       if (cardRef.current) {
         cardRef.current.style.opacity = '1';
@@ -53,33 +53,24 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId, password: pass }),
       });
 
-      const data = await response.json();
+      const result = await res.json();
+      if (!result.ok) throw new Error(result.error || 'Credenciales inválidas');
 
-      if (response.ok) {
-        // CSS exit: scale up + fade + redirect
-        if (cardRef.current) {
-          cardRef.current.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-          cardRef.current.style.transform = 'scale(1.03)';
-          cardRef.current.style.opacity = '0';
-        }
-        setTimeout(() => router.push(data.user.role === 'admin' || data.user.role === 'gerente' ? '/admin' : '/orders'), 360);
-      } else {
-        setError(data.error || 'Credenciales invalidas');
-        // CSS shake via class toggle
-        if (formRef.current) {
-          formRef.current.classList.remove('shake');
-          void formRef.current.offsetWidth; // reflow
-          formRef.current.classList.add('shake');
-        }
+      // Successful login - direct redirect to avoid animation glitches
+      window.location.href = '/admin';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al conectar con el servidor');
+      if (formRef.current) {
+        formRef.current.classList.remove('shake');
+        void formRef.current.offsetWidth;
+        formRef.current.classList.add('shake');
       }
-    } catch {
-      setError('No se pudo iniciar sesion. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }

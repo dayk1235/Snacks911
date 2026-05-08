@@ -85,7 +85,8 @@ export async function detectAbandonedSessions(
       const entry = latestByUser.get(uid)!;
       const itemNames = Array.isArray(entry.cart)
         ? entry.cart
-        : entry.cart.map((i: any) => i.name || i);
+        : (Array.isArray(entry.cart?.items) ? entry.cart.items : [])
+          .map((i: any) => i.name || '');
 
       abandoned.push({
         userId: uid,

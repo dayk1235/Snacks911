@@ -1,15 +1,6 @@
-/**
- * Normaliza un texto para realizar comparaciones seguras:
- * - Convierte todo a minúsculas (lowercase)
- * - Remueve acentos y marcas diacríticas
- */
-export function normalizeText(text: string): string {
-  if (!text) return '';
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
+import { normalizeText } from '@/lib/utils/core';
+
+export { normalizeText };
 
 /**
  * Realiza un match "fuzzy" básico verificando si el texto objetivo

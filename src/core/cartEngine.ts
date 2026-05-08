@@ -211,16 +211,21 @@ export function addToCart(context: any, product: any) {
   const price = Number(product.price || 0);
   const name = String(product.name || 'Producto');
 
-  const existing = context.cart.items.find((i: any) => i.productId === productId);
+  const existing = context.cart.items.find((i: any) => i.productId === productId || i.id === productId);
 
   if (existing) {
-    existing.qty += 1;
+    existing.qty = (existing.qty ?? 0) + 1;
+    existing.quantity = existing.qty;
   } else {
     context.cart.items.push({
+      // Canonical unified fields
+      id: productId,
       productId,
       name,
       price,
-      qty: 1
+      quantity: 1,
+      qty: 1,
+      category: product.category || 'unknown',
     });
   }
 

@@ -4,18 +4,13 @@ import {
   EMPLOYEE_SESSION_COOKIE,
   verifySessionToken,
 } from '@/lib/server/adminSession';
+import { parseCookie } from '@/lib/utils/core';
 
 type SessionPayload = {
   uid?: string;
   role?: string;
   exp?: number;
 };
-
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
 
 export async function getApiSession(req: Request): Promise<SessionPayload | null> {
   const adminToken = parseCookie(req, ADMIN_SESSION_COOKIE);

@@ -1,46 +1,46 @@
-# Graph Report - .  (2026-05-07)
+# Graph Report - src  (2026-05-08)
 
 ## Corpus Check
-- Large corpus: 270 files · ~299,152 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
+- Large corpus: 220 files · ~118,601 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
 
 ## Summary
-- 1093 nodes · 1987 edges · 87 communities (70 shown, 17 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 55 edges (avg confidence: 0.8)
+- 1268 nodes · 2259 edges · 117 communities (79 shown, 38 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Community 0|Community 0]]
-- [[_COMMUNITY_Community 1|Community 1]]
-- [[_COMMUNITY_Community 2|Community 2]]
-- [[_COMMUNITY_Community 3|Community 3]]
-- [[_COMMUNITY_Community 4|Community 4]]
-- [[_COMMUNITY_Community 5|Community 5]]
-- [[_COMMUNITY_Community 6|Community 6]]
-- [[_COMMUNITY_Community 7|Community 7]]
-- [[_COMMUNITY_Community 8|Community 8]]
-- [[_COMMUNITY_Community 9|Community 9]]
-- [[_COMMUNITY_Community 10|Community 10]]
-- [[_COMMUNITY_Community 11|Community 11]]
-- [[_COMMUNITY_Community 12|Community 12]]
-- [[_COMMUNITY_Community 13|Community 13]]
-- [[_COMMUNITY_Community 14|Community 14]]
-- [[_COMMUNITY_Community 15|Community 15]]
-- [[_COMMUNITY_Community 16|Community 16]]
-- [[_COMMUNITY_Community 17|Community 17]]
-- [[_COMMUNITY_Community 18|Community 18]]
-- [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 20|Community 20]]
-- [[_COMMUNITY_Community 21|Community 21]]
-- [[_COMMUNITY_Community 22|Community 22]]
-- [[_COMMUNITY_Community 23|Community 23]]
-- [[_COMMUNITY_Community 24|Community 24]]
-- [[_COMMUNITY_Community 25|Community 25]]
-- [[_COMMUNITY_Community 26|Community 26]]
-- [[_COMMUNITY_Community 27|Community 27]]
-- [[_COMMUNITY_Community 28|Community 28]]
-- [[_COMMUNITY_Community 29|Community 29]]
-- [[_COMMUNITY_Community 30|Community 30]]
-- [[_COMMUNITY_Community 31|Community 31]]
+- [[_COMMUNITY_Agent Orchestrator & WhatsApp Pipeline|Agent Orchestrator & WhatsApp Pipeline]]
+- [[_COMMUNITY_Admin Dashboard Pages|Admin Dashboard Pages]]
+- [[_COMMUNITY_Authentication & Session Management|Authentication & Session Management]]
+- [[_COMMUNITY_Payments & Order Processing|Payments & Order Processing]]
+- [[_COMMUNITY_Employee Auth (PBKDF2)|Employee Auth (PBKDF2)]]
+- [[_COMMUNITY_Kitchen Display System|Kitchen Display System]]
+- [[_COMMUNITY_Menu UI & Product Cards|Menu UI & Product Cards]]
+- [[_COMMUNITY_Cost Guard & AI Caching|Cost Guard & AI Caching]]
+- [[_COMMUNITY_Agent Orchestrator Core|Agent Orchestrator Core]]
+- [[_COMMUNITY_AI Context & Response Models|AI Context & Response Models]]
+- [[_COMMUNITY_Database Client Operations|Database Client Operations]]
+- [[_COMMUNITY_Cart Engine|Cart Engine]]
+- [[_COMMUNITY_Customer Profile & Menu Management|Customer Profile & Menu Management]]
+- [[_COMMUNITY_Multi-AI Orchestrator|Multi-AI Orchestrator]]
+- [[_COMMUNITY_Auto-Trainer & Learning Loop|Auto-Trainer & Learning Loop]]
+- [[_COMMUNITY_Zustand Store Management|Zustand Store Management]]
+- [[_COMMUNITY_Promos & Combo Opportunities|Promos & Combo Opportunities]]
+- [[_COMMUNITY_AudioSound System|Audio/Sound System]]
+- [[_COMMUNITY_Analytics & Metrics|Analytics & Metrics]]
+- [[_COMMUNITY_WhatsApp Meta Client|WhatsApp Meta Client]]
+- [[_COMMUNITY_Sales Optimizer|Sales Optimizer]]
+- [[_COMMUNITY_Response Engine & Message Builder|Response Engine & Message Builder]]
+- [[_COMMUNITY_Bot Engine & NLU Baseline|Bot Engine & NLU Baseline]]
+- [[_COMMUNITY_Intent Detection System|Intent Detection System]]
+- [[_COMMUNITY_Inventory & Allergy Filter|Inventory & Allergy Filter]]
+- [[_COMMUNITY_Self-Healing & Circuit Breaker|Self-Healing & Circuit Breaker]]
+- [[_COMMUNITY_Abandonment Recovery|Abandonment Recovery]]
+- [[_COMMUNITY_Conversation Logger|Conversation Logger]]
+- [[_COMMUNITY_Store Settings & Status|Store Settings & Status]]
+- [[_COMMUNITY_Order Flow State Machine|Order Flow State Machine]]
+- [[_COMMUNITY_Flow Engine & Intent Agent|Flow Engine & Intent Agent]]
+- [[_COMMUNITY_Response Validator & Formatting|Response Validator & Formatting]]
 - [[_COMMUNITY_Community 32|Community 32]]
 - [[_COMMUNITY_Community 33|Community 33]]
 - [[_COMMUNITY_Community 34|Community 34]]
@@ -84,289 +84,366 @@
 - [[_COMMUNITY_Community 72|Community 72]]
 - [[_COMMUNITY_Community 73|Community 73]]
 - [[_COMMUNITY_Community 74|Community 74]]
-- [[_COMMUNITY_Community 81|Community 81]]
+- [[_COMMUNITY_Community 75|Community 75]]
+- [[_COMMUNITY_Community 76|Community 76]]
+- [[_COMMUNITY_Community 82|Community 82]]
+- [[_COMMUNITY_Community 84|Community 84]]
+- [[_COMMUNITY_Community 85|Community 85]]
+- [[_COMMUNITY_Community 86|Community 86]]
+- [[_COMMUNITY_Community 87|Community 87]]
+- [[_COMMUNITY_Community 93|Community 93]]
+- [[_COMMUNITY_Community 94|Community 94]]
+- [[_COMMUNITY_Community 95|Community 95]]
+- [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 97|Community 97]]
+- [[_COMMUNITY_Community 98|Community 98]]
+- [[_COMMUNITY_Community 99|Community 99]]
+- [[_COMMUNITY_Community 100|Community 100]]
+- [[_COMMUNITY_Community 101|Community 101]]
+- [[_COMMUNITY_Community 102|Community 102]]
+- [[_COMMUNITY_Community 103|Community 103]]
+- [[_COMMUNITY_Community 104|Community 104]]
+- [[_COMMUNITY_Community 105|Community 105]]
+- [[_COMMUNITY_Community 106|Community 106]]
+- [[_COMMUNITY_Community 107|Community 107]]
+- [[_COMMUNITY_Community 108|Community 108]]
+- [[_COMMUNITY_Community 109|Community 109]]
+- [[_COMMUNITY_Community 110|Community 110]]
+- [[_COMMUNITY_Community 111|Community 111]]
+- [[_COMMUNITY_Community 112|Community 112]]
+- [[_COMMUNITY_Community 113|Community 113]]
+- [[_COMMUNITY_Community 114|Community 114]]
+- [[_COMMUNITY_Community 115|Community 115]]
+- [[_COMMUNITY_Community 116|Community 116]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `getSupabaseAdmin()` - 43 edges
-2. `handleMessageModular()` - 28 edges
-3. `getBotResponse()` - 25 edges
-4. `processMessage()` - 23 edges
-5. `verifySessionToken()` - 22 edges
-6. `Product` - 20 edges
+1. `getSupabaseAdmin()` - 48 edges
+2. `handleMessageModular()` - 31 edges
+3. `getBotResponse()` - 29 edges
+4. `authGuard()` - 22 edges
+5. `Product` - 19 edges
+6. `verifySessionToken()` - 17 edges
 7. `getProductImage()` - 17 edges
-8. `requireApiRole()` - 16 edges
+8. `detectIntent()` - 16 edges
 9. `Button` - 15 edges
-10. `detectIntent()` - 14 edges
+10. `AdminProduct` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `evaluateBot()` --calls--> `require`  [INFERRED]
-  src/core/evaluator.ts → scripts/convert-images.mjs
-- `middleware()` --calls--> `verifySessionToken()`  [EXTRACTED]
-  middleware.ts → src/lib/server/adminSession.ts
-- `diagnose()` --calls--> `getSupabaseAdmin()`  [INFERRED]
-  diagnose_ids.ts → src/lib/server/supabaseServer.ts
-- `testRpc()` --calls--> `getSupabaseAdmin()`  [EXTRACTED]
-  test_rpc.ts → src/lib/server/supabaseServer.ts
-- `fixConstraint()` --calls--> `getSupabaseAdmin()`  [INFERRED]
-  fix_db.ts → src/lib/server/supabaseServer.ts
+- `getResponse()` --calls--> `handleMessageModular()`  [INFERRED]
+  tests/response.test.ts → core/response/flowController.ts
+- `testCase()` --calls--> `handleMessageModular()`  [INFERRED]
+  tests/allergy.test.ts → core/response/flowController.ts
+- `GET()` --calls--> `authGuard()`  [INFERRED]
+  app/api/orders/route.ts → middleware/authGuard.ts
+- `POST()` --calls--> `authGuard()`  [INFERRED]
+  app/api/orders/route.ts → middleware/authGuard.ts
+- `evaluateBot()` --calls--> `run()`  [INFERRED]
+  core/evaluator.ts → scripts/upsert-products.ts
 
-## Communities (87 total, 17 thin omitted)
+## Hyperedges (group relationships)
+- **Message Processing Pipeline** — botengine_getbotresponse, intentdetector_detectintent, allergyfilter_filterproducts, allergyfilter_isproductsafe, context_getcontext, context_updatecontext, offeragent_getentryrecommendation, responseengine_handlemessagemodular [INFERRED]
+- **Business Intelligence Layer** — analytics_getbusinessmetrics, analytics_gettopperformingstrategy, analytics_getbotanalytics, analytics_detectabandonedsessions, revenuemetrics_getstrategymetrics, revenuemetrics_getdailyrevenue, revenuemetrics_getconversionrate, revenuemetrics_getupsellrate, healthmetrics_getsystemhealth [INFERRED]
+- **Event Persistence Layer** — eventlogger_logevent, telemetryemitter_emittelemetryevent [INFERRED]
+- **** — supabase_getSupabaseAdmin, supabase_customers, supabase_orders, supabase_customer_tips, emp_employees, sess_wa_sessions, sess_wa_events [INFERRED 0.88]
+- **** — meta_sendText, meta_sendList, meta_sendButtons, meta_sendMainMenu, meta_sendSauceSelector, meta_sendUpsellOffer, meta_sendHandoffMessage [INFERRED 0.92]
+- **** — ai_getAIResponse, ai_SYSTEM_PROMPT, ai_buildContextPayload, ai_rewriteMessage [INFERRED 0.90]
+- **Response Module Pipeline** — src_core_response_formatting, src_core_response_errorHandler, src_core_response_aiHandler, src_core_response_messageBuilder, src_core_response_flowController, src_core_response_index [INFERRED 1.00]
+- **Admin Panel Architecture** — src_app_admin_layout_AdminLayout, src_app_admin_page_AdminDashboard, src_app_admin_products_page_ProductsPage, src_app_admin_settings_page_SettingsPage, src_app_admin_optimize_page_SalesOptimizationPage [INFERRED 1.00]
+- **handleMessageModular Intent Routing** — src_core_response_flowController, src_core_response_errorHandler, src_core_response_aiHandler, src_core_response_messageBuilder [INFERRED 1.00]
 
-### Community 0 - "Community 0"
+## Communities (117 total, 38 thin omitted)
+
+### Community 0 - "Agent Orchestrator & WhatsApp Pipeline"
 Cohesion: 0.06
-Nodes (33): AdminDashboard(), fmt(), pct(), PromoBanner, PromoBannerComponent(), AbandonedCart, Alert, checkAlerts() (+25 more)
+Nodes (63): agentOrchestrator(), productRefs, stateByPhone, getBestStrategyFromAnalytics(), getBestStrategyFromAnalyticsSync(), parseEntitiesRecord(), GREETING_ONLY_WORDS, GREETING_PREFIXES (+55 more)
 
-### Community 1 - "Community 1"
-Cohesion: 0.06
-Nodes (41): POST(), buildPersonalizedResponse(), classifyError(), dbGetProductsSafe(), extractQty(), getBotResponse(), memory, normalizePhone() (+33 more)
-
-### Community 2 - "Community 2"
+### Community 1 - "Admin Dashboard Pages"
 Cohesion: 0.05
-Nodes (37): addCartStateItem(), addToCart(), clearCart(), clearCartContext(), createEmptyCart(), deserializeCart(), getCartContext(), recalculate() (+29 more)
+Nodes (43): AdminDashboard(), fmt(), pct(), GET(), PromoBanner, PromoBannerComponent(), AbandonedCart, Alert (+35 more)
 
-### Community 3 - "Community 3"
-Cohesion: 0.1
-Nodes (44): db(), fetchActivePromos(), fetchAnnouncements(), fetchCategoryProducts(), fetchFaq(), fetchMenuContext(), fetchProductPrice(), mapButtonReply() (+36 more)
+### Community 2 - "Authentication & Session Management"
+Cohesion: 0.07
+Nodes (35): GET(), RankEntities, MENU, POST(), cookieBase, POST(), GET(), getDb() (+27 more)
 
-### Community 4 - "Community 4"
+### Community 3 - "Payments & Order Processing"
+Cohesion: 0.07
+Nodes (40): POST(), ConektaWebhookEvent, createPaymentLink(), extractOrderId(), getApiKey(), getAuthHeader(), getPaymentStatus(), handleWebhook() (+32 more)
+
+### Community 4 - "Employee Auth (PBKDF2)"
+Cohesion: 0.05
+Nodes (49): lib/whatsapp/botEngine, Employee, PBKDF2 parameters, createEmployee, deactivateEmployee, employees, getEmployeeByLoginId, hashPassword (+41 more)
+
+### Community 5 - "Kitchen Display System"
+Cohesion: 0.06
+Nodes (22): OrderStatus, db, AudioState, createBeepWav(), ensureCtx(), initAudio(), playButtonPop(), playOrderNotification() (+14 more)
+
+### Community 6 - "Menu UI & Product Cards"
 Cohesion: 0.09
-Nodes (33): db(), GET(), parseCookie(), POST(), requireStaff(), cookieBase, POST(), GET() (+25 more)
+Nodes (21): EMOTION_LABELS, ProductCard, ProductCardComponent(), ProductCardProps, categories, getProductImage(), Product, PRODUCT_IMAGE_MAP (+13 more)
 
-### Community 5 - "Community 5"
-Cohesion: 0.1
-Nodes (23): AgentResponse, ConversationContext, generateClosingMessage(), runAgents(), filterProducts(), isProductSafe(), testAllergyFilter(), shouldHandoff() (+15 more)
+### Community 7 - "Cost Guard & AI Caching"
+Cohesion: 0.11
+Nodes (25): CacheEntry, getCostEfficientResponse(), getFromCache(), INTENT_MAPPING, logCostEvent(), saveToCache(), STATIC_RESPONSES, getCustomerProfile() (+17 more)
 
-### Community 6 - "Community 6"
+### Community 8 - "Agent Orchestrator Core"
+Cohesion: 0.12
+Nodes (16): AgentResponse, ConversationContext, generateClosingMessage(), runAgents(), filterProducts(), isProductSafe(), testAllergyFilter(), shouldHandoff() (+8 more)
+
+### Community 9 - "AI Context & Response Models"
+Cohesion: 0.07
+Nodes (28): AIContext, AIResponse, MenuItemContext, SYSTEM_PROMPT, buildContextPayload, getAIResponse, rewriteMessage, GEMINI_API_KEY (+20 more)
+
+### Community 10 - "Database Client Operations"
 Cohesion: 0.09
-Nodes (26): ActionType, CategoryType, detectIntent(), Entities, extractAction(), extractAllergies(), extractCategory(), extractEntities() (+18 more)
+Nodes (12): dbGetCustomer(), dbGetSettings(), dbSaveOrder(), dbSaveProduct(), dbSaveSettings(), DEFAULT_SETTINGS, isUuid(), mapOrderStatusFromDb() (+4 more)
 
-### Community 7 - "Community 7"
-Cohesion: 0.09
-Nodes (16): POST(), POST(), GET(), POST(), markConverted(), dbInsertWaMessage(), dbSaveOrderServer(), dbUpsertCustomerServer() (+8 more)
+### Community 11 - "Cart Engine"
+Cohesion: 0.11
+Nodes (12): addCartStateItem(), clearCart(), createEmptyCart(), deserializeCart(), recalculate(), removeFromCart(), updateQuantity(), UserContext (+4 more)
 
-### Community 8 - "Community 8"
-Cohesion: 0.09
-Nodes (15): createUuid(), dbGetCustomer(), dbGetSettings(), dbSaveOrder(), dbSaveProduct(), dbSaveSettings(), DEFAULT_SETTINGS, isUuid() (+7 more)
+### Community 12 - "Customer Profile & Menu Management"
+Cohesion: 0.17
+Nodes (19): updateCustomerFromOrder(), BotInput, runBot(), CustomerProfile, dbDeleteAllProducts(), dbDeleteProduct(), dbGetCustomer(), dbGetProducts() (+11 more)
 
-### Community 9 - "Community 9"
-Cohesion: 0.18
-Nodes (23): POST(), getDb(), POST(), createEmployee(), deactivateEmployee(), Employee, getDb(), getEmployeeByLoginId() (+15 more)
-
-### Community 10 - "Community 10"
-Cohesion: 0.14
-Nodes (20): FailureEntry, generateRules(), LearnedRule, loadExistingRules(), loadFailures(), loadReportHistory(), mergeRules(), normalizeText() (+12 more)
-
-### Community 11 - "Community 11"
-Cohesion: 0.16
-Nodes (16): GET(), MENU, POST(), DELETE(), GET(), getDb(), POST(), PUT() (+8 more)
-
-### Community 12 - "Community 12"
+### Community 13 - "Multi-AI Orchestrator"
 Cohesion: 0.13
 Nodes (21): activarOrquestador(), AiResponse, combinarRespuestas(), ejecutarClaude(), ejecutarGpt(), ejecutarQwen(), elegirMejor(), multiAi() (+13 more)
 
-### Community 13 - "Community 13"
+### Community 14 - "Auto-Trainer & Learning Loop"
+Cohesion: 0.15
+Nodes (18): FailureEntry, generateRules(), LearnedRule, loadExistingRules(), loadFailures(), loadReportHistory(), mergeRules(), recordFallback() (+10 more)
+
+### Community 15 - "Zustand Store Management"
+Cohesion: 0.13
+Nodes (10): CartProps, CartUpsell, CartUpsellProps, EngineType, Msg, EventType, logEvent(), SalesEvent (+2 more)
+
+### Community 16 - "Promos & Combo Opportunities"
 Cohesion: 0.09
 Nodes (18): Cart, CombosSection, ContactSection, CustomCursor, Hero, Navbar, OrderBot, PromoBanner (+10 more)
 
-### Community 14 - "Community 14"
-Cohesion: 0.13
-Nodes (14): AudioState, createBeepWav(), ensureCtx(), initAudio(), playButtonPop(), playOrderNotification(), startAmbient(), startOrderLoop() (+6 more)
-
-### Community 15 - "Community 15"
-Cohesion: 0.13
-Nodes (9): CartProps, categories, Product, logLocal(), track(), Window, CustomCursor, OrderBot (+1 more)
-
-### Community 16 - "Community 16"
-Cohesion: 0.13
-Nodes (13): EMOTION_LABELS, ProductCard, ProductCardComponent(), ProductCardProps, getProductImage(), PRODUCT_IMAGE_MAP, products, ComboSelectorModalProps (+5 more)
-
-### Community 17 - "Community 17"
-Cohesion: 0.12
-Nodes (18): AdminProduct, CustomCategory, DayHours, DEFAULT_CATEGORIES, DeliveryApp, Employee, getAllCategoryLabels(), HeroStat (+10 more)
-
-### Community 18 - "Community 18"
-Cohesion: 0.19
-Nodes (14): updateCustomerFromOrder(), BotInput, CustomerProfile, dbDeleteAllProducts(), dbDeleteProduct(), dbGetCustomer(), dbGetProducts(), dbInsertProducts() (+6 more)
-
-### Community 19 - "Community 19"
-Cohesion: 0.12
-Nodes (8): UpsellModalProps, inputStyle, labelStyle, Step, CombosSection, CombosSectionProps, Button, ButtonProps
-
-### Community 20 - "Community 20"
+### Community 17 - "Audio/Sound System"
 Cohesion: 0.16
-Nodes (13): loadApprovedExamples(), dbGetProductsServer(), testGemini(), testLearning(), reviewConversations(), supabase, AIContext, AIResponse (+5 more)
+Nodes (15): addToCart(), clearContext(), deleteContext(), getContext(), isValidCart(), PaymentStatus, sessionStore, updateContext() (+7 more)
 
-### Community 21 - "Community 21"
-Cohesion: 0.23
-Nodes (12): buildDeliveryPrompt(), finalizeOrder(), getDeliveryPrompt(), getPromptByStage(), handleMessage(), hasAny(), inferActionFromText(), inferComboAction() (+4 more)
+### Community 18 - "Analytics & Metrics"
+Cohesion: 0.13
+Nodes (11): POST(), POST(), POST(), markConverted(), dbSaveOrder(), saveAiCost(), GET(), test() (+3 more)
 
-### Community 22 - "Community 22"
+### Community 19 - "WhatsApp Meta Client"
+Cohesion: 0.13
+Nodes (17): CustomCategory, DayHours, DEFAULT_CATEGORIES, DeliveryApp, Employee, getAllCategoryLabels(), HeroStat, ORDER_STATUS_COLORS (+9 more)
+
+### Community 20 - "Sales Optimizer"
+Cohesion: 0.25
+Nodes (15): POST(), getDb(), POST(), createEmployee(), deactivateEmployee(), Employee, getDb(), getEmployeeByLoginId() (+7 more)
+
+### Community 21 - "Response Engine & Message Builder"
+Cohesion: 0.19
+Nodes (15): buildPersonalizedResponse(), classifyError(), dbGetProductsSafe(), extractQty(), getBotResponse(), memory, normalizePhone(), parseMultiIntent() (+7 more)
+
+### Community 22 - "Bot Engine & NLU Baseline"
+Cohesion: 0.19
+Nodes (14): POST(), getHealingAction(), getSystemMode(), handleModeChangeAlert(), HealingAction, localState, registerErrorEvent(), syncWithDB() (+6 more)
+
+### Community 23 - "Intent Detection System"
+Cohesion: 0.18
+Nodes (12): loadApprovedExamples(), dbGetProductsServer(), testGemini(), testLearning(), reviewConversations(), supabase, AIContext, AIResponse (+4 more)
+
+### Community 24 - "Inventory & Allergy Filter"
+Cohesion: 0.12
+Nodes (9): NAV, CustomerProfile, customerStore, DEFAULT_PROFILE, listeners, saved, BUTTON(), CARD (+1 more)
+
+### Community 25 - "Self-Healing & Circuit Breaker"
+Cohesion: 0.13
+Nodes (15): Page(), CartUpsellComponent(), ChatBot(), Msg, ProductCard(), CartState, CoreProduct, cartStore (+7 more)
+
+### Community 26 - "Abandonment Recovery"
+Cohesion: 0.25
+Nodes (12): db(), GET(), POST(), authGuard(), GET(), getDb(), DELETE(), GET() (+4 more)
+
+### Community 27 - "Conversation Logger"
+Cohesion: 0.24
+Nodes (15): addToCart(), BotSession, BotState, CartItem, clearCart(), db(), getSession(), incrementUnknown() (+7 more)
+
+### Community 28 - "Store Settings & Status"
+Cohesion: 0.16
+Nodes (13): botShowedUpsell(), EvalCase, EvalResult, evaluateBot(), RunResult, UPSELL_PATTERNS, productsData, run() (+5 more)
+
+### Community 29 - "Order Flow State Machine"
 Cohesion: 0.12
 Nodes (7): EMOJIS, inputStyle, labelStyle, railButtonStyle, REACTIONS, Review, SEED_REVIEWS
 
-### Community 23 - "Community 23"
-Cohesion: 0.15
-Nodes (11): Page(), CartUpsell, CartUpsellComponent(), CartUpsellProps, ChatBot(), Msg, ProductCard(), EngineType (+3 more)
-
-### Community 24 - "Community 24"
-Cohesion: 0.16
-Nodes (9): ATTRIBUTE_KEYWORDS, CATEGORY_KEYWORDS, DIETARY_KEYWORDS, extractFoodIntent(), FoodIntent, KEYWORD_SYNONYMS, Product, rankProductsByIntent() (+1 more)
-
-### Community 25 - "Community 25"
-Cohesion: 0.2
-Nodes (13): ANCHOR_TEMPLATES, AntiLoopStrategy, ANTOJO_BY_CATEGORY, applyLoopStrategy(), FOMO_PHRASES, getAntojoPhrase(), getFOMOPhrase(), getNextStrategy() (+5 more)
-
-### Community 26 - "Community 26"
+### Community 30 - "Flow Engine & Intent Agent"
 Cohesion: 0.2
 Nodes (7): AgentContext, RouteDecision, ChatState, FlowResponse, genAI, IntentResponse, SYSTEM_PROMPT
 
-### Community 27 - "Community 27"
+### Community 31 - "Response Validator & Formatting"
 Cohesion: 0.2
 Nodes (10): Order, isPromoActive(), Promo, promos, analyzeSales(), ComboOpportunity, OptimizationResult, ProductScore (+2 more)
 
-### Community 28 - "Community 28"
+### Community 32 - "Community 32"
+Cohesion: 0.24
+Nodes (7): callGemini(), extractAndSaveInsights(), logConversation(), deduplicateMessage(), POST(), sendWhatsAppMessage(), MenuItemContext
+
+### Community 33 - "Community 33"
 Cohesion: 0.23
 Nodes (9): CATEGORY_LABELS, PosCartItem, PosOrder, PosState, usePosStore, ProductState, useProductStore, AdminMenuPage() (+1 more)
 
-### Community 29 - "Community 29"
-Cohesion: 0.18
-Nodes (7): INITIAL_STATE, mockProductRefs, mockProducts, testCase(), getResponse(), mockProductRefs, mockProducts
+### Community 34 - "Community 34"
+Cohesion: 0.15
+Nodes (13): ConektaWebhookEvent, PaymentLink, PaymentLinkParams, createPaymentLink, extractOrderId, getPaymentStatus, handleWebhook, mapConektaEventToPaymentStatus (+5 more)
 
-### Community 30 - "Community 30"
+### Community 35 - "Community 35"
+Cohesion: 0.22
+Nodes (13): allergyFilter.test.ts, intentDetector.test.ts, manual-flow-check.ts, whatsapp-flow.test.ts, aiHandler.ts, errorHandler.ts, flowController.ts, formatting.ts (+5 more)
+
+### Community 36 - "Community 36"
+Cohesion: 0.17
+Nodes (7): ATTRIBUTE_KEYWORDS, CATEGORY_KEYWORDS, DIETARY_KEYWORDS, FoodIntent, KEYWORD_SYNONYMS, Product, MOCK_PRODUCTS
+
+### Community 37 - "Community 37"
+Cohesion: 0.18
+Nodes (6): mockProductRefs, mockProducts, testCase(), getResponse(), mockProductRefs, mockProducts
+
+### Community 38 - "Community 38"
 Cohesion: 0.3
 Nodes (9): anonymizePhone(), ConversationTurn, ensureDir(), getPaths(), getTodayLogs(), logTurn(), promoteToDataset(), LOG_FILE (+1 more)
 
-### Community 31 - "Community 31"
-Cohesion: 0.27
-Nodes (6): callGemini(), extractAndSaveInsights(), logConversation(), deduplicateMessage(), POST(), sendWhatsAppMessage()
-
-### Community 33 - "Community 33"
-Cohesion: 0.17
-Nodes (6): AdminStore, _cache, CacheEntry, TTL, Customer, OrderChannel
-
-### Community 34 - "Community 34"
-Cohesion: 0.29
-Nodes (11): CATEGORY_ALIASES, detectIntent(), DetectionResult, extractCategory(), extractProduct(), extractQty(), extractSauce(), Intent (+3 more)
-
-### Community 35 - "Community 35"
-Cohesion: 0.24
-Nodes (9): agentOrchestrator(), productRefs, stateByPhone, hasBrokenFormatting(), sanitizeActions(), validateResponseOutput(), ConversationState, QuickAction (+1 more)
-
-### Community 36 - "Community 36"
-Cohesion: 0.24
-Nodes (8): CartItem, clearContext(), getContext(), sessionStore, updateContext(), FlowContext, OrderState, resolveNextState()
-
-### Community 37 - "Community 37"
-Cohesion: 0.42
-Nodes (7): validateOrderItems(), GET(), getDb(), parseCookie(), PATCH(), POST(), requireStaff()
-
-### Community 38 - "Community 38"
-Cohesion: 0.27
-Nodes (10): applyFallback(), applySafetyFilter(), buildRecommendations(), extractCategoryEntities(), extractProductEntities(), generateUpsell(), handleMessageModular(), matchProducts() (+2 more)
-
 ### Community 39 - "Community 39"
+Cohesion: 0.24
+Nodes (12): filterProducts, isProductSafe, buildPersonalizedResponse, getBotResponse, clearContext, getContext, updateContext, detectIntent (+4 more)
+
+### Community 40 - "Community 40"
 Cohesion: 0.29
 Nodes (8): detectCategories(), GeneratedMenuItem, generateItems(), generateMenuFromDescription(), GenerationResult, KEYWORD_MAP, PRODUCT_DB, POST()
 
-### Community 40 - "Community 40"
-Cohesion: 0.22
-Nodes (4): NAV, BUTTON(), CARD, ReportsPage()
-
 ### Community 41 - "Community 41"
-Cohesion: 0.24
-Nodes (6): OrderStatus, assessLoad(), computeMetrics(), KitchenDisplay(), LoadLevel, STATUS
+Cohesion: 0.2
+Nodes (5): AdminStore, _cache, CacheEntry, TTL, OrderChannel
 
 ### Community 42 - "Community 42"
-Cohesion: 0.25
-Nodes (7): auditSql, { execSync }, fs, migrationDir, migrations, path, rlsSql
+Cohesion: 0.44
+Nodes (5): validateOrderItems(), GET(), getDb(), PATCH(), POST()
 
 ### Community 43 - "Community 43"
-Cohesion: 0.25
-Nodes (7): cmds, COMMANDS_DIR, content, file, { join, basename }, { readdirSync }, { readFileSync, existsSync }
+Cohesion: 0.22
+Nodes (8): emitTelemetryEvent(), EngineType, EnvironmentType, PlatformType, TELEMETRY_EVENT_NAME, TelemetryBase, TelemetryEventPayload, TelemetryLifecycleEvent
 
 ### Community 44 - "Community 44"
-Cohesion: 0.32
-Nodes (6): ScrollCTA(), ChatPhase, ChatState, ChatStore, INITIAL_STATE, useChatStore
+Cohesion: 0.25
+Nodes (9): detectAbandonedSessions, getBusinessMetrics, getTopPerformingStrategy, AntiLoopStrategy, getBestStrategy, getBestStrategySync, getNextStrategy, getSystemHealth (+1 more)
 
 ### Community 45 - "Community 45"
+Cohesion: 0.25
+Nodes (7): allergy, banderillaProduct, papasClasicas, product, products, result, salchipapas
+
+### Community 46 - "Community 46"
 Cohesion: 0.36
 Nodes (6): CashPage(), fmt(), CashMovement, CashSession, CashState, useCashStore
 
-### Community 46 - "Community 46"
-Cohesion: 0.25
-Nodes (5): CustomerProfile, customerStore, DEFAULT_PROFILE, listeners, saved
-
 ### Community 47 - "Community 47"
-Cohesion: 0.33
-Nodes (6): { createClient }, executeMigration(), fs, path, runMigrations(), supabase
+Cohesion: 0.36
+Nodes (3): logLocal(), track(), Window
 
 ### Community 48 - "Community 48"
+Cohesion: 0.25
+Nodes (3): inputStyle, labelStyle, Step
+
+### Community 49 - "Community 49"
+Cohesion: 0.32
+Nodes (4): inventoryFilter(), AdminProduct, assert(), runTests()
+
+### Community 50 - "Community 50"
+Cohesion: 0.32
+Nodes (6): ScrollCTA(), ChatPhase, ChatState, ChatStore, INITIAL_STATE, useChatStore
+
+### Community 51 - "Community 51"
+Cohesion: 0.29
+Nodes (8): getApiSession, requireApiRole, ADMIN_SESSION_SECRET, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE, createSessionToken, verifySessionToken, parseCookie
+
+### Community 52 - "Community 52"
 Cohesion: 0.43
 Nodes (4): getSalesServer(), SaleRecord, dbGetSales(), SalesPage()
 
-### Community 49 - "Community 49"
-Cohesion: 0.4
-Nodes (5): executeSQL(), fs, https, path, run()
+### Community 53 - "Community 53"
+Cohesion: 0.29
+Nodes (5): OBJECTION_RESPONSES, Recommendation, RecommendParams, SALES_PLAYBOOKS, UpsellOffer
 
-### Community 50 - "Community 50"
-Cohesion: 0.33
-Nodes (3): fs, https, path
+### Community 54 - "Community 54"
+Cohesion: 0.47
+Nodes (3): getSystemHealth(), SystemHealth, GET()
 
-### Community 51 - "Community 51"
+### Community 55 - "Community 55"
 Cohesion: 0.33
 Nodes (4): Ember, EMBER_COLORS, GlowOrb, TrailSpark
 
-### Community 53 - "Community 53"
-Cohesion: 0.47
-Nodes (3): RankEntities, fuzzyMatch(), normalizeText()
-
-### Community 54 - "Community 54"
-Cohesion: 0.4
-Nodes (3): content, files, fs
-
-### Community 56 - "Community 56"
-Cohesion: 0.4
-Nodes (3): bebas, inter, metadata
-
 ### Community 57 - "Community 57"
-Cohesion: 0.4
-Nodes (3): inputStyle, ResetCode, StaffMember
-
-### Community 58 - "Community 58"
 Cohesion: 0.5
 Nodes (4): ALLOWED_TRANSITIONS, isUuid(), PATCH(), VALID_STATUSES
 
 ### Community 59 - "Community 59"
 Cohesion: 0.4
-Nodes (3): ContactSection, hours, socialLinks
+Nodes (3): bebas, inter, metadata
+
+### Community 60 - "Community 60"
+Cohesion: 0.4
+Nodes (3): inputStyle, ResetCode, StaffMember
 
 ### Community 61 - "Community 61"
-Cohesion: 0.5
-Nodes (3): fs, migrationPath, path
+Cohesion: 0.4
+Nodes (3): ContactSection, hours, socialLinks
 
-### Community 67 - "Community 67"
+### Community 63 - "Community 63"
+Cohesion: 0.4
+Nodes (4): Customer, rowToProduct(), dbInsertWaMessage(), dbUpsertCustomerServer()
+
+### Community 64 - "Community 64"
+Cohesion: 0.4
+Nodes (5): applyLoopStrategy, getAntojoPhrase, getFOMOPhrase, getPriceAnchorPhrase, getSocialProofPhrase
+
+### Community 65 - "Community 65"
+Cohesion: 0.4
+Nodes (5): AdminLayout, SalesOptimizationPage, AdminDashboard, ProductsPage, SettingsPage
+
+### Community 68 - "Community 68"
 Cohesion: 0.5
 Nodes (3): PromptContext, PROMPTS, PromptTemplate
 
+### Community 69 - "Community 69"
+Cohesion: 0.5
+Nodes (4): checkStock, getBestUpsell, getCurrentLevel, getThermostatSettings
+
+### Community 70 - "Community 70"
+Cohesion: 0.5
+Nodes (4): DECLINE_WORDS, SPANISH_NUMBERS, TipResult, processTipResponse
+
+### Community 75 - "Community 75"
+Cohesion: 0.67
+Nodes (3): getFallbackResponse, shouldHandoff, getHealingAction
+
+### Community 76 - "Community 76"
+Cohesion: 0.67
+Nodes (3): RootLayout, Page (Homepage), memoryAgent.ts
+
 ## Knowledge Gaps
-- **303 isolated node(s):** `config`, `fs`, `path`, `{ execSync }`, `migrationDir` (+298 more)
+- **303 isolated node(s):** `LegacyProductCartItem`, `ThermostatLevel`, `EvalResult`, `RunResult`, `UPSELL_PATTERNS` (+298 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **38 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `AdminProduct` connect `Community 17` to `Community 33`, `Community 7`, `Community 8`, `Community 11`, `Community 13`, `Community 15`, `Community 16`, `Community 21`, `Community 27`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `handleMessageModular()` connect `Community 38` to `Community 1`, `Community 35`, `Community 36`, `Community 7`, `Community 10`, `Community 18`, `Community 21`, `Community 24`, `Community 29`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
-- **Why does `getBotResponse()` connect `Community 1` to `Community 2`, `Community 36`, `Community 5`, `Community 38`, `Community 7`, `Community 18`, `Community 31`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
-- **Are the 37 inferred relationships involving `getSupabaseAdmin()` (e.g. with `diagnose()` and `fixConstraint()`) actually correct?**
-  _`getSupabaseAdmin()` has 37 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 2 inferred relationships involving `handleMessageModular()` (e.g. with `getCustomerProfileFromDB()` and `runEvaluation()`) actually correct?**
-  _`handleMessageModular()` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `config`, `fs`, `path` to the rest of the system?**
-  _303 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.06 - nodes in this community are weakly interconnected._
+- **Why does `getSupabaseAdmin()` connect `Analytics & Metrics` to `Community 32`, `Authentication & Session Management`, `Payments & Order Processing`, `Community 72`, `Community 42`, `Customer Profile & Menu Management`, `Sales Optimizer`, `Response Engine & Message Builder`, `Community 54`, `Intent Detection System`, `Bot Engine & NLU Baseline`, `Community 57`, `Abandonment Recovery`, `Conversation Logger`, `Community 63`?**
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `getBotResponse()` connect `Response Engine & Message Builder` to `Agent Orchestrator & WhatsApp Pipeline`, `Community 32`, `Cost Guard & AI Caching`, `Agent Orchestrator Core`, `Customer Profile & Menu Management`, `Audio/Sound System`, `Analytics & Metrics`, `Bot Engine & NLU Baseline`, `Store Settings & Status`?**
+  _High betweenness centrality (0.031) - this node is a cross-community bridge._
+- **Why does `handleMessageModular()` connect `Agent Orchestrator & WhatsApp Pipeline` to `Payments & Order Processing`, `Community 37`, `Customer Profile & Menu Management`, `Auto-Trainer & Learning Loop`, `Audio/Sound System`, `Analytics & Metrics`, `Response Engine & Message Builder`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+- **Are the 39 inferred relationships involving `getSupabaseAdmin()` (e.g. with `getSystemHealth()` and `extractAndSaveInsights()`) actually correct?**
+  _`getSupabaseAdmin()` has 39 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 7 inferred relationships involving `handleMessageModular()` (e.g. with `getBotResponse()` and `agentOrchestrator()`) actually correct?**
+  _`handleMessageModular()` has 7 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `getBotResponse()` (e.g. with `getCustomerProfileFromDB()` and `handleMessageModular()`) actually correct?**
+  _`getBotResponse()` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `authGuard()` (e.g. with `GET()` and `POST()`) actually correct?**
+  _`authGuard()` has 2 INFERRED edges - model-reasoned connections that need verification._

@@ -10,7 +10,7 @@ export async function validateOrderItems(items: any[]) {
       if (!qty || qty <= 0) continue;
 
       const pId = item.productId || item.product_id || item.id;
-      const dbProduct = products.find(p => p.id === pId);
+      const dbProduct = products.find((p: any) => p.id === pId);
 
       if (!dbProduct) {
         continue;

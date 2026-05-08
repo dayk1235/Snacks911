@@ -62,7 +62,10 @@ export async function getSystemHealth(): Promise<SystemHealth> {
       .gte('created_at', todayStart);
 
     const ordersToday = ordersData?.length || 0;
-    const revenueToday = ordersData?.reduce((sum, o) => sum + (Number(o.total) || 0), 0) || 0;
+    const revenueToday = (ordersData ?? []).reduce(
+      (sum: number, o: any) => sum + (Number(o.total) || 0),
+      0
+    );
     const avgTicket = ordersToday > 0 ? revenueToday / ordersToday : 0;
 
     // 4. AI Performance (Cumulative usage)
@@ -71,7 +74,10 @@ export async function getSystemHealth(): Promise<SystemHealth> {
       .select('cost');
 
     const totalMessages = costData?.length || 0;
-    const totalCost = costData?.reduce((sum, c) => sum + (Number(c.cost) || 0), 0) || 0;
+    const totalCost = (costData ?? []).reduce(
+      (sum: number, c: any) => sum + (Number(c.cost) || 0),
+      0
+    );
     const avgCostPerMessage = totalMessages > 0 ? totalCost / totalMessages : 0;
 
     // 5. Status Classification Logic

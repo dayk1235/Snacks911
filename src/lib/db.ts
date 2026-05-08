@@ -4,6 +4,7 @@
  */
 
 import { db } from './db.server';
+import { createUuid } from '@/lib/utils/core';
 const supabase = db;
 
 import type {
@@ -81,11 +82,11 @@ export function productToRow(p: AdminProduct) {
     delivery_price:        p.deliveryPrice ?? null,
   };
 
-  if (p.stock !== undefined) {
-    row.stock = p.stock;
-  }
+  // Omit stock and ingredients to avoid "column not found" errors until schema is updated
+  // if (p.stock !== undefined) {
+  //   row.stock = p.stock;
+  // }
 
-  // Omit ingredients to avoid "column not found" errors until schema is updated
   return row;
 }
 
@@ -107,17 +108,7 @@ function mapOrderStatusToDb(status: OrderStatus): string {
   return status;
 }
 
-export function createUuid() {
-  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-  // RFC4122 v4 compliant fallback
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+export { createUuid };
 
 function rowToOrder(row: Record<string, unknown>, items: Record<string, unknown>[]): Order {
   return {

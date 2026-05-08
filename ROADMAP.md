@@ -1,81 +1,38 @@
-# PHASE A — UI-FIRST MIGRATION
+# SNACKS 911 — PRODUCTION HARDENING ROADMAP (DONE)
 
-## TASK 0 — Enable UI Types (Products / Buttons / Text)
+## 🔴 P0 — CONSISTENCY & INTEGRITY
+- [x] Atomic Inventory (SELECT FOR UPDATE)
+- [x] Recalculate Total from DB Prices
+- [x] inventoryFilter() implementation
+- [x] Out of Stock protection
 
-### 🎯 Objetivo
-Permitir que el bot devuelva tipos de UI (products, buttons, text) sin romper el sistema actual basado en texto.
+## 🟠 P1 — PERFORMANCE
+- [x] Product Cache (30s TTL)
+- [x] Automated Cache Invalidation on Mutation
 
----
+## 🟡 P2 — RESILIENCIA
+- [x] Persistent System State (Supabase)
+- [x] Self-Healing Engine (Persistent)
+- [x] Alerting System (Normal/Safe/Emergency)
 
-## ⚙️ Cambios
+## 🔵 P3 — SECURITY
+- [x] Global Auth Guard (RBAC)
+- [x] Rate Limiting (WhatsApp Webhook)
 
-### 1. ResponseOutput (types.ts)
-Agregar soporte a type y payload:
+## 🟣 P4 — ANALYTICS & STRATEGY
+- [x] Business Metrics Endpoint (/api/analytics)
+- [x] Automated Best Strategy Selection (Dynamic)
+- [x] Strategy Performance Caching
 
-- type: 'text' | 'buttons' | 'products'
-- actions: soporta image y price
+## 🟢 P5 — COST TRACKING
+- [x] AI Cost Tracking (ai_costs)
+- [x] Estimated cost per conversation
+- [x] Real-time Health Metrics (/api/health)
 
----
-
-### 2. responseEngine.ts
-Todos los outputs deben incluir:
-
-- type dinámico:
-  - 'buttons' si hay actions
-  - 'text' si no hay actions
-
----
-
-### 3. Nuevo tipo: PRODUCTS
-Agregar respuesta especial cuando:
-
-- intent === exploracion
-
-Debe devolver:
-
-- type: 'products'
-- actions: lista de productos con:
-  - label
-  - value
-  - image
-  - price
+## 🧪 TESTING & QA
+- [x] Unit Tests (Cart, Flow, Inventory)
+- [x] E2E Simulation (Full Bot Flow)
+- [x] Edge Case Reliability Tests
 
 ---
-
-### 4. UI (OrderBot.tsx)
-
-Actualizar:
-
-- Msg interface → incluir type
-- setMsgs → guardar type
-
----
-
-### 5. Render UI
-
-Agregar render especial:
-
-if (type === 'products') → mostrar cards horizontales
-
----
-
-## 🧠 Reglas
-
-- NO romper lógica actual
-- NO modificar runBot
-- Mantener text como fallback
-- UI decide render
-
----
-
-## ✅ Resultado esperado
-
-- Bot soporta:
-  - text
-  - buttons
-  - products
-- UI muestra cards
-- Sistema sigue estable
-
-
-DIME CUANDO TERMINES CADA TAREA CON UN DONE.
+✔ Sistema estable y audidado para producción.
