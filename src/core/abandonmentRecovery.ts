@@ -38,7 +38,7 @@ export async function findAbandonedCarts(thresholdMinutes = 7): Promise<Abandone
 
   if (error || !data) return [];
 
-  return data.map(row => ({
+  return data.map((row: any) => ({
     cartId: row.cart_id,
     customerPhone: row.customer_phone || 'unknown',
     total: row.payload_json?.total || 0,

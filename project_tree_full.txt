@@ -1,1843 +1,386 @@
 .
-|____.DS_Store
-|____.agent
-| |____agents
-| | |____gsd-advisor-researcher.md
-| | |____gsd-assumptions-analyzer.md
-| | |____gsd-code-fixer.md
-| | |____gsd-code-reviewer.md
-| | |____gsd-codebase-mapper.md
-| | |____gsd-debugger.md
-| | |____gsd-doc-verifier.md
-| | |____gsd-doc-writer.md
-| | |____gsd-executor.md
-| | |____gsd-integration-checker.md
-| | |____gsd-intel-updater.md
-| | |____gsd-nyquist-auditor.md
-| | |____gsd-phase-researcher.md
-| | |____gsd-plan-checker.md
-| | |____gsd-planner.md
-| | |____gsd-project-researcher.md
-| | |____gsd-research-synthesizer.md
-| | |____gsd-roadmapper.md
-| | |____gsd-security-auditor.md
-| | |____gsd-ui-auditor.md
-| | |____gsd-ui-checker.md
-| | |____gsd-ui-researcher.md
-| | |____gsd-user-profiler.md
-| | |____gsd-verifier.md
-| |____get-shit-done
-| | |____VERSION
-| | |____bin
-| | | |____gsd-tools.cjs
-| | | |____lib
-| | | | |____commands.cjs
-| | | | |____config.cjs
-| | | | |____core.cjs
-| | | | |____docs.cjs
-| | | | |____frontmatter.cjs
-| | | | |____init.cjs
-| | | | |____intel.cjs
-| | | | |____learnings.cjs
-| | | | |____milestone.cjs
-| | | | |____model-profiles.cjs
-| | | | |____phase.cjs
-| | | | |____profile-output.cjs
-| | | | |____profile-pipeline.cjs
-| | | | |____roadmap.cjs
-| | | | |____schema-detect.cjs
-| | | | |____security.cjs
-| | | | |____state.cjs
-| | | | |____template.cjs
-| | | | |____uat.cjs
-| | | | |____verify.cjs
-| | | | |____workstream.cjs
-| | |____contexts
-| | | |____dev.md
-| | | |____research.md
-| | | |____review.md
-| | |____references
-| | | |____agent-contracts.md
-| | | |____artifact-types.md
-| | | |____checkpoints.md
-| | | |____common-bug-patterns.md
-| | | |____context-budget.md
-| | | |____continuation-format.md
-| | | |____decimal-phase-calculation.md
-| | | |____domain-probes.md
-| | | |____few-shot-examples
-| | | | |____plan-checker.md
-| | | | |____verifier.md
-| | | |____gate-prompts.md
-| | | |____gates.md
-| | | |____git-integration.md
-| | | |____git-planning-commit.md
-| | | |____model-profile-resolution.md
-| | | |____model-profiles.md
-| | | |____phase-argument-parsing.md
-| | | |____planner-gap-closure.md
-| | | |____planner-reviews.md
-| | | |____planner-revision.md
-| | | |____planning-config.md
-| | | |____questioning.md
-| | | |____revision-loop.md
-| | | |____tdd.md
-| | | |____thinking-models-debug.md
-| | | |____thinking-models-execution.md
-| | | |____thinking-models-planning.md
-| | | |____thinking-models-research.md
-| | | |____thinking-models-verification.md
-| | | |____thinking-partner.md
-| | | |____ui-brand.md
-| | | |____universal-anti-patterns.md
-| | | |____user-profiling.md
-| | | |____verification-overrides.md
-| | | |____verification-patterns.md
-| | | |____workstream-flag.md
-| | |____templates
-| | | |____DEBUG.md
-| | | |____SECURITY.md
-| | | |____UAT.md
-| | | |____UI-SPEC.md
-| | | |____VALIDATION.md
-| | | |____claude-md.md
-| | | |____codebase
-| | | | |____architecture.md
-| | | | |____concerns.md
-| | | | |____conventions.md
-| | | | |____integrations.md
-| | | | |____stack.md
-| | | | |____structure.md
-| | | | |____testing.md
-| | | |____config.json
-| | | |____context.md
-| | | |____continue-here.md
-| | | |____copilot-instructions.md
-| | | |____debug-subagent-prompt.md
-| | | |____dev-preferences.md
-| | | |____discovery.md
-| | | |____discussion-log.md
-| | | |____milestone-archive.md
-| | | |____milestone.md
-| | | |____phase-prompt.md
-| | | |____planner-subagent-prompt.md
-| | | |____project.md
-| | | |____requirements.md
-| | | |____research-project
-| | | | |____ARCHITECTURE.md
-| | | | |____FEATURES.md
-| | | | |____PITFALLS.md
-| | | | |____STACK.md
-| | | | |____SUMMARY.md
-| | | |____research.md
-| | | |____retrospective.md
-| | | |____roadmap.md
-| | | |____state.md
-| | | |____summary-complex.md
-| | | |____summary-minimal.md
-| | | |____summary-standard.md
-| | | |____summary.md
-| | | |____user-profile.md
-| | | |____user-setup.md
-| | | |____verification-report.md
-| | |____workflows
-| | | |____add-phase.md
-| | | |____add-tests.md
-| | | |____add-todo.md
-| | | |____analyze-dependencies.md
-| | | |____audit-fix.md
-| | | |____audit-milestone.md
-| | | |____audit-uat.md
-| | | |____autonomous.md
-| | | |____check-todos.md
-| | | |____cleanup.md
-| | | |____code-review-fix.md
-| | | |____code-review.md
-| | | |____complete-milestone.md
-| | | |____diagnose-issues.md
-| | | |____discovery-phase.md
-| | | |____discuss-phase-assumptions.md
-| | | |____discuss-phase-power.md
-| | | |____discuss-phase.md
-| | | |____do.md
-| | | |____docs-update.md
-| | | |____execute-phase.md
-| | | |____execute-plan.md
-| | | |____explore.md
-| | | |____fast.md
-| | | |____forensics.md
-| | | |____health.md
-| | | |____help.md
-| | | |____import.md
-| | | |____inbox.md
-| | | |____insert-phase.md
-| | | |____list-phase-assumptions.md
-| | | |____list-workspaces.md
-| | | |____manager.md
-| | | |____map-codebase.md
-| | | |____milestone-summary.md
-| | | |____new-milestone.md
-| | | |____new-project.md
-| | | |____new-workspace.md
-| | | |____next.md
-| | | |____node-repair.md
-| | | |____note.md
-| | | |____pause-work.md
-| | | |____plan-milestone-gaps.md
-| | | |____plan-phase.md
-| | | |____plant-seed.md
-| | | |____pr-branch.md
-| | | |____profile-user.md
-| | | |____progress.md
-| | | |____quick.md
-| | | |____remove-phase.md
-| | | |____remove-workspace.md
-| | | |____research-phase.md
-| | | |____resume-project.md
-| | | |____review.md
-| | | |____scan.md
-| | | |____secure-phase.md
-| | | |____session-report.md
-| | | |____settings.md
-| | | |____ship.md
-| | | |____stats.md
-| | | |____transition.md
-| | | |____ui-phase.md
-| | | |____ui-review.md
-| | | |____undo.md
-| | | |____update.md
-| | | |____validate-phase.md
-| | | |____verify-phase.md
-| | | |____verify-work.md
-| |____gsd-file-manifest.json
-| |____hooks
-| | |____gsd-check-update.js
-| | |____gsd-context-monitor.js
-| | |____gsd-phase-boundary.sh
-| | |____gsd-prompt-guard.js
-| | |____gsd-read-guard.js
-| | |____gsd-session-state.sh
-| | |____gsd-statusline.js
-| | |____gsd-validate-commit.sh
-| | |____gsd-workflow-guard.js
-| |____package.json
-| |____settings.json
-| |____skills
-| | |____gsd-add-backlog
-| | | |____SKILL.md
-| | |____gsd-add-phase
-| | | |____SKILL.md
-| | |____gsd-add-tests
-| | | |____SKILL.md
-| | |____gsd-add-todo
-| | | |____SKILL.md
-| | |____gsd-analyze-dependencies
-| | | |____SKILL.md
-| | |____gsd-audit-fix
-| | | |____SKILL.md
-| | |____gsd-audit-milestone
-| | | |____SKILL.md
-| | |____gsd-audit-uat
-| | | |____SKILL.md
-| | |____gsd-autonomous
-| | | |____SKILL.md
-| | |____gsd-check-todos
-| | | |____SKILL.md
-| | |____gsd-cleanup
-| | | |____SKILL.md
-| | |____gsd-code-review
-| | |____gsd-code-review-fix
-| | | |____SKILL.md
-| | | |____SKILL.md
-| | |____gsd-complete-milestone
-| | | |____SKILL.md
-| | |____gsd-debug
-| | | |____SKILL.md
-| | |____gsd-discuss-phase
-| | | |____SKILL.md
-| | |____gsd-do
-| | | |____SKILL.md
-| | |____gsd-docs-update
-| | | |____SKILL.md
-| | |____gsd-execute-phase
-| | | |____SKILL.md
-| | |____gsd-explore
-| | | |____SKILL.md
-| | |____gsd-fast
-| | | |____SKILL.md
-| | |____gsd-forensics
-| | | |____SKILL.md
-| | |____gsd-health
-| | | |____SKILL.md
-| | |____gsd-help
-| | | |____SKILL.md
-| | |____gsd-import
-| | | |____SKILL.md
-| | |____gsd-insert-phase
-| | | |____SKILL.md
-| | |____gsd-intel
-| | | |____SKILL.md
-| | |____gsd-join-discord
-| | | |____SKILL.md
-| | |____gsd-list-phase-assumptions
-| | | |____SKILL.md
-| | |____gsd-list-workspaces
-| | | |____SKILL.md
-| | |____gsd-manager
-| | | |____SKILL.md
-| | |____gsd-map-codebase
-| | | |____SKILL.md
-| | |____gsd-milestone-summary
-| | | |____SKILL.md
-| | |____gsd-new-milestone
-| | | |____SKILL.md
-| | |____gsd-new-project
-| | | |____SKILL.md
-| | |____gsd-new-workspace
-| | | |____SKILL.md
-| | |____gsd-next
-| | | |____SKILL.md
-| | |____gsd-note
-| | | |____SKILL.md
-| | |____gsd-pause-work
-| | | |____SKILL.md
-| | |____gsd-plan-milestone-gaps
-| | | |____SKILL.md
-| | |____gsd-plan-phase
-| | | |____SKILL.md
-| | |____gsd-plant-seed
-| | | |____SKILL.md
-| | |____gsd-pr-branch
-| | | |____SKILL.md
-| | |____gsd-profile-user
-| | | |____SKILL.md
-| | |____gsd-progress
-| | | |____SKILL.md
-| | |____gsd-quick
-| | | |____SKILL.md
-| | |____gsd-reapply-patches
-| | | |____SKILL.md
-| | |____gsd-remove-phase
-| | | |____SKILL.md
-| | |____gsd-remove-workspace
-| | | |____SKILL.md
-| | |____gsd-research-phase
-| | | |____SKILL.md
-| | |____gsd-resume-work
-| | | |____SKILL.md
-| | |____gsd-review
-| | |____gsd-review-backlog
-| | | |____SKILL.md
-| | | |____SKILL.md
-| | |____gsd-scan
-| | | |____SKILL.md
-| | |____gsd-secure-phase
-| | | |____SKILL.md
-| | |____gsd-session-report
-| | | |____SKILL.md
-| | |____gsd-set-profile
-| | | |____SKILL.md
-| | |____gsd-settings
-| | | |____SKILL.md
-| | |____gsd-ship
-| | | |____SKILL.md
-| | |____gsd-stats
-| | | |____SKILL.md
-| | |____gsd-thread
-| | | |____SKILL.md
-| | |____gsd-ui-review
-| | | |____SKILL.md
-| | |____gsd-undo
-| | | |____SKILL.md
-| | |____gsd-update
-| | | |____SKILL.md
-| | |____gsd-validate-phase
-| | | |____SKILL.md
-| | |____gsd-verify-work
-| | | |____SKILL.md
-| | |____gsd-workstreams
-| | | |____SKILL.md
-| | |____ui-ux-pro-max-skill
-| | | |____.claude
-| | | |____.claude-plugin
-| | | | |____marketplace.json
-| | | | |____plugin.json
-| | | | |____skills
-| | | | | |____banner-design
-| | | | | | |____SKILL.md
-| | | | | | |____references
-| | | | | | | |____banner-sizes-and-styles.md
-| | | | | |____brand
-| | | | | | |____SKILL.md
-| | | | | | |____references
-| | | | | | | |____approval-checklist.md
-| | | | | | | |____asset-organization.md
-| | | | | | | |____brand-guideline-template.md
-| | | | | | | |____color-palette-management.md
-| | | | | | | |____consistency-checklist.md
-| | | | | | | |____logo-usage-rules.md
-| | | | | | | |____messaging-framework.md
-| | | | | | | |____typography-specifications.md
-| | | | | | | |____update.md
-| | | | | | | |____visual-identity.md
-| | | | | | | |____voice-framework.md
-| | | | | | |____scripts
-| | | | | | | |____extract-colors.cjs
-| | | | | | | |____inject-brand-context.cjs
-| | | | | | | |____sync-brand-to-tokens.cjs
-| | | | | | | |____validate-asset.cjs
-| | | | | | |____templates
-| | | | | | | |____brand-guidelines-starter.md
-| | | | | |____design
-| | | | | |____design-system
-| | | | | | |____SKILL.md
-| | | | | | |____data
-| | | | | | | |____slide-backgrounds.csv
-| | | | | | | |____slide-charts.csv
-| | | | | | | |____slide-color-logic.csv
-| | | | | | | |____slide-copy.csv
-| | | | | | | |____slide-layout-logic.csv
-| | | | | | | |____slide-layouts.csv
-| | | | | | | |____slide-strategies.csv
-| | | | | | | |____slide-typography.csv
-| | | | | | |____references
-| | | | | | | |____component-specs.md
-| | | | | | | |____component-tokens.md
-| | | | | | | |____primitive-tokens.md
-| | | | | | | |____semantic-tokens.md
-| | | | | | | |____states-and-variants.md
-| | | | | | | |____tailwind-integration.md
-| | | | | | | |____token-architecture.md
-| | | | | | |____scripts
-| | | | | | | |____embed-tokens.cjs
-| | | | | | | |____fetch-background.py
-| | | | | | | |____generate-slide.py
-| | | | | | | |____generate-tokens.cjs
-| | | | | | | |____html-token-validator.py
-| | | | | | | |____search-slides.py
-| | | | | | | |____slide-token-validator.py
-| | | | | | | |____slide_search_core.py
-| | | | | | | |____validate-tokens.cjs
-| | | | | | |____templates
-| | | | | | | |____design-tokens-starter.json
-| | | | | | |____SKILL.md
-| | | | | | |____data
-| | | | | | | |____cip
-| | | | | | | | |____deliverables.csv
-| | | | | | | | |____industries.csv
-| | | | | | | | |____mockup-contexts.csv
-| | | | | | | | |____styles.csv
-| | | | | | | |____icon
-| | | | | | | | |____styles.csv
-| | | | | | | |____logo
-| | | | | | | | |____colors.csv
-| | | | | | | | |____industries.csv
-| | | | | | | | |____styles.csv
-| | | | | | |____references
-| | | | | | | |____banner-sizes-and-styles.md
-| | | | | | | |____cip-deliverable-guide.md
-| | | | | | | |____cip-design.md
-| | | | | | | |____cip-prompt-engineering.md
-| | | | | | | |____cip-style-guide.md
-| | | | | | | |____design-routing.md
-| | | | | | | |____icon-design.md
-| | | | | | | |____logo-color-psychology.md
-| | | | | | | |____logo-design.md
-| | | | | | | |____logo-prompt-engineering.md
-| | | | | | | |____logo-style-guide.md
-| | | | | | | |____slides-copywriting-formulas.md
-| | | | | | | |____slides-create.md
-| | | | | | | |____slides-html-template.md
-| | | | | | | |____slides-layout-patterns.md
-| | | | | | | |____slides-strategies.md
-| | | | | | | |____slides.md
-| | | | | | | |____social-photos-design.md
-| | | | | | |____scripts
-| | | | | | | |____cip
-| | | | | | | | |____core.py
-| | | | | | | | |____generate.py
-| | | | | | | | |____render-html.py
-| | | | | | | | |____search.py
-| | | | | | | |____icon
-| | | | | | | | |____generate.py
-| | | | | | | |____logo
-| | | | | | | | |____core.py
-| | | | | | | | |____generate.py
-| | | | | | | | |____search.py
-| | | | | |____slides
-| | | | | | |____SKILL.md
-| | | | | | |____references
-| | | | | | | |____copywriting-formulas.md
-| | | | | | | |____create.md
-| | | | | | | |____html-template.md
-| | | | | | | |____layout-patterns.md
-| | | | | | | |____slide-strategies.md
-| | | | | |____ui-styling
-| | | | | | |____LICENSE.txt
-| | | | | | |____SKILL.md
-| | | | | | |____canvas-fonts
-| | | | | | | |____ArsenalSC-OFL.txt
-| | | | | | | |____ArsenalSC-Regular.ttf
-| | | | | | | |____BigShoulders-Bold.ttf
-| | | | | | | |____BigShoulders-OFL.txt
-| | | | | | | |____BigShoulders-Regular.ttf
-| | | | | | | |____Boldonse-OFL.txt
-| | | | | | | |____Boldonse-Regular.ttf
-| | | | | | | |____BricolageGrotesque-Bold.ttf
-| | | | | | | |____BricolageGrotesque-OFL.txt
-| | | | | | | |____BricolageGrotesque-Regular.ttf
-| | | | | | | |____CrimsonPro-Bold.ttf
-| | | | | | | |____CrimsonPro-Italic.ttf
-| | | | | | | |____CrimsonPro-OFL.txt
-| | | | | | | |____CrimsonPro-Regular.ttf
-| | | | | | | |____DMMono-OFL.txt
-| | | | | | | |____DMMono-Regular.ttf
-| | | | | | | |____EricaOne-OFL.txt
-| | | | | | | |____EricaOne-Regular.ttf
-| | | | | | | |____GeistMono-Bold.ttf
-| | | | | | | |____GeistMono-OFL.txt
-| | | | | | | |____GeistMono-Regular.ttf
-| | | | | | | |____Gloock-OFL.txt
-| | | | | | | |____Gloock-Regular.ttf
-| | | | | | | |____IBMPlexMono-Bold.ttf
-| | | | | | | |____IBMPlexMono-OFL.txt
-| | | | | | | |____IBMPlexMono-Regular.ttf
-| | | | | | | |____IBMPlexSerif-Bold.ttf
-| | | | | | | |____IBMPlexSerif-BoldItalic.ttf
-| | | | | | | |____IBMPlexSerif-Italic.ttf
-| | | | | | | |____IBMPlexSerif-Regular.ttf
-| | | | | | | |____InstrumentSans-Bold.ttf
-| | | | | | | |____InstrumentSans-BoldItalic.ttf
-| | | | | | | |____InstrumentSans-Italic.ttf
-| | | | | | | |____InstrumentSans-OFL.txt
-| | | | | | | |____InstrumentSans-Regular.ttf
-| | | | | | | |____InstrumentSerif-Italic.ttf
-| | | | | | | |____InstrumentSerif-Regular.ttf
-| | | | | | | |____Italiana-OFL.txt
-| | | | | | | |____Italiana-Regular.ttf
-| | | | | | | |____JetBrainsMono-Bold.ttf
-| | | | | | | |____JetBrainsMono-OFL.txt
-| | | | | | | |____JetBrainsMono-Regular.ttf
-| | | | | | | |____Jura-Light.ttf
-| | | | | | | |____Jura-Medium.ttf
-| | | | | | | |____Jura-OFL.txt
-| | | | | | | |____LibreBaskerville-OFL.txt
-| | | | | | | |____LibreBaskerville-Regular.ttf
-| | | | | | | |____Lora-Bold.ttf
-| | | | | | | |____Lora-BoldItalic.ttf
-| | | | | | | |____Lora-Italic.ttf
-| | | | | | | |____Lora-OFL.txt
-| | | | | | | |____Lora-Regular.ttf
-| | | | | | | |____NationalPark-Bold.ttf
-| | | | | | | |____NationalPark-OFL.txt
-| | | | | | | |____NationalPark-Regular.ttf
-| | | | | | | |____NothingYouCouldDo-OFL.txt
-| | | | | | | |____NothingYouCouldDo-Regular.ttf
-| | | | | | | |____Outfit-Bold.ttf
-| | | | | | | |____Outfit-OFL.txt
-| | | | | | | |____Outfit-Regular.ttf
-| | | | | | | |____PixelifySans-Medium.ttf
-| | | | | | | |____PixelifySans-OFL.txt
-| | | | | | | |____PoiretOne-OFL.txt
-| | | | | | | |____PoiretOne-Regular.ttf
-| | | | | | | |____RedHatMono-Bold.ttf
-| | | | | | | |____RedHatMono-OFL.txt
-| | | | | | | |____RedHatMono-Regular.ttf
-| | | | | | | |____Silkscreen-OFL.txt
-| | | | | | | |____Silkscreen-Regular.ttf
-| | | | | | | |____SmoochSans-Medium.ttf
-| | | | | | | |____SmoochSans-OFL.txt
-| | | | | | | |____Tektur-Medium.ttf
-| | | | | | | |____Tektur-OFL.txt
-| | | | | | | |____Tektur-Regular.ttf
-| | | | | | | |____WorkSans-Bold.ttf
-| | | | | | | |____WorkSans-BoldItalic.ttf
-| | | | | | | |____WorkSans-Italic.ttf
-| | | | | | | |____WorkSans-OFL.txt
-| | | | | | | |____WorkSans-Regular.ttf
-| | | | | | | |____YoungSerif-OFL.txt
-| | | | | | | |____YoungSerif-Regular.ttf
-| | | | | | |____references
-| | | | | | | |____canvas-design-system.md
-| | | | | | | |____shadcn-accessibility.md
-| | | | | | | |____shadcn-components.md
-| | | | | | | |____shadcn-theming.md
-| | | | | | | |____tailwind-customization.md
-| | | | | | | |____tailwind-responsive.md
-| | | | | | | |____tailwind-utilities.md
-| | | | | | |____scripts
-| | | | | | | |____.coverage
-| | | | | | | |____requirements.txt
-| | | | | | | |____shadcn_add.py
-| | | | | | | |____tailwind_config_gen.py
-| | | | | | | |____tests
-| | | | | | | | |____coverage-ui.json
-| | | | | | | | |____requirements.txt
-| | | | | | | | |____test_shadcn_add.py
-| | | | | | | | |____test_tailwind_config_gen.py
-| | | | | |____ui-ux-pro-max
-| | | | | | |____SKILL.md
-| | | | | | |____data
-| | | | | | |____scripts
-| | | |____CLAUDE.md
-| | | |____LICENSE
-| | | |____README.md
-| | | |____cli
-| | | | |____.npmignore
-| | | | |____README.md
-| | | | |____assets
-| | | | | |____data
-| | | | | | |_____sync_all.py
-| | | | | | |____app-interface.csv
-| | | | | | |____charts.csv
-| | | | | | |____colors.csv
-| | | | | | |____design.csv
-| | | | | | |____draft.csv
-| | | | | | |____google-fonts.csv
-| | | | | | |____icons.csv
-| | | | | | |____landing.csv
-| | | | | | |____products.csv
-| | | | | | |____react-performance.csv
-| | | | | | |____stacks
-| | | | | | | |____angular.csv
-| | | | | | | |____astro.csv
-| | | | | | | |____flutter.csv
-| | | | | | | |____html-tailwind.csv
-| | | | | | | |____jetpack-compose.csv
-| | | | | | | |____laravel.csv
-| | | | | | | |____nextjs.csv
-| | | | | | | |____nuxt-ui.csv
-| | | | | | | |____nuxtjs.csv
-| | | | | | | |____react-native.csv
-| | | | | | | |____react.csv
-| | | | | | | |____shadcn.csv
-| | | | | | | |____svelte.csv
-| | | | | | | |____swiftui.csv
-| | | | | | | |____threejs.csv
-| | | | | | | |____vue.csv
-| | | | | | |____styles.csv
-| | | | | | |____typography.csv
-| | | | | | |____ui-reasoning.csv
-| | | | | | |____ux-guidelines.csv
-| | | | | |____scripts
-| | | | | | |____core.py
-| | | | | | |____design_system.py
-| | | | | | |____search.py
-| | | | | |____templates
-| | | | | | |____base
-| | | | | | | |____quick-reference.md
-| | | | | | | |____skill-content.md
-| | | | | | |____platforms
-| | | | | | | |____agent.json
-| | | | | | | |____augment.json
-| | | | | | | |____claude.json
-| | | | | | | |____codebuddy.json
-| | | | | | | |____codex.json
-| | | | | | | |____continue.json
-| | | | | | | |____copilot.json
-| | | | | | | |____cursor.json
-| | | | | | | |____droid.json
-| | | | | | | |____gemini.json
-| | | | | | | |____kilocode.json
-| | | | | | | |____kiro.json
-| | | | | | | |____opencode.json
-| | | | | | | |____qoder.json
-| | | | | | | |____roocode.json
-| | | | | | | |____trae.json
-| | | | | | | |____warp.json
-| | | | | | | |____windsurf.json
-| | | | |____bun.lock
-| | | | |____package-lock.json
-| | | | |____package.json
-| | | | |____src
-| | | | | |____commands
-| | | | | | |____init.ts
-| | | | | | |____uninstall.ts
-| | | | | | |____update.ts
-| | | | | | |____versions.ts
-| | | | | |____index.ts
-| | | | | |____types
-| | | | | | |____index.ts
-| | | | | |____utils
-| | | | | | |____detect.ts
-| | | | | | |____extract.ts
-| | | | | | |____github.ts
-| | | | | | |____logger.ts
-| | | | | | |____template.ts
-| | | | |____tsconfig.json
-| | | |____docs
-| | | | |____三个 data-scripts-templates 的区别.md
-| | | |____preview
-| | | | |____xiaomaomi-app.html
-| | | |____screenshots
-| | | | |____website.png
-| | | |____skill.json
-| | | |____src
-| | | | |____ui-ux-pro-max
-| | | | | |____data
-| | | | | | |_____sync_all.py
-| | | | | | |____app-interface.csv
-| | | | | | |____charts.csv
-| | | | | | |____colors.csv
-| | | | | | |____design.csv
-| | | | | | |____draft.csv
-| | | | | | |____google-fonts.csv
-| | | | | | |____icons.csv
-| | | | | | |____landing.csv
-| | | | | | |____products.csv
-| | | | | | |____react-performance.csv
-| | | | | | |____stacks
-| | | | | | | |____angular.csv
-| | | | | | | |____astro.csv
-| | | | | | | |____flutter.csv
-| | | | | | | |____html-tailwind.csv
-| | | | | | | |____jetpack-compose.csv
-| | | | | | | |____laravel.csv
-| | | | | | | |____nextjs.csv
-| | | | | | | |____nuxt-ui.csv
-| | | | | | | |____nuxtjs.csv
-| | | | | | | |____react-native.csv
-| | | | | | | |____react.csv
-| | | | | | | |____shadcn.csv
-| | | | | | | |____svelte.csv
-| | | | | | | |____swiftui.csv
-| | | | | | | |____threejs.csv
-| | | | | | | |____vue.csv
-| | | | | | |____styles.csv
-| | | | | | |____typography.csv
-| | | | | | |____ui-reasoning.csv
-| | | | | | |____ux-guidelines.csv
-| | | | | |____scripts
-| | | | | | |____core.py
-| | | | | | |____design_system.py
-| | | | | | |____search.py
-| | | | | |____templates
-| | | | | | |____base
-| | | | | | | |____quick-reference.md
-| | | | | | | |____skill-content.md
-| | | | | | |____platforms
-| | | | | | | |____agent.json
-| | | | | | | |____augment.json
-| | | | | | | |____claude.json
-| | | | | | | |____codebuddy.json
-| | | | | | | |____codex.json
-| | | | | | | |____continue.json
-| | | | | | | |____copilot.json
-| | | | | | | |____cursor.json
-| | | | | | | |____droid.json
-| | | | | | | |____gemini.json
-| | | | | | | |____kilocode.json
-| | | | | | | |____kiro.json
-| | | | | | | |____opencode.json
-| | | | | | | |____qoder.json
-| | | | | | | |____roocode.json
-| | | | | | | |____trae.json
-| | | | | | | |____warp.json
-| | | | | | | |____windsurf.json
-|____.agents
-| |____skills
-| | |____design-taste-frontend
-| | | |____SKILL.md
-| | |____supabase
-| | |____supabase-postgres-best-practices
-| | | |____SKILL.md
-| | | |____references
-| | | | |_____contributing.md
-| | | | |_____sections.md
-| | | | |_____template.md
-| | | | |____advanced-full-text-search.md
-| | | | |____advanced-jsonb-indexing.md
-| | | | |____conn-idle-timeout.md
-| | | | |____conn-limits.md
-| | | | |____conn-pooling.md
-| | | | |____conn-prepared-statements.md
-| | | | |____data-batch-inserts.md
-| | | | |____data-n-plus-one.md
-| | | | |____data-pagination.md
-| | | | |____data-upsert.md
-| | | | |____lock-advisory.md
-| | | | |____lock-deadlock-prevention.md
-| | | | |____lock-short-transactions.md
-| | | | |____lock-skip-locked.md
-| | | | |____monitor-explain-analyze.md
-| | | | |____monitor-pg-stat-statements.md
-| | | | |____monitor-vacuum-analyze.md
-| | | | |____query-composite-indexes.md
-| | | | |____query-covering-indexes.md
-| | | | |____query-index-types.md
-| | | | |____query-missing-indexes.md
-| | | | |____query-partial-indexes.md
-| | | | |____schema-constraints.md
-| | | | |____schema-data-types.md
-| | | | |____schema-foreign-key-indexes.md
-| | | | |____schema-lowercase-identifiers.md
-| | | | |____schema-partitioning.md
-| | | | |____schema-primary-keys.md
-| | | | |____security-privileges.md
-| | | | |____security-rls-basics.md
-| | | | |____security-rls-performance.md
-| | | |____SKILL.md
-| | | |____assets
-| | | | |____feedback-issue-template.md
-| | | |____references
-| | | | |____skill-feedback.md
-|____.aider.chat.history.md
-|____.aider.input.history
-|____.aider.tags.cache.v4
-| |____cache.db
-| |____cache.db-shm
-| |____cache.db-wal
-|____.claude
-| |____agent-memory
-| | |____test-2-dayk
-| |____agents
-| | |____gsd-advisor-researcher.md
-| | |____gsd-assumptions-analyzer.md
-| | |____gsd-code-fixer.md
-| | |____gsd-code-reviewer.md
-| | |____gsd-codebase-mapper.md
-| | |____gsd-debugger.md
-| | |____gsd-doc-verifier.md
-| | |____gsd-doc-writer.md
-| | |____gsd-executor.md
-| | |____gsd-integration-checker.md
-| | |____gsd-intel-updater.md
-| | |____gsd-nyquist-auditor.md
-| | |____gsd-phase-researcher.md
-| | |____gsd-plan-checker.md
-| | |____gsd-planner.md
-| | |____gsd-project-researcher.md
-| | |____gsd-research-synthesizer.md
-| | |____gsd-roadmapper.md
-| | |____gsd-security-auditor.md
-| | |____gsd-ui-auditor.md
-| | |____gsd-ui-checker.md
-| | |____gsd-ui-researcher.md
-| | |____gsd-user-profiler.md
-| | |____gsd-verifier.md
-| | |____test-2-dayk.md
-| |____commands
-| | |____gsd
-| | | |____add-backlog.md
-| | | |____add-phase.md
-| | | |____add-tests.md
-| | | |____add-todo.md
-| | | |____analyze-dependencies.md
-| | | |____audit-fix.md
-| | | |____audit-milestone.md
-| | | |____audit-uat.md
-| | | |____autonomous.md
-| | | |____check-todos.md
-| | | |____cleanup.md
-| | | |____code-review-fix.md
-| | | |____code-review.md
-| | | |____complete-milestone.md
-| | | |____debug.md
-| | | |____discuss-phase.md
-| | | |____do.md
-| | | |____docs-update.md
-| | | |____execute-phase.md
-| | | |____explore.md
-| | | |____fast.md
-| | | |____forensics.md
-| | | |____health.md
-| | | |____help.md
-| | | |____import.md
-| | | |____insert-phase.md
-| | | |____intel.md
-| | | |____join-discord.md
-| | | |____list-phase-assumptions.md
-| | | |____list-workspaces.md
-| | | |____manager.md
-| | | |____map-codebase.md
-| | | |____milestone-summary.md
-| | | |____new-milestone.md
-| | | |____new-project.md
-| | | |____new-workspace.md
-| | | |____next.md
-| | | |____note.md
-| | | |____pause-work.md
-| | | |____plan-milestone-gaps.md
-| | | |____plan-phase.md
-| | | |____plant-seed.md
-| | | |____pr-branch.md
-| | | |____profile-user.md
-| | | |____progress.md
-| | | |____quick.md
-| | | |____reapply-patches.md
-| | | |____remove-phase.md
-| | | |____remove-workspace.md
-| | | |____research-phase.md
-| | | |____resume-work.md
-| | | |____review-backlog.md
-| | | |____review.md
-| | | |____scan.md
-| | | |____secure-phase.md
-| | | |____session-report.md
-| | | |____set-profile.md
-| | | |____settings.md
-| | | |____ship.md
-| | | |____stats.md
-| | | |____thread.md
-| | | |____ui-phase.md
-| | | |____ui-review.md
-| | | |____undo.md
-| | | |____update.md
-| | | |____validate-phase.md
-| | | |____verify-work.md
-| | | |____workstreams.md
-| |____get-shit-done
-| | |____VERSION
-| | |____bin
-| | | |____gsd-tools.cjs
-| | | |____lib
-| | | | |____commands.cjs
-| | | | |____config.cjs
-| | | | |____core.cjs
-| | | | |____docs.cjs
-| | | | |____frontmatter.cjs
-| | | | |____init.cjs
-| | | | |____intel.cjs
-| | | | |____learnings.cjs
-| | | | |____milestone.cjs
-| | | | |____model-profiles.cjs
-| | | | |____phase.cjs
-| | | | |____profile-output.cjs
-| | | | |____profile-pipeline.cjs
-| | | | |____roadmap.cjs
-| | | | |____schema-detect.cjs
-| | | | |____security.cjs
-| | | | |____state.cjs
-| | | | |____template.cjs
-| | | | |____uat.cjs
-| | | | |____verify.cjs
-| | | | |____workstream.cjs
-| | |____contexts
-| | | |____dev.md
-| | | |____research.md
-| | | |____review.md
-| | |____references
-| | | |____agent-contracts.md
-| | | |____artifact-types.md
-| | | |____checkpoints.md
-| | | |____common-bug-patterns.md
-| | | |____context-budget.md
-| | | |____continuation-format.md
-| | | |____decimal-phase-calculation.md
-| | | |____domain-probes.md
-| | | |____few-shot-examples
-| | | | |____plan-checker.md
-| | | | |____verifier.md
-| | | |____gate-prompts.md
-| | | |____gates.md
-| | | |____git-integration.md
-| | | |____git-planning-commit.md
-| | | |____model-profile-resolution.md
-| | | |____model-profiles.md
-| | | |____phase-argument-parsing.md
-| | | |____planner-gap-closure.md
-| | | |____planner-reviews.md
-| | | |____planner-revision.md
-| | | |____planning-config.md
-| | | |____questioning.md
-| | | |____revision-loop.md
-| | | |____tdd.md
-| | | |____thinking-models-debug.md
-| | | |____thinking-models-execution.md
-| | | |____thinking-models-planning.md
-| | | |____thinking-models-research.md
-| | | |____thinking-models-verification.md
-| | | |____thinking-partner.md
-| | | |____ui-brand.md
-| | | |____universal-anti-patterns.md
-| | | |____user-profiling.md
-| | | |____verification-overrides.md
-| | | |____verification-patterns.md
-| | | |____workstream-flag.md
-| | |____templates
-| | | |____DEBUG.md
-| | | |____SECURITY.md
-| | | |____UAT.md
-| | | |____UI-SPEC.md
-| | | |____VALIDATION.md
-| | | |____claude-md.md
-| | | |____codebase
-| | | | |____architecture.md
-| | | | |____concerns.md
-| | | | |____conventions.md
-| | | | |____integrations.md
-| | | | |____stack.md
-| | | | |____structure.md
-| | | | |____testing.md
-| | | |____config.json
-| | | |____context.md
-| | | |____continue-here.md
-| | | |____copilot-instructions.md
-| | | |____debug-subagent-prompt.md
-| | | |____dev-preferences.md
-| | | |____discovery.md
-| | | |____discussion-log.md
-| | | |____milestone-archive.md
-| | | |____milestone.md
-| | | |____phase-prompt.md
-| | | |____planner-subagent-prompt.md
-| | | |____project.md
-| | | |____requirements.md
-| | | |____research-project
-| | | | |____ARCHITECTURE.md
-| | | | |____FEATURES.md
-| | | | |____PITFALLS.md
-| | | | |____STACK.md
-| | | | |____SUMMARY.md
-| | | |____research.md
-| | | |____retrospective.md
-| | | |____roadmap.md
-| | | |____state.md
-| | | |____summary-complex.md
-| | | |____summary-minimal.md
-| | | |____summary-standard.md
-| | | |____summary.md
-| | | |____user-profile.md
-| | | |____user-setup.md
-| | | |____verification-report.md
-| | |____workflows
-| | | |____add-phase.md
-| | | |____add-tests.md
-| | | |____add-todo.md
-| | | |____analyze-dependencies.md
-| | | |____audit-fix.md
-| | | |____audit-milestone.md
-| | | |____audit-uat.md
-| | | |____autonomous.md
-| | | |____check-todos.md
-| | | |____cleanup.md
-| | | |____code-review-fix.md
-| | | |____code-review.md
-| | | |____complete-milestone.md
-| | | |____diagnose-issues.md
-| | | |____discovery-phase.md
-| | | |____discuss-phase-assumptions.md
-| | | |____discuss-phase-power.md
-| | | |____discuss-phase.md
-| | | |____do.md
-| | | |____docs-update.md
-| | | |____execute-phase.md
-| | | |____execute-plan.md
-| | | |____explore.md
-| | | |____fast.md
-| | | |____forensics.md
-| | | |____health.md
-| | | |____help.md
-| | | |____import.md
-| | | |____inbox.md
-| | | |____insert-phase.md
-| | | |____list-phase-assumptions.md
-| | | |____list-workspaces.md
-| | | |____manager.md
-| | | |____map-codebase.md
-| | | |____milestone-summary.md
-| | | |____new-milestone.md
-| | | |____new-project.md
-| | | |____new-workspace.md
-| | | |____next.md
-| | | |____node-repair.md
-| | | |____note.md
-| | | |____pause-work.md
-| | | |____plan-milestone-gaps.md
-| | | |____plan-phase.md
-| | | |____plant-seed.md
-| | | |____pr-branch.md
-| | | |____profile-user.md
-| | | |____progress.md
-| | | |____quick.md
-| | | |____remove-phase.md
-| | | |____remove-workspace.md
-| | | |____research-phase.md
-| | | |____resume-project.md
-| | | |____review.md
-| | | |____scan.md
-| | | |____secure-phase.md
-| | | |____session-report.md
-| | | |____settings.md
-| | | |____ship.md
-| | | |____stats.md
-| | | |____transition.md
-| | | |____ui-phase.md
-| | | |____ui-review.md
-| | | |____undo.md
-| | | |____update.md
-| | | |____validate-phase.md
-| | | |____verify-phase.md
-| | | |____verify-work.md
-| |____gsd-file-manifest.json
-| |____hooks
-| | |____gsd-check-update.js
-| | |____gsd-context-monitor.js
-| | |____gsd-phase-boundary.sh
-| | |____gsd-prompt-guard.js
-| | |____gsd-read-guard.js
-| | |____gsd-session-state.sh
-| | |____gsd-statusline.js
-| | |____gsd-validate-commit.sh
-| | |____gsd-workflow-guard.js
-| |____package.json
-| |____settings.json
-| |____settings.local.json
-| |____skills
-| | |____supabase
-| | |____supabase-postgres-best-practices
-|____.clineRules
-|____.codex
-| |____agents
-| | |____gsd-advisor-researcher.md
-| | |____gsd-advisor-researcher.toml
-| | |____gsd-assumptions-analyzer.md
-| | |____gsd-assumptions-analyzer.toml
-| | |____gsd-code-fixer.md
-| | |____gsd-code-fixer.toml
-| | |____gsd-code-reviewer.md
-| | |____gsd-code-reviewer.toml
-| | |____gsd-codebase-mapper.md
-| | |____gsd-codebase-mapper.toml
-| | |____gsd-debugger.md
-| | |____gsd-debugger.toml
-| | |____gsd-doc-verifier.md
-| | |____gsd-doc-verifier.toml
-| | |____gsd-doc-writer.md
-| | |____gsd-doc-writer.toml
-| | |____gsd-executor.md
-| | |____gsd-executor.toml
-| | |____gsd-integration-checker.md
-| | |____gsd-integration-checker.toml
-| | |____gsd-intel-updater.md
-| | |____gsd-intel-updater.toml
-| | |____gsd-nyquist-auditor.md
-| | |____gsd-nyquist-auditor.toml
-| | |____gsd-phase-researcher.md
-| | |____gsd-phase-researcher.toml
-| | |____gsd-plan-checker.md
-| | |____gsd-plan-checker.toml
-| | |____gsd-planner.md
-| | |____gsd-planner.toml
-| | |____gsd-project-researcher.md
-| | |____gsd-project-researcher.toml
-| | |____gsd-research-synthesizer.md
-| | |____gsd-research-synthesizer.toml
-| | |____gsd-roadmapper.md
-| | |____gsd-roadmapper.toml
-| | |____gsd-security-auditor.md
-| | |____gsd-security-auditor.toml
-| | |____gsd-ui-auditor.md
-| | |____gsd-ui-auditor.toml
-| | |____gsd-ui-checker.md
-| | |____gsd-ui-checker.toml
-| | |____gsd-ui-researcher.md
-| | |____gsd-ui-researcher.toml
-| | |____gsd-user-profiler.md
-| | |____gsd-user-profiler.toml
-| | |____gsd-verifier.md
-| | |____gsd-verifier.toml
-| |____config.toml
-| |____get-shit-done
-| | |____VERSION
-| | |____bin
-| | | |____gsd-tools.cjs
-| | | |____lib
-| | | | |____commands.cjs
-| | | | |____config.cjs
-| | | | |____core.cjs
-| | | | |____docs.cjs
-| | | | |____frontmatter.cjs
-| | | | |____init.cjs
-| | | | |____intel.cjs
-| | | | |____learnings.cjs
-| | | | |____milestone.cjs
-| | | | |____model-profiles.cjs
-| | | | |____phase.cjs
-| | | | |____profile-output.cjs
-| | | | |____profile-pipeline.cjs
-| | | | |____roadmap.cjs
-| | | | |____schema-detect.cjs
-| | | | |____security.cjs
-| | | | |____state.cjs
-| | | | |____template.cjs
-| | | | |____uat.cjs
-| | | | |____verify.cjs
-| | | | |____workstream.cjs
-| | |____contexts
-| | | |____dev.md
-| | | |____research.md
-| | | |____review.md
-| | |____references
-| | | |____agent-contracts.md
-| | | |____artifact-types.md
-| | | |____checkpoints.md
-| | | |____common-bug-patterns.md
-| | | |____context-budget.md
-| | | |____continuation-format.md
-| | | |____decimal-phase-calculation.md
-| | | |____domain-probes.md
-| | | |____few-shot-examples
-| | | | |____plan-checker.md
-| | | | |____verifier.md
-| | | |____gate-prompts.md
-| | | |____gates.md
-| | | |____git-integration.md
-| | | |____git-planning-commit.md
-| | | |____model-profile-resolution.md
-| | | |____model-profiles.md
-| | | |____phase-argument-parsing.md
-| | | |____planner-gap-closure.md
-| | | |____planner-reviews.md
-| | | |____planner-revision.md
-| | | |____planning-config.md
-| | | |____questioning.md
-| | | |____revision-loop.md
-| | | |____tdd.md
-| | | |____thinking-models-debug.md
-| | | |____thinking-models-execution.md
-| | | |____thinking-models-planning.md
-| | | |____thinking-models-research.md
-| | | |____thinking-models-verification.md
-| | | |____thinking-partner.md
-| | | |____ui-brand.md
-| | | |____universal-anti-patterns.md
-| | | |____user-profiling.md
-| | | |____verification-overrides.md
-| | | |____verification-patterns.md
-| | | |____workstream-flag.md
-| | |____templates
-| | | |____DEBUG.md
-| | | |____SECURITY.md
-| | | |____UAT.md
-| | | |____UI-SPEC.md
-| | | |____VALIDATION.md
-| | | |____claude-md.md
-| | | |____codebase
-| | | | |____architecture.md
-| | | | |____concerns.md
-| | | | |____conventions.md
-| | | | |____integrations.md
-| | | | |____stack.md
-| | | | |____structure.md
-| | | | |____testing.md
-| | | |____config.json
-| | | |____context.md
-| | | |____continue-here.md
-| | | |____copilot-instructions.md
-| | | |____debug-subagent-prompt.md
-| | | |____dev-preferences.md
-| | | |____discovery.md
-| | | |____discussion-log.md
-| | | |____milestone-archive.md
-| | | |____milestone.md
-| | | |____phase-prompt.md
-| | | |____planner-subagent-prompt.md
-| | | |____project.md
-| | | |____requirements.md
-| | | |____research-project
-| | | | |____ARCHITECTURE.md
-| | | | |____FEATURES.md
-| | | | |____PITFALLS.md
-| | | | |____STACK.md
-| | | | |____SUMMARY.md
-| | | |____research.md
-| | | |____retrospective.md
-| | | |____roadmap.md
-| | | |____state.md
-| | | |____summary-complex.md
-| | | |____summary-minimal.md
-| | | |____summary-standard.md
-| | | |____summary.md
-| | | |____user-profile.md
-| | | |____user-setup.md
-| | | |____verification-report.md
-| | |____workflows
-| | | |____add-phase.md
-| | | |____add-tests.md
-| | | |____add-todo.md
-| | | |____analyze-dependencies.md
-| | | |____audit-fix.md
-| | | |____audit-milestone.md
-| | | |____audit-uat.md
-| | | |____autonomous.md
-| | | |____check-todos.md
-| | | |____cleanup.md
-| | | |____code-review-fix.md
-| | | |____code-review.md
-| | | |____complete-milestone.md
-| | | |____diagnose-issues.md
-| | | |____discovery-phase.md
-| | | |____discuss-phase-assumptions.md
-| | | |____discuss-phase-power.md
-| | | |____discuss-phase.md
-| | | |____do.md
-| | | |____docs-update.md
-| | | |____execute-phase.md
-| | | |____execute-plan.md
-| | | |____explore.md
-| | | |____fast.md
-| | | |____forensics.md
-| | | |____health.md
-| | | |____help.md
-| | | |____import.md
-| | | |____inbox.md
-| | | |____insert-phase.md
-| | | |____list-phase-assumptions.md
-| | | |____list-workspaces.md
-| | | |____manager.md
-| | | |____map-codebase.md
-| | | |____milestone-summary.md
-| | | |____new-milestone.md
-| | | |____new-project.md
-| | | |____new-workspace.md
-| | | |____next.md
-| | | |____node-repair.md
-| | | |____note.md
-| | | |____pause-work.md
-| | | |____plan-milestone-gaps.md
-| | | |____plan-phase.md
-| | | |____plant-seed.md
-| | | |____pr-branch.md
-| | | |____profile-user.md
-| | | |____progress.md
-| | | |____quick.md
-| | | |____remove-phase.md
-| | | |____remove-workspace.md
-| | | |____research-phase.md
-| | | |____resume-project.md
-| | | |____review.md
-| | | |____scan.md
-| | | |____secure-phase.md
-| | | |____session-report.md
-| | | |____settings.md
-| | | |____ship.md
-| | | |____stats.md
-| | | |____transition.md
-| | | |____ui-phase.md
-| | | |____ui-review.md
-| | | |____undo.md
-| | | |____update.md
-| | | |____validate-phase.md
-| | | |____verify-phase.md
-| | | |____verify-work.md
-| |____gsd-file-manifest.json
-| |____skills
-| | |____gsd-add-backlog
-| | | |____SKILL.md
-| | |____gsd-add-phase
-| | | |____SKILL.md
-| | |____gsd-add-tests
-| | | |____SKILL.md
-| | |____gsd-add-todo
-| | | |____SKILL.md
-| | |____gsd-analyze-dependencies
-| | | |____SKILL.md
-| | |____gsd-audit-fix
-| | | |____SKILL.md
-| | |____gsd-audit-milestone
-| | | |____SKILL.md
-| | |____gsd-audit-uat
-| | | |____SKILL.md
-| | |____gsd-autonomous
-| | | |____SKILL.md
-| | |____gsd-check-todos
-| | | |____SKILL.md
-| | |____gsd-cleanup
-| | | |____SKILL.md
-| | |____gsd-code-review
-| | |____gsd-code-review-fix
-| | | |____SKILL.md
-| | | |____SKILL.md
-| | |____gsd-complete-milestone
-| | | |____SKILL.md
-| | |____gsd-debug
-| | | |____SKILL.md
-| | |____gsd-discuss-phase
-| | | |____SKILL.md
-| | |____gsd-do
-| | | |____SKILL.md
-| | |____gsd-docs-update
-| | | |____SKILL.md
-| | |____gsd-execute-phase
-| | | |____SKILL.md
-| | |____gsd-explore
-| | | |____SKILL.md
-| | |____gsd-fast
-| | | |____SKILL.md
-| | |____gsd-forensics
-| | | |____SKILL.md
-| | |____gsd-health
-| | | |____SKILL.md
-| | |____gsd-help
-| | | |____SKILL.md
-| | |____gsd-import
-| | | |____SKILL.md
-| | |____gsd-insert-phase
-| | | |____SKILL.md
-| | |____gsd-intel
-| | | |____SKILL.md
-| | |____gsd-join-discord
-| | | |____SKILL.md
-| | |____gsd-list-phase-assumptions
-| | | |____SKILL.md
-| | |____gsd-list-workspaces
-| | | |____SKILL.md
-| | |____gsd-manager
-| | | |____SKILL.md
-| | |____gsd-map-codebase
-| | | |____SKILL.md
-| | |____gsd-milestone-summary
-| | | |____SKILL.md
-| | |____gsd-new-milestone
-| | | |____SKILL.md
-| | |____gsd-new-project
-| | | |____SKILL.md
-| | |____gsd-new-workspace
-| | | |____SKILL.md
-| | |____gsd-next
-| | | |____SKILL.md
-| | |____gsd-note
-| | | |____SKILL.md
-| | |____gsd-pause-work
-| | | |____SKILL.md
-| | |____gsd-plan-milestone-gaps
-| | | |____SKILL.md
-| | |____gsd-plan-phase
-| | | |____SKILL.md
-| | |____gsd-plant-seed
-| | | |____SKILL.md
-| | |____gsd-pr-branch
-| | | |____SKILL.md
-| | |____gsd-profile-user
-| | | |____SKILL.md
-| | |____gsd-progress
-| | | |____SKILL.md
-| | |____gsd-quick
-| | | |____SKILL.md
-| | |____gsd-reapply-patches
-| | | |____SKILL.md
-| | |____gsd-remove-phase
-| | | |____SKILL.md
-| | |____gsd-remove-workspace
-| | | |____SKILL.md
-| | |____gsd-research-phase
-| | | |____SKILL.md
-| | |____gsd-resume-work
-| | | |____SKILL.md
-| | |____gsd-review
-| | |____gsd-review-backlog
-| | | |____SKILL.md
-| | | |____SKILL.md
-| | |____gsd-scan
-| | | |____SKILL.md
-| | |____gsd-secure-phase
-| | | |____SKILL.md
-| | |____gsd-session-report
-| | | |____SKILL.md
-| | |____gsd-set-profile
-| | | |____SKILL.md
-| | |____gsd-settings
-| | | |____SKILL.md
-| | |____gsd-ship
-| | | |____SKILL.md
-| | |____gsd-stats
-| | | |____SKILL.md
-| | |____gsd-thread
-| | | |____SKILL.md
-| | |____gsd-ui-phase
-| | | |____SKILL.md
-| | |____gsd-ui-review
-| | | |____SKILL.md
-| | |____gsd-undo
-| | | |____SKILL.md
-| | |____gsd-update
-| | | |____SKILL.md
-| | |____gsd-validate-phase
-| | | |____SKILL.md
-| | |____gsd-verify-work
-| | | |____SKILL.md
-| | |____gsd-workstreams
-| | | |____SKILL.md
-|____.env.example
-|____.env.local
-|____.planning
-| |____BOT_SPEC.md
-| |____PROJECT.md
-| |____ROADMAP.md
-| |____STATE.md
-| |____UI-REVIEW.md
-| |____codebase
-| | |____ARCHITECTURE.md
-| | |____CONCERNS.md
-| | |____CONVENTIONS.md
-| | |____INTEGRATIONS.md
-| | |____STACK.md
-| | |____STRUCTURE.md
-| | |____TESTING.md
-| |____config.json
-| |____notes
-| | |____2026-04-13-ssr-dynamic-import-rule.md
-| |____phases
-| | |____02.3-roles-audit
-| | | |____2.3-CONTEXT.md
-| | | |____2.3-PLAN.md
-| | | |____2.3-SUMMARY.md
-| | |____1-promos-banners
-| | | |____1-PLAN.md
-| | |____1.5-conversational-flow-engine
-| | | |____1.5-PLAN.md
-| | | |____1.5-SUMMARY.md
-| | | |____REQUIREMENTS.md
-| | |____2-pos-core
-| | | |____2-PLAN.md
-| | | |____2-SUMMARY.md
-| | |____3-cash-mgmt
-| | | |____3-PLAN.md
-| |____todos
-| | |____pending
-| | | |____001-ssr-dynamic-import-rule.md
-|____.qwen
-| |____settings.json
-| |____settings.json.orig
-| |____skills
-| | |____supabase
-| | |____supabase-postgres-best-practices
-|____.vscode
-| |____extensions.json
-| |____launch.json
-|____AGENT.md
-|____AGENTS.md
-|____AGENTS_LIST.md
-|____ARCHITECTURE.md
-|____CLINE_SETUP.md
-|____PROJECT_STRUCTURE.md
-|____QWEN.md
-|____README.md
-|____ROADMAP.md
-|____SECURITY_FIX_GUIDE.md
-|____agent_loop.sh
-|____ai
-| |____cli.js
-| |____commands
-| | |____add-logout.md
-| | |____auto.md
-| | |____fix-cursor.md
-| | |____fix-overflow.md
-| | |____manage-staff.md
-| | |____order-alert.md
-| | |____order-sound.md
-| | |____toggle-password.md
-|____apply-event-logs.js
-|____cline.config.json
-|____deploy-migrations.js
-|____deploy-security-fix.js
-|____diagnose_ids.ts
-|____docs
-| |____telemetry-spec-v1.md
-|____eslint.config.mjs
-|____execute-migrations.js
-|____fix_db.ts
-|____logs
-|____middleware.ts
-|____migrations-phase-2.3.sql
-|____migrations.sql
-|____next-env.d.ts
-|____next.config.ts
-|____package-lock.json
-|____package.json
-|____planning
-| |____ai
-| | |____ROADMAP_EXEC_MODE.txt
-| | |____master_prompt.txt
-|____postcss.config.mjs
-|____project_tree_full.txt
-|____public
-| |____alert-cocina.mp3
-| |____file.svg
-| |____globe.svg
-| |____images
-| | |____alitas.webp
-| | |____boneless.webp
-| | |____combo.webp
-| | |____cursor-corndod.png
-| | |____hero.webp
-| | |____logo.png
-| | |____papas.webp
-| |____next.svg
-| |____vercel.svg
-| |____window.svg
-|____refactor_btns.js
-|____run-migrations.js
-|____run-review.sh
-|____run_test.sh
-|____scripts
-| |____add_whatsapp_column.sql
-| |____convert-images.mjs
-| |____syncAllProducts.ts
-| |____syncCombosToDb.ts
-|____skills-lock.json
-|____snacks911.md
-|____src
-| |____.DS_Store
-| |____ai
-| | |____runtime
-| | | |____contextBuilder.ts
-| | | |____decisionRouter.ts
-| | | |____flowEngine.ts
-| | | |____intentAgent.ts
-| | | |____salesAgent.ts
-| |____app
-| | |____.DS_Store
-| | |____admin
-| | | |____audit
-| | | | |____page.tsx
-| | | |____cash
-| | | | |____page.tsx
-| | | |____layout.tsx
-| | | |____login
-| | | | |____page.tsx
-| | | |____menu
-| | | | |____page.tsx
-| | | |____optimize
-| | | | |____page.tsx
-| | | |____orders
-| | | | |____page.tsx
-| | | |____page.tsx
-| | | |____pos
-| | | | |____page.tsx
-| | | |____products
-| | | | |____page.tsx
-| | | |____reports
-| | | | |____page.tsx
-| | | |____sales
-| | | | |____page.tsx
-| | | |____settings
-| | | | |____page.tsx
-| | | |____staff
-| | | | |____page.tsx
-| | |____api
-| | | |____.DS_Store
-| | | |____admin
-| | | | |____login
-| | | | | |____route.ts
-| | | | |____logout
-| | | | | |____route.ts
-| | | | |____me
-| | | | | |____route.ts
-| | | | |____reset-codes
-| | | | | |____route.ts
-| | | | |____staff
-| | | | | |____route.ts
-| | | |____ai
-| | | | |____approve
-| | | | | |____route.ts
-| | | | |____chat
-| | | | | |____route.ts
-| | | |____auth
-| | | | |____login
-| | | | | |____route.ts
-| | | | |____logout
-| | | | | |____route.ts
-| | | | |____me
-| | | | | |____route.ts
-| | | | |____reset-password
-| | | | | |____route.ts
-| | | | |____reset-request
-| | | | | |____route.ts
-| | | |____cash
-| | | | |____route.ts
-| | | |____menu
-| | | | |____parse
-| | | | | |____route.ts
-| | | | |____save
-| | | | | |____route.ts
-| | | |____orders
-| | | |____orders-list
-| | | | |____route.ts
-| | | | |____confirm
-| | | | | |____route.ts
-| | | | |____route.ts
-| | | | |____status
-| | | | | |____route.ts
-| | | |____pos
-| | | | |____orders
-| | | | | |____route.ts
-| | | |____products
-| | | | |____check
-| | | | | |____route.ts
-| | | | |____route.ts
-| | | | |____seed
-| | | | | |____route.ts
-| | | |____store
-| | | | |____settings
-| | | | | |____route.ts
-| | | | |____status
-| | | | | |____route.ts
-| | | |____whatsapp
-| | | | |____.DS_Store
-| | | | |____health
-| | | | | |____route.ts
-| | | | |____webhook
-| | | | | |____route.ts
-| | |____components
-| | |____favicon.ico
-| | |____globals.css
-| | |____icon.svg
-| | |____layout.tsx
-| | |____login
-| | | |____page.tsx
-| | |____menu
-| | | |____page.tsx
-| | |____orders
-| | | |____page.tsx
-| | |____page.tsx
-| | |____reset-password
-| | | |____page.tsx
-| |____components
-| | |____cart
-| | | |____Cart.tsx
-| | | |____CartUpsell.tsx
-| | | |____CartUpsellBanner.tsx
-| | |____chat
-| | | |____ChatBot.tsx
-| | | |____OrderBot.tsx
-| | |____common
-| | | |____DecisionLock.tsx
-| | | |____ProductCard.tsx
-| | | |____PromoBanner.tsx
-| | |____effects
-| | | |____FireCanvas.tsx
-| | |____kitchen
-| | | |____KitchenPanel.tsx
-| | |____layout
-| | | |____CustomCursor.tsx
-| | | |____Navbar.tsx
-| | | |____ScrollCTA.tsx
-| | | |____SiteFooter.tsx
-| | |____modals
-| | | |____ComboSelectorModal.tsx
-| | | |____OrderAlertModal.tsx
-| | | |____ProductCustomizerModal.tsx
-| | | |____UpsellModal.tsx
-| | | |____WelcomeModal.tsx
-| | |____sections
-| | | |____ComboShowcase.tsx
-| | | |____CombosSection.tsx
-| | | |____ContactSection.tsx
-| | | |____Hero.tsx
-| | | |____ReviewSection.tsx
-| | | |____SocialProof.tsx
-| | |____ui
-| | | |____Button.tsx
-| |____core
-| | |____abandonmentRecovery.ts
-| | |____agentOrchestrator.ts
-| | |____agentOrchestratorApi.ts
-| | |____ai
-| | | |____memoryAgent.ts
-| | |____alertEngine.ts
-| | |____analytics.ts
-| | |____antojo.ts
-| | |____botEngine.ts
-| | |____cartEngine.ts
-| | |____circuitBreaker.ts
-| | |____consultativeMatrix.ts
-| | |____costGuardAI.ts
-| | |____customerProfileStore.ts
-| | |____eventLogger.ts
-| | |____fallbackEngine.ts
-| | |____humanHandoff.ts
-| | |____index.ts
-| | |____intentDetector.ts
-| | |____inventoryMiddleware.ts
-| | |____offerAgent.ts
-| | |____responseEngine.ts
-| | |____responseValidator.ts
-| | |____revenueMetrics.ts
-| | |____runBot.ts
-| | |____sales-rules.json
-| | |____salesThermostat.ts
-| | |____telemetryEmitter.ts
-| | |____types.ts
-| | |____validationService.ts
-| | |____whatsappClient.ts
-| |____data
-| | |____products.ts
-| |____hooks
-| |____lib
-| | |____.DS_Store
-| | |____adminStore.ts
-| | |____adminTypes.ts
-| | |____aiExamples.ts
-| | |____analytics.ts
-| | |____cartStore.ts
-| | |____cashStore.ts
-| | |____chatStore.ts
-| | |____conversionTracker.ts
-| | |____customerProfileStore.ts
-| | |____db.ts
-| | |____dbServer.ts
-| | |____logger.ts
-| | |____menu-generator.ts
-| | |____multiAiOrchestrator.ts
-| | |____multiAiRouter.ts
-| | |____posStore.ts
-| | |____productStore.ts
-| | |____promos.ts
-| | |____prompts.ts
-| | |____salesOptimizer.ts
-| | |____server
-| | | |____adminSession.ts
-| | | |____apiAuth.ts
-| | | |____employeeStore.ts
-| | | |____persistence.ts
-| | | |____supabaseServer.ts
-| | |____simpleIntentParser.ts
-| | |____sound.ts
-| | |____storeSettingsStore.ts
-| | |____supabase.ts
-| | |____whatsapp
-| | | |____aiService.ts
-| | | |____botEngine.ts
-| | | |____intentDetector.ts
-| | | |____linkGenerator.ts
-| | | |____metaClient.ts
-| | | |____salesPlaybooks.ts
-| | | |____sessionManager.ts
-| | |____whatsappSession.ts
-| |____scratch
-| | |____smoke-test-db.ts
-| | |____stress-test.ts
-| | |____testGemini.ts
-| | |____testLearning.ignore.ts
-| |____scripts
-| | |____reviewConversations.ts
-| |____services
-| |____stores
-| |____types
-| | |____index.ts
-|____stress_results.txt
-|____stress_results_v2.txt
-|____stress_results_v3.txt
-|____supabase
-| |____.DS_Store
-| |____.temp
-| | |____cli-latest
-| |____migrations
-| | |____20260411_employee_auth.sql
-| | |____20260411_initial_schema.sql
-| | |____20260412_whatsapp_confirm.sql
-| | |____20260427_bot_schema.sql
-| | |____20260427_cash_mgmt.sql
-| | |____20260428_audit_logs.sql
-| | |____20260428_fix_rls_security.sql
-| | |____20260428_restrict_rls.sql
-| | |____20260429033401_add_applicable_product_ids_column.sql
-| | |____20260429_event_logs.sql
-| | |____20260429_fix_orders_schema.sql
-| | |____20260429_fix_realtime_audio.sql
-| | |____20260501_wa_messages_dedup.sql
-|____test_rpc.ts
-|____tsconfig.json
-|____tsconfig.tsbuildinfo
+./AGENT.md
+./QWEN.md
+./migrations-phase-2.3.sql
+./middleware.ts
+./skills-lock.json
+./diagnose_ids.ts
+./ARCHITECTURE.md
+./run_test.sh
+./PROJECT_STRUCTURE.md
+./test_rpc.ts
+./run-review.sh
+./deploy-migrations.js
+./postcss.config.mjs
+./apply-event-logs.js
+./tsconfig.tsbuildinfo
+./refactor_btns.js
+./jest.config.js
+./deploy-security-fix.js
+./planning
+./planning/ai
+./planning/ai/master_prompt.txt
+./planning/ai/ROADMAP_EXEC_MODE.txt
+./execute-migrations.js
+./docs
+./docs/telemetry-spec-v1.md
+./next-env.d.ts
+./supabase
+./supabase/migrations
+./supabase/migrations/20260411_initial_schema.sql
+./supabase/migrations/20260427_cash_mgmt.sql
+./supabase/migrations/20260412_whatsapp_confirm.sql
+./supabase/migrations/20260427_bot_schema.sql
+./supabase/migrations/20260429_event_logs.sql
+./supabase/migrations/20260429033401_add_applicable_product_ids_column.sql
+./supabase/migrations/20260429_fix_realtime_audio.sql
+./supabase/migrations/20260428_audit_logs.sql
+./supabase/migrations/20260506_add_ingredients_to_products.sql
+./supabase/migrations/20260428_fix_rls_security.sql
+./supabase/migrations/20260411_employee_auth.sql
+./supabase/migrations/20260501_wa_messages_dedup.sql
+./supabase/migrations/20260429_fix_orders_schema.sql
+./supabase/migrations/20260428_restrict_rls.sql
+./README.md
+./run-migrations.js
+./evaluation-report.json
+./public
+./public/menusnacks911.rtf
+./public/file.svg
+./public/images
+./public/images/hero.webp
+./public/images/combo.webp
+./public/images/cursor-corndod.png
+./public/images/papas.webp
+./public/images/logo.png
+./public/images/boneless.webp
+./public/images/alitas.webp
+./public/alert-cocina.mp3
+./public/vercel.svg
+./public/next.svg
+./public/globe.svg
+./public/window.svg
+./logs
+./logs/build.log
+./ROADMAP.md
+./package-lock.json
+./package.json
+./ai
+./ai/cli.js
+./ai/commands
+./ai/commands/fix-overflow.md
+./ai/commands/order-alert.md
+./ai/commands/auto.md
+./ai/commands/add-logout.md
+./ai/commands/toggle-password.md
+./ai/commands/order-sound.md
+./ai/commands/manage-staff.md
+./ai/commands/fix-cursor.md
+./scripts
+./scripts/convert-images.mjs
+./scripts/add_whatsapp_column.sql
+./scripts/syncAllProducts.ts
+./scripts/syncCombosToDb.ts
+./stress_results_v2.txt
+./stress_results_v3.txt
+./tsconfig.json
+./snacks911.md
+./agent_loop.sh
+./migrations.sql
+./AGENTS.md
+./AGENTS_LIST.md
+./SECURITY_FIX_GUIDE.md
+./cline.config.json
+./project_tree_full.txt
+./CLINE_SETUP.md
+./stress_results.txt
+./eslint.config.mjs
+./fix_db.ts
+./next.config.ts
+./src
+./src/types
+./src/types/index.ts
+./src/core
+./src/core/salesThermostat.ts
+./src/core/evaluator.ts
+./src/core/userContext.ts
+./src/core/fallbackEngine.ts
+./src/core/inventoryMiddleware.ts
+./src/core/whatsappClient.ts
+./src/core/analytics.ts
+./src/core/allergyFilter.ts
+./src/core/humanHandoff.ts
+./src/core/telemetryEmitter.ts
+./src/core/antojo.ts
+./src/core/responseEngine.ts
+./src/core/intentDetector.ts
+./src/core/revenueMetrics.ts
+./src/core/context.ts
+./src/core/offerAgent.ts
+./src/core/eventLogger.ts
+./src/core/botEngine.ts
+./src/core/consultativeMatrix.ts
+./src/core/agentOrchestrator.ts
+./src/core/types.ts
+./src/core/conversationLogger.ts
+./src/core/abandonmentRecovery.ts
+./src/core/responseValidator.ts
+./src/core/__tests__
+./src/core/__tests__/allergyFilter.test.ts
+./src/core/__tests__/manual-flow-check.ts
+./src/core/__tests__/whatsapp-flow.test.ts
+./src/core/__tests__/intentDetector.test.ts
+./src/core/agentOrchestratorApi.ts
+./src/core/circuitBreaker.ts
+./src/core/ai
+./src/core/ai/memoryAgent.ts
+./src/core/orderFlow.ts
+./src/core/responseBuilder.ts
+./src/core/validationService.ts
+./src/core/alertEngine.ts
+./src/core/index.ts
+./src/core/autoTrainer.ts
+./src/core/contextStore.ts
+./src/core/runBot.ts
+./src/core/costGuardAI.ts
+./src/core/contextRanker.ts
+./src/core/sales-rules.json
+./src/core/productRanker.ts
+./src/core/customerProfileStore.ts
+./src/core/cartEngine.ts
+./src/app
+./src/app/favicon.ico
+./src/app/admin
+./src/app/admin/settings
+./src/app/admin/settings/page.tsx
+./src/app/admin/products
+./src/app/admin/products/page.tsx
+./src/app/admin/optimize
+./src/app/admin/optimize/page.tsx
+./src/app/admin/sales
+./src/app/admin/sales/page.tsx
+./src/app/admin/cash
+./src/app/admin/cash/page.tsx
+./src/app/admin/pos
+./src/app/admin/pos/page.tsx
+./src/app/admin/audit
+./src/app/admin/audit/page.tsx
+./src/app/admin/layout.tsx
+./src/app/admin/menu
+./src/app/admin/menu/page.tsx
+./src/app/admin/staff
+./src/app/admin/staff/page.tsx
+./src/app/admin/orders
+./src/app/admin/orders/page.tsx
+./src/app/admin/page.tsx
+./src/app/admin/login
+./src/app/admin/login/page.tsx
+./src/app/admin/reports
+./src/app/admin/reports/page.tsx
+./src/app/icon.svg
+./src/app/components
+./src/app/layout.tsx
+./src/app/menu
+./src/app/menu/page.tsx
+./src/app/api
+./src/app/api/settings
+./src/app/api/settings/route.ts
+./src/app/api/learn
+./src/app/api/learn/route.ts
+./src/app/api/products
+./src/app/api/products/seed
+./src/app/api/products/seed/route.ts
+./src/app/api/products/delete-all
+./src/app/api/products/delete-all/route.ts
+./src/app/api/products/toggle
+./src/app/api/products/toggle/route.ts
+./src/app/api/products/route.ts
+./src/app/api/products/check
+./src/app/api/products/check/route.ts
+./src/app/api/auth
+./src/app/api/auth/logout
+./src/app/api/auth/logout/route.ts
+./src/app/api/auth/reset-request
+./src/app/api/auth/reset-request/route.ts
+./src/app/api/auth/me
+./src/app/api/auth/me/route.ts
+./src/app/api/auth/reset-password
+./src/app/api/auth/reset-password/route.ts
+./src/app/api/auth/login
+./src/app/api/auth/login/route.ts
+./src/app/api/cash
+./src/app/api/cash/route.ts
+./src/app/api/admin
+./src/app/api/admin/logout
+./src/app/api/admin/logout/route.ts
+./src/app/api/admin/me
+./src/app/api/admin/me/route.ts
+./src/app/api/admin/staff
+./src/app/api/admin/staff/route.ts
+./src/app/api/admin/login
+./src/app/api/admin/login/route.ts
+./src/app/api/admin/reset-codes
+./src/app/api/admin/reset-codes/route.ts
+./src/app/api/orders-list
+./src/app/api/orders-list/route.ts
+./src/app/api/pos
+./src/app/api/pos/orders
+./src/app/api/pos/orders/route.ts
+./src/app/api/ai
+./src/app/api/ai/chat
+./src/app/api/ai/chat/route.ts
+./src/app/api/ai/approve
+./src/app/api/ai/approve/route.ts
+./src/app/api/menu
+./src/app/api/menu/parse
+./src/app/api/menu/parse/route.ts
+./src/app/api/menu/save
+./src/app/api/menu/save/route.ts
+./src/app/api/log
+./src/app/api/log/route.ts
+./src/app/api/orders
+./src/app/api/orders/confirm
+./src/app/api/orders/confirm/route.ts
+./src/app/api/orders/status
+./src/app/api/orders/status/route.ts
+./src/app/api/orders/route.ts
+./src/app/api/whatsapp
+./src/app/api/whatsapp/webhook
+./src/app/api/whatsapp/webhook/route.ts
+./src/app/api/whatsapp/health
+./src/app/api/whatsapp/health/route.ts
+./src/app/api/store
+./src/app/api/store/settings
+./src/app/api/store/settings/route.ts
+./src/app/api/store/status
+./src/app/api/store/status/route.ts
+./src/app/reset-password
+./src/app/reset-password/page.tsx
+./src/app/orders
+./src/app/orders/page.tsx
+./src/app/page.tsx
+./src/app/globals.css
+./src/app/login
+./src/app/login/page.tsx
+./src/tests
+./src/tests/env-setup.ts
+./src/tests/auto-evaluator.ts
+./src/tests/db-allergy.test.ts
+./src/tests/response.test.ts
+./src/tests/allergy.test.ts
+./src/tests/contextRanking.test.ts
+./src/tests/verify-env.ts
+./src/stores
+./src/components
+./src/components/ui
+./src/components/ui/Button.tsx
+./src/components/sections
+./src/components/sections/Hero.tsx
+./src/components/sections/SocialProof.tsx
+./src/components/sections/CombosSection.tsx
+./src/components/sections/ReviewSection.tsx
+./src/components/sections/ComboShowcase.tsx
+./src/components/sections/ContactSection.tsx
+./src/components/chat
+./src/components/chat/OrderBot.tsx
+./src/components/chat/ChatBot.tsx
+./src/components/layout
+./src/components/layout/SiteFooter.tsx
+./src/components/layout/Navbar.tsx
+./src/components/layout/CustomCursor.tsx
+./src/components/layout/ScrollCTA.tsx
+./src/components/modals
+./src/components/modals/OrderAlertModal.tsx
+./src/components/modals/UpsellModal.tsx
+./src/components/modals/WelcomeModal.tsx
+./src/components/modals/ProductCustomizerModal.tsx
+./src/components/modals/ComboSelectorModal.tsx
+./src/components/common
+./src/components/common/DecisionLock.tsx
+./src/components/common/ProductCard.tsx
+./src/components/common/PromoBanner.tsx
+./src/components/cart
+./src/components/cart/Cart.tsx
+./src/components/cart/CartUpsellBanner.tsx
+./src/components/cart/CartUpsell.tsx
+./src/components/kitchen
+./src/components/kitchen/KitchenPanel.tsx
+./src/components/effects
+./src/components/effects/FireCanvas.tsx
+./src/scratch
+./src/scratch/stress-test.ts
+./src/scratch/smoke-test-db.ts
+./src/scratch/testGemini.ts
+./src/scratch/testLearning.ignore.ts
+./src/ai
+./src/ai/runtime
+./src/ai/runtime/salesAgent.ts
+./src/ai/runtime/intentAgent.ts
+./src/ai/runtime/flowEngine.ts
+./src/ai/runtime/contextBuilder.ts
+./src/ai/runtime/decisionRouter.ts
+./src/hooks
+./src/scripts
+./src/scripts/reviewConversations.ts
+./src/scripts/upsert-products.ts
+./src/scripts/train.ts
+./src/scripts/test-profile.ts
+./src/scripts/dataset-review.ts
+./src/lib
+./src/lib/promos.ts
+./src/lib/adminStore.client.ts
+./src/lib/cartStore.ts
+./src/lib/cashStore.ts
+./src/lib/logger
+./src/lib/logger/learningLogger.ts
+./src/lib/adminStore.ts
+./src/lib/menu-generator.ts
+./src/lib/simpleIntentParser.ts
+./src/lib/analytics.ts
+./src/lib/adminStore.server.ts
+./src/lib/whatsappSession.ts
+./src/lib/adminTypes.ts
+./src/lib/aiExamples.ts
+./src/lib/multiAiOrchestrator.ts
+./src/lib/server
+./src/lib/server/supabaseServer.ts
+./src/lib/server/employeeStore.ts
+./src/lib/server/adminSession.ts
+./src/lib/server/persistence.ts
+./src/lib/server/apiAuth.ts
+./src/lib/prompts.ts
+./src/lib/logger.ts
+./src/lib/posStore.ts
+./src/lib/multiAiRouter.ts
+./src/lib/productStore.ts
+./src/lib/stringUtils.ts
+./src/lib/db.client.ts
+./src/lib/dbServer.ts
+./src/lib/supabaseAdmin.ts
+./src/lib/supabase.ts
+./src/lib/salesOptimizer.ts
+./src/lib/db.server.ts
+./src/lib/storeSettingsStore.ts
+./src/lib/conversionTracker.ts
+./src/lib/db.ts
+./src/lib/chatStore.ts
+./src/lib/whatsapp
+./src/lib/whatsapp/metaClient.ts
+./src/lib/whatsapp/salesPlaybooks.ts
+./src/lib/whatsapp/intentDetector.ts
+./src/lib/whatsapp/botEngine.ts
+./src/lib/whatsapp/aiService.ts
+./src/lib/whatsapp/sessionManager.ts
+./src/lib/whatsapp/formatter.ts
+./src/lib/whatsapp/linkGenerator.ts
+./src/lib/customerProfileStore.ts
+./src/lib/sound.ts
+./src/data
+./src/data/learning
+./src/data/learning/failures.json
+./src/data/learning/conversations.jsonl
+./src/data/training
+./src/data/training/conversations.json
+./src/data/menu.ts
+./src/data/products.ts
+./src/services

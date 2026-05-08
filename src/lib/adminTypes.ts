@@ -21,6 +21,8 @@ export interface AdminProduct {
   available: boolean;
   description: string;
   ingredients: string[];
+  /** Current stock quantity. undefined = not yet loaded, null/0 = out of stock */
+  stock?: number;
   /** Only for extras: which product IDs this extra applies to. Empty = applies to all. */
   applicableProductIds?: string[];
   deliveryPrice?: number;

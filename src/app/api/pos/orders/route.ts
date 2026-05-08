@@ -5,38 +5,20 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
-import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
+import { authGuard } from '@/middleware/authGuard';
 import { validateOrderItems } from '@/core/validationService';
 
 const getDb = () => getSupabaseAdmin() || supabaseAnon;
 
-function isUuid(v: any) {
-  if (typeof v !== 'string') return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-async function requireStaff(req: Request) {
-  const adminToken = parseCookie(req, ADMIN_SESSION_COOKIE);
-  const empToken   = parseCookie(req, EMPLOYEE_SESSION_COOKIE);
-  const session    = (await verifySessionToken(adminToken)) || (await verifySessionToken(empToken));
-  if (!session) return null;
-  return session;
-}
+// Auth is handled per-method using authGuard
 
 // ── GET — Órdenes de hoy ────────────────────────────────────────────────────
 export async function GET(req: Request) {
   try {
-    const session = await requireStaff(req);
-    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
+    if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
-    const db = getDb();
+    const db = getSupabaseAdmin() || supabaseAnon;
     console.log('[API/Orders/GET] Init. Client:', db === getSupabaseAdmin() ? 'ADMIN' : 'ANON');
   if (!db) return NextResponse.json({ error: 'No DB' }, { status: 500 });
 
@@ -59,7 +41,7 @@ export async function GET(req: Request) {
   }
 
   // Fetch items separately to avoid join 500s
-  const orderIds = (orders || []).map(o => o.id);
+  const orderIds = (orders || []).map((o: any) => o.id);
   const { data: allItems, error: itemsErr } = await db
     .from('order_items')
     .select('*')
@@ -70,9 +52,9 @@ export async function GET(req: Request) {
   }
 
   // Map items back to orders
-  const ordersWithItems = (orders || []).map(order => ({
+  const ordersWithItems = (orders || []).map((order: any) => ({
     ...order,
-    order_items: (allItems || []).filter(item => item.order_id === order.id)
+    order_items: (allItems || []).filter((item: any) => item.order_id === order.id)
   }));
 
     console.log('[API/Orders/GET] Success:', ordersWithItems?.length, 'orders');
@@ -86,8 +68,8 @@ export async function GET(req: Request) {
 // ── POST — Crear orden POS ─────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const session = await requireStaff(req);
-    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
+    if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
 
   const body = await req.json().catch(() => null);
@@ -167,8 +149,8 @@ export async function POST(req: Request) {
 // ── PATCH — Actualizar estado ──────────────────────────────────────────────
 export async function PATCH(req: Request) {
   try {
-    const session = await requireStaff(req);
-    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
+    if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
 
   const body = await req.json().catch(() => null);

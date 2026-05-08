@@ -1,29 +1,42 @@
-/**
- * /api/ai/chat — Ruta segura para Gemini (Capa 1.5 - Flow Engine).
- */
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getBotResponse } from "@/core/botEngine";
+import { NextResponse } from 'next/server'
+import { getBotResponse } from '@/core/botEngine'
+import { getSystemMode, getSystemState } from '@/core/selfHealingEngine'
+import { rateLimit, RATE_LIMIT_CONFIG } from '@/lib/rateLimit'
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const message = body.message as string;
-    const phone = body.phone as string;
-    
-    if (!message?.trim()) {
-      return NextResponse.json({ error: 'Empty message' }, { status: 400 });
+    const { message, phone } = await req.json()
+    const userId = phone || 'web-user'
+
+    const { allowed, retryAfter } = rateLimit(userId, RATE_LIMIT_CONFIG)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retryAfter },
+        { status: 429 }
+      )
     }
 
-    const response = await getBotResponse({ message, phone });
+    const result = await getBotResponse({
+      message,
+      phone: userId
+    })
 
-    return NextResponse.json({ reply: response });
+    const systemState = {
+      mode: getSystemMode(),
+      errors: getSystemState().errors,
+      consecutiveErrors: getSystemState().consecutiveErrors,
+      lastRecovery: getSystemState().lastRecovery,
+    }
 
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[AI Chat]', msg);
-    return NextResponse.json({ 
-      reply: '🔥 Aguanta, se me saturó la línea. ¿Qué se te antojaba del menú?'
-    });
+    return NextResponse.json({
+      ...result,
+      system_state: systemState
+    })
+  } catch (e) {
+    console.error('AI CHAT ERROR', e)
+    return NextResponse.json(
+      { error: 'Internal error' },
+      { status: 500 }
+    )
   }
 }

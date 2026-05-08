@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
 export async function POST(req: Request) {

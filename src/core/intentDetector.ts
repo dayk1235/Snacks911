@@ -8,6 +8,7 @@
  */
 
 import { Intent } from './types';
+import { isGreetingOnly } from './nluBaseline';
 
 /**
  * Safely loads learned rules (server-only, lazy).
@@ -77,6 +78,12 @@ function normalizeText(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove accents
     .replace(/[^\w\s]/gi, '') // Remove symbols
+    .replace(/\bq\b/g, 'que') // Slang: q -> que
+    .replace(/\bk\b/g, 'que') // Slang: k -> que
+    .replace(/\bqiero\b/g, 'quiero') // Slang: qiero -> quiero
+    .replace(/bonles|boneles|bnls/g, 'boneless') // Slang: boneless variants
+    .replace(/papas l/g, 'papas loaded') // Slang: papas loaded
+    .replace(/\s+/g, ' ') // Collapse spaces
     .trim();
 }
 
@@ -130,7 +137,7 @@ const INTENT_RULES: IntentRule[] = [
     keywords: [
       'duda', 'no sé', 'no se', 'nose', 'no estoy seguro', 'no sabría',
       'no sabria', 'mmm no se', 'cuál', 'cual', 'mejor', 'recomiendas',
-      'recomienda', 'opción', 'opcion', 'indeciso', 'hmm', 'ehhh', 'este',
+      'recomienda', 'opción', 'opcion', 'indeciso', 'hmm', 'ehhh', 'este', 'algo',
     ],
     patterns: [
       /^no\s*s[ée]$/i,
@@ -409,7 +416,7 @@ function extractFilters(lower: string): string[] {
  * Decomposes input into: action, filters, category.
  * ADD_TO_CART only allowed if: no filters AND action is 'quiero'.
  */
-export function detectIntent(message: string): IntentResult {
+export function detectIntent(message: string, context?: any): IntentResult {
   const n = normalizeText(message);
   if (!n) return {
     intent: 'other',
@@ -420,6 +427,61 @@ export function detectIntent(message: string): IntentResult {
     category: 'none',
     allergies: []
   };
+
+  if (isGreetingOnly(message)) {
+    return {
+      intent: 'SHOW_MENU',
+      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
+      confidence: 'HIGH',
+      action: 'ver',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // ─────────────────────────────────────────
+  // HARD OVERRIDE (PRIORIDAD ABSOLUTA)
+  // ─────────────────────────────────────────
+
+  // 🟡 VIEW CART
+  if (/(ver carrito|mi pedido|ver orden|que llevo|que pedi)/i.test(n)) {
+    return {
+      intent: 'VIEW_CART',
+      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
+      confidence: 'HIGH',
+      action: 'ver',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // 🔵 SHOW_MENU
+  if (/^(menu|ver menu|muestrame el menu|que hay de comer|que tienen|ver todo|carta|que venden|hola|buen dia|buenas tardes|buenas noches)/i.test(n)) {
+    return {
+      intent: 'SHOW_MENU',
+      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
+      confidence: 'HIGH',
+      action: 'ver',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
+
+  // 🟢 RECOMMEND
+  if (/(sorprendeme|recomiendame|que es lo mejor|algo rico|no se que pedir|tu dime)/i.test(n)) {
+    return {
+      intent: 'RECOMMEND',
+      entities: { products: [], categories: [], qty: [], sauces: [], restrictions: [] },
+      confidence: 'HIGH',
+      action: 'duda',
+      filters: [],
+      category: 'none',
+      allergies: []
+    };
+  }
 
   // Extract allergies from "sin X" patterns
   const allergies = extractAllergies(message); // Keep raw message for regexes that might expect punctuation
@@ -439,12 +501,15 @@ export function detectIntent(message: string): IntentResult {
     RECOMMEND: 0,
     VIEW_CART: 0,
     EDIT_CART: 0,
-    CHECKOUT: 0,
+    CONFIRM_ORDER: 0,
     UNKNOWN: 0
   };
 
   function addScore(intent: string, points: number) {
+    if (intent === 'gratitud') return; // Absolute suppression: gratitude never competes
     const globalIntent = mapToGlobalIntent(intent);
+    if (globalIntent === 'gratitud') return;
+
     if (scores[globalIntent] !== undefined) {
       scores[globalIntent] += points;
     } else {
@@ -501,19 +566,30 @@ export function detectIntent(message: string): IntentResult {
   // A. ADD_TO_CART Specific Boosts
   const purchaseKeywords = ["quiero", "dame", "ponme", "ordena", "agrega"];
   if (purchaseKeywords.some(kw => n.includes(kw))) {
-    scores.ADD_TO_CART += 3;
+    scores.ADD_TO_CART += 1;
   }
   if (entities.products.length > 0) {
-    scores.ADD_TO_CART += 2;
+    scores.ADD_TO_CART += 1;
   }
   if (entities.qty.some(q => q > 1)) {
-    scores.ADD_TO_CART += 1;
+    scores.ADD_TO_CART += 0; // Remove small boost
+  }
+
+  // Navigation keywords check
+  const navigationKeywords = [
+    'ver', 'mostrar', 'muestrame', 'menu', 'combos',
+    'opciones', 'que tienes', 'lista'
+  ];
+
+  if (navigationKeywords.some(k => n.includes(k))) {
+    scores.SHOW_CATEGORY += 100;
+    scores.ADD_TO_CART -= 50;
   }
 
   // B. SHOW_CATEGORY Specific Boosts
   const showKeywords = ["ver", "mostrar", "que hay", "que tienes", "lista"];
   if (showKeywords.some(kw => n.includes(kw))) {
-    scores.SHOW_CATEGORY += 4;
+    scores.SHOW_CATEGORY += 10;
   }
   if (entities.categories.length > 0) {
     scores.SHOW_CATEGORY += 2;
@@ -523,6 +599,21 @@ export function detectIntent(message: string): IntentResult {
   }
 
   // C. RECOMMEND Specific Boosts
+
+  // High-priority patterns — score +10 each, override weaker signals
+  const recommendPatterns = [
+    /sorprendeme/i,
+    /recomiendame/i,
+    /que es lo mejor/i,
+    /algo rico/i,
+    /no se que pedir/i,
+    /tu dime/i,
+    /que me recomiendas/i,
+  ];
+  if (recommendPatterns.some((re) => re.test(n))) {
+    scores.RECOMMEND += 10;
+  }
+
   const recommendationKeywords = ["recomienda", "sugiere", "no se"];
   const restrictionKeywords = ["sin", "no", "evita"];
 
@@ -543,9 +634,41 @@ export function detectIntent(message: string): IntentResult {
   }
 
   // E. VIEW_CART Specific Boosts
+  const cartPatterns = [
+    /ver carrito/i,
+    /ver orden/i,
+    /mi pedido/i,
+    /que llevo/i,
+    /que pedi/i,
+  ];
+  if (cartPatterns.some((re) => re.test(n))) {
+    scores.VIEW_CART += 50;
+  }
+
+  // Total keywords check
+  const totalQuestions = [
+    'cuanto voy a deber',
+    'cuanto debo',
+    'cuanto es',
+    'total',
+    'cuanto llevo',
+    'cuanto voy'
+  ];
+
+  if (totalQuestions.some(q => n.includes(q))) {
+    scores.VIEW_CART += 100;
+    scores.ADD_TO_CART -= 100;
+  }
+
+  // Question penalty for ADD_TO_CART
+  if (message.includes('?') || n.startsWith('cuanto') || n.startsWith('que')) {
+    scores.ADD_TO_CART -= 80;
+  }
+
+  // Fallback keyword boost (lower priority)
   const viewCartKeywords = ["carrito", "que llevo", "mi pedido"];
   if (viewCartKeywords.some(kw => n.includes(kw))) {
-    scores.VIEW_CART += 4;
+    scores.VIEW_CART += 100;
   }
 
   // F. EDIT_CART Specific Boosts
@@ -554,14 +677,28 @@ export function detectIntent(message: string): IntentResult {
     scores.EDIT_CART += 3;
   }
 
-  // G. CHECKOUT Specific Boosts
+  // G. CONFIRM_ORDER Specific Boosts
+  const checkoutPatterns = [
+    /confirmo/i,
+    /confirmar/i,
+    /manda el pedido/i,
+    /haz el pedido/i,
+    /ya mandalo/i,
+    /finalizar/i,
+    /terminar pedido/i,
+  ];
+  if (checkoutPatterns.some((re) => re.test(n))) {
+    scores.CONFIRM_ORDER += 100;
+  }
+
+  // Fallback keyword boost (lower priority)
   const checkoutKeywords = ["pagar", "confirmar", "listo", "ok"];
-  if (checkoutKeywords.some(kw => n.includes(kw))) {
-    scores.CHECKOUT += 4;
+  if (checkoutKeywords.some((kw) => n.includes(kw))) {
+    scores.CONFIRM_ORDER += 4;
   }
   const fulfillmentKeywords = ["domicilio", "recoger"];
   if (fulfillmentKeywords.some(kw => n.includes(kw))) {
-    scores.CHECKOUT += 2;
+    scores.CONFIRM_ORDER += 2;
   }
 
   // ─── FINAL OVERRIDES ───
@@ -575,7 +712,7 @@ export function detectIntent(message: string): IntentResult {
   }
   // 3. Implicit Intent: Just product name usually means they want to add it
   if (entities.products.length > 0 && action === 'other') {
-    scores.ADD_TO_CART += 2;
+    scores.ADD_TO_CART += 1;
   }
 
   // C. Strong verb scoring (Fallback for other verbs)
@@ -637,6 +774,23 @@ export function detectIntent(message: string): IntentResult {
     }
   }
 
+  // ─── ABSOLUTE PRIORITY SYSTEM ───
+  const PRIORITY: Record<string, number> = {
+    CONFIRM_ORDER: 1000,
+    VIEW_CART: 900,
+    ADD_TO_CART: 50,
+    RECOMMEND: 600,
+    SHOW_CATEGORY: 400,
+    SHOW_MENU: 200,
+    UNKNOWN: 0,
+  };
+
+  for (const key in scores) {
+    if (PRIORITY[key] !== undefined) {
+      scores[key] = scores[key] * PRIORITY[key];
+    }
+  }
+
   // ─── FINAL SELECTION ───
   const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const bestScore = sortedScores[0][1];
@@ -647,9 +801,33 @@ export function detectIntent(message: string): IntentResult {
   console.log("SCORES:", scores);
   console.log("INTENT:", mappedIntent);
 
-  // Final Guard: exploratory action → never ADD_TO_CART
-  if (action === 'ver' && mappedIntent === ('ADD_TO_CART' as any)) {
+  if (
+    category !== 'none' &&
+    !n.includes('carrito') &&
+    (n.includes('ver') || n.includes('mostrar'))
+  ) {
     mappedIntent = 'SHOW_CATEGORY' as any;
+  }
+
+  if (mappedIntent === 'UNKNOWN') {
+    if (context?.cart?.items?.length > 0) {
+      mappedIntent = 'VIEW_CART' as any;
+    } else {
+      mappedIntent = 'RECOMMEND' as any;
+    }
+  }
+
+  // ─── SAFETY GUARD ───
+  // ADD_TO_CART requires a clear product reference.
+  // If no product entities, no category, and no purchase-action verb
+  // were detected, downgrade to RECOMMEND to avoid phantom cart adds.
+  if (
+    mappedIntent === 'ADD_TO_CART' &&
+    entities.products.length === 0 &&
+    category === 'none' &&
+    action !== 'quiero'
+  ) {
+    mappedIntent = 'RECOMMEND' as any;
   }
 
   return {

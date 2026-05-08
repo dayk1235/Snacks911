@@ -1,4 +1,4 @@
-import { getSupabaseAdmin, getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, getCustomerProfileFromDB } from '@/lib/db.server';
 
 async function callGemini(prompt: string) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -73,7 +73,7 @@ export async function extractAndSaveInsights(phone: string, userMessage: string,
     if (convError) throw convError;
 
     const context = conversations
-      ?.map(c => `User: ${c.user_message}\nBot: ${c.bot_response}`)
+      ?.map((c: any) => `User: ${c.user_message}\nBot: ${c.bot_response}`)
       .join('\n---\n');
 
     // 2. Build prompt for Gemini

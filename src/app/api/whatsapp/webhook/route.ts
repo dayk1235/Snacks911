@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 console.log("WEBHOOK FILE LOADED");
 
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/whatsapp/aiService';
 import { dbGetProductsServer } from '@/lib/dbServer';
 import { logConversation } from '@/lib/logger';
 import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
-import { handleMessageModular, INITIAL_STATE, detectIntent } from '@/core';
+import { detectIntent } from '@/core';
 
 /* =========================
    CONFIG
@@ -49,30 +49,33 @@ export async function GET(req: Request) {
    POST — Incoming Messages
 ========================= */
 
+import { rateLimit } from '@/lib/rateLimit';
+
 export async function POST(req: NextRequest) {
   console.log("WEBHOOK HIT POST");
 
   try {
     const body = await req.json();
-    console.log('[WA] POST body:', JSON.stringify(body, null, 2));
-
+    
     if (!body.entry) {
       return NextResponse.json({ status: 'ok' });
     }
 
     for (const entry of body.entry) {
-      // Handle status updates (delivered, read, etc.)
-      const statuses = entry.changes?.[0]?.value?.statuses || [];
-      for (const status of statuses) {
-        console.log('[WA] Status:', { id: status.id, status: status.status });
-      }
-
       for (const change of entry.changes || []) {
         const messages = change.value?.messages || [];
 
         for (const msg of messages) {
-          const messageId = msg.id;
           const from = msg.from;
+          
+          // Rate Limit Check (per phone number)
+          if (from && !rateLimit(from, 5, 10000)) {
+            console.warn("[RATE LIMIT] WhatsApp sender:", from);
+            // Return 429 to signal back-off
+            return new Response("Too many requests", { status: 429 });
+          }
+
+          const messageId = msg.id;
           const text = msg.text?.body;
           const buttonId = msg?.interactive?.button_reply?.id;
           const listId = msg?.interactive?.list_reply?.id;
@@ -100,32 +103,11 @@ export async function POST(req: NextRequest) {
           const nlu = detectIntent(userInput);
           console.log('[WA] Intent detected:', nlu.intent);
 
-          // 3. Obtener contexto (Implicit in handleMessageModular + Logged here)
-          // Note: handleMessageModular manages the session-level context internally.
-          
-          // 4. Ejecutar responseEngine (Modular Pipeline)
-          const output = await handleMessageModular(
-            userInput,
-            { ...INITIAL_STATE, phone: from } as any,
-            {
-              comboName: 'Combo 911',
-              comboPrice: 119,
-              papasName: 'Papas Loaded',
-              papasPrice: 69,
-              bebidaName: 'Refresco',
-              bebidaPrice: 25,
-              postreName: 'Brownie',
-              postrePrice: 59,
-              comboBonelessName: 'Combo Boneless',
-              comboBonelessPrice: 99,
-              ahorroBoneless: 20,
-              currentTotal: 0,
-              hasPapas: false,
-              hasBebida: false,
-              hasPostre: false,
-            },
-            undefined
-          );
+          // 4. Ejecutar brain unificado (Modular Pipeline)
+          const output = await getBotResponse({
+            message: userInput,
+            phone: from
+          });
 
           // 5. Actualizar contexto & Insights
           await logConversation({

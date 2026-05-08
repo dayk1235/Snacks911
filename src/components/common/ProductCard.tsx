@@ -66,7 +66,7 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
   };
 
   const isBestSeller = product.popular || product.badges?.some(b => 
-    b.includes('Más pedido') || b.includes('Top Seller') || b.includes('Más vendido')
+    typeof b === 'string' && (b.includes('Más pedido') || b.includes('Top Seller') || b.includes('Más vendido'))
   );
   const savings = product.originalPrice ? product.originalPrice - product.price : 0;
 

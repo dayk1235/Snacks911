@@ -3,6 +3,8 @@
  */
 import { create } from 'zustand';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
 export interface CashSession {
   id: string;
   opened_at: string;
@@ -49,7 +51,7 @@ export const useCashStore = create<CashState>()((set, get) => ({
   fetchSession: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/cash');
+      const res = await fetch(`${BASE}/api/cash`);
       if (!res.ok) throw new Error('Error cargando caja');
       const data = await res.json();
       set({ session: data.session, movements: data.movements || [], dailySales: data.dailySales || 0, salesByMethod: data.salesByMethod || {}, isLoading: false });
@@ -61,7 +63,7 @@ export const useCashStore = create<CashState>()((set, get) => ({
   openSession: async (openingAmount, openedBy = '') => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/cash', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'open', opening_amount: openingAmount, opened_by: openedBy }) });
+      const res = await fetch(`${BASE}/api/cash`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'open', opening_amount: openingAmount, opened_by: openedBy }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       await get().fetchSession();
@@ -74,7 +76,7 @@ export const useCashStore = create<CashState>()((set, get) => ({
   closeSession: async (sessionId, closingAmount, notes = '') => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/cash', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'close', session_id: sessionId, closing_amount: closingAmount, notes }) });
+      const res = await fetch(`${BASE}/api/cash`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'close', session_id: sessionId, closing_amount: closingAmount, notes }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       set({ session: data.session, isLoading: false });
@@ -88,7 +90,7 @@ export const useCashStore = create<CashState>()((set, get) => ({
   addMovement: async (sessionId, type, amount, concept) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/cash', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'movement', session_id: sessionId, type, amount, concept }) });
+      const res = await fetch(`${BASE}/api/cash`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'movement', session_id: sessionId, type, amount, concept }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       set(s => ({ movements: [data.movement, ...s.movements], isLoading: false }));

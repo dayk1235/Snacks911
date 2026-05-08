@@ -5,6 +5,8 @@
 
 import { create } from 'zustand';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
 // ── Types ──────────────────────────────────────────────────────────────────
 export interface PosCartItem {
   product_id: string;
@@ -123,7 +125,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/pos/orders', {
+      const res = await fetch(`${BASE}/api/pos/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -156,7 +158,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   fetchTodayOrders: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/pos/orders');
+      const res = await fetch(`${BASE}/api/pos/orders`);
       if (!res.ok) throw new Error('Error al cargar órdenes');
       const data = await res.json();
       console.log('FETCH_RESULT:', data.orders);
@@ -173,7 +175,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   updateOrderStatus: async (id, status) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/pos/orders', {
+      const res = await fetch(`${BASE}/api/pos/orders`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status }),

@@ -77,7 +77,7 @@ export {
   applyLoopStrategy,
 } from './antojo';
 
-// Orchestration
-export { runAgents } from './agentOrchestrator';
-export { agentOrchestrator } from './agentOrchestratorApi';
-export { runBot } from './runBot';
+// Orchestration (Server-only entry points)
+// export { runAgents } from './agentOrchestrator';
+// export { agentOrchestrator } from './agentOrchestratorApi';
+// export { runBot } from './runBot';

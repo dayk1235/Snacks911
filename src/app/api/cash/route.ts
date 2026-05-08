@@ -4,25 +4,16 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
 
 const db = () => getSupabaseAdmin() || supabaseAnon;
 
-function parseCookie(req: Request, name: string) {
-  const cookie = req.headers.get('cookie') || '';
-  const m = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return m ? decodeURIComponent(m[1]) : undefined;
-}
-
-async function requireStaff(req: Request) {
-  const s = (await verifySessionToken(parseCookie(req, ADMIN_SESSION_COOKIE)))
-         || (await verifySessionToken(parseCookie(req, EMPLOYEE_SESSION_COOKIE)));
-  return s;
-}
+import { authGuard } from '@/middleware/authGuard';
 
 export async function GET(req: Request) {
-  if (!await requireStaff(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const client = db();
   if (!client) return NextResponse.json({ error: 'No DB' }, { status: 500 });
@@ -66,7 +57,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!await requireStaff(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin', 'gerente', 'staff', 'employee']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const client = db();
   if (!client) return NextResponse.json({ error: 'No DB' }, { status: 500 });

@@ -6,7 +6,7 @@ import { logEvent } from '../core/eventLogger';
 import { getDailyRevenue, getConversionRate } from '../core/revenueMetrics';
 import { sendMessage } from '../core/whatsappClient';
 import { checkAlerts } from '../core/alertEngine';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/db.server';
 
 async function runStressTest() {
   console.log('🚀 Iniciando Prueba de Estrés - Snacks 911 Engine\n');

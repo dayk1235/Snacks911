@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 import { reviewConversations } from '../scripts/reviewConversations';
 
 async function testLearning() {

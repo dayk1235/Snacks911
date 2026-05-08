@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { getDailyRevenue, getConversionRate, getUpsellRate } from '@/core/revenueMetrics';
 import { checkAlerts, type Alert } from '@/core/alertEngine';
 import { useStoreSettings } from '@/lib/storeSettingsStore';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db.client';
 
 const fmt = (n: number) => `$${n.toLocaleString()}`;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;

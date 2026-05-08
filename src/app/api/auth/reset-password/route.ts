@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { hashPassword } from '@/lib/server/employeeStore';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 

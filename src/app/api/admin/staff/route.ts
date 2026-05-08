@@ -13,35 +13,19 @@ import {
   hashPassword,
 } from '@/lib/server/employeeStore';
 import { verifySessionToken, ADMIN_SESSION_COOKIE, EMPLOYEE_SESSION_COOKIE } from '@/lib/server/adminSession';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`) );
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-async function getSession(req: Request) {
-  const adminToken = parseCookie(req, ADMIN_SESSION_COOKIE);
-  const empToken   = parseCookie(req, EMPLOYEE_SESSION_COOKIE);
-  return (await verifySessionToken(adminToken)) || (await verifySessionToken(empToken));
-}
-
-async function requireAdmin(req: Request) {
-  const session = await getSession(req);
-  if (!session || session.role !== 'admin') return null;
-  return session;
-}
+import { authGuard } from '@/middleware/authGuard';
 
 // Admin maestro — nunca se puede borrar ni desactivar
 const MASTER_ADMIN_ID = 'admin001';
 
 // ── GET — Listar empleados ──────────────────────────────────────────────────
 export async function GET(req: Request) {
-  const auth = await requireAdmin(req);
-  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const employees = await listEmployees();
   return NextResponse.json({
@@ -59,8 +43,8 @@ export async function GET(req: Request) {
 
 // ── POST — Crear empleado ─────────────────────────────────────────────────────
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req);
-  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const body = await req.json().catch(() => null) as {
     employeeId?: string;
@@ -96,8 +80,8 @@ export async function POST(req: Request) {
 
 // ── PUT — Actualizar empleado ─────────────────────────────────────────────────
 export async function PUT(req: Request) {
-  const auth = await requireAdmin(req);
-  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const body = await req.json().catch(() => null) as {
     id?: string;
@@ -142,8 +126,8 @@ export async function PUT(req: Request) {
 
 // ── DELETE — Eliminar empleado ──────────────────────────────────────────────
 export async function DELETE(req: Request) {
-  const auth = await requireAdmin(req);
-  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');

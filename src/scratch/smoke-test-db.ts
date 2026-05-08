@@ -1,10 +1,10 @@
-import { productToRow } from '../lib/db';
+import { productToRow } from '../lib/db.server';
 import { AdminProduct } from '../lib/adminTypes';
 
 /**
  * Smoke Test: productToRow fallback logic
  */
-function testProductToRow() {
+async function testProductToRow() {
   console.log('Running smoke test for productToRow...');
 
   // Mock product with available=true
@@ -18,11 +18,11 @@ function testProductToRow() {
     available: true
   } as unknown as AdminProduct;
 
-  const row = productToRow(mockProduct);
+  const row = await productToRow(mockProduct);
 
   console.log('Resulting row:', row);
 
-  if (row.is_available === true) {
+  if ((row as any).is_available === true) {
     console.log('✅ PASS: is_available is true');
   } else {
     console.error('❌ FAIL: is_available should be true');
@@ -30,4 +30,7 @@ function testProductToRow() {
   }
 }
 
-testProductToRow();
+testProductToRow().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

@@ -12,6 +12,7 @@
  */
 
 import type { CartItem, CartState, CoreProduct } from './types';
+import type { UserContext } from './context';
 
 /**
  * Create empty cart state.
@@ -23,7 +24,7 @@ export function createEmptyCart(): CartState {
 /**
  * Add a product to cart. Returns new CartState (immutable).
  */
-export function addToCart(
+export function addCartStateItem(
   state: CartState,
   product: CoreProduct | Omit<CartItem, 'quantity'>,
 ): CartState {
@@ -188,4 +189,63 @@ export function buildWhatsAppUrl(
 
   const cleanNum = phoneNumber.replace(/[^0-9]/g, '');
   return `https://wa.me/${cleanNum}?text=${encodeURIComponent(message)}`;
+}
+
+/**
+ * CONTEXT-AWARE OPERATIONS
+ * These functions work directly with the UserContext from userContext.ts
+ */
+
+export function addToCart(context: any, product: any) {
+  // Enforce valid structure before operation
+  if (!context.cart || !Array.isArray(context.cart.items)) {
+    context.cart = { items: [], total: 0 };
+  }
+
+  if (typeof context.cart.total !== 'number') {
+    context.cart.total = 0;
+  }
+
+  // Sanitize input
+  const productId = String(product.id || 'unknown');
+  const price = Number(product.price || 0);
+  const name = String(product.name || 'Producto');
+
+  const existing = context.cart.items.find((i: any) => i.productId === productId);
+
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    context.cart.items.push({
+      productId,
+      name,
+      price,
+      qty: 1
+    });
+  }
+
+  context.cart.total += price;
+}
+
+export function getCartSummary(context: any) {
+  if (!context.cart || !Array.isArray(context.cart.items) || context.cart.items.length === 0) {
+    return 'Tu carrito está vacío 😅';
+  }
+
+  const items = context.cart.items
+    .map((i: any) => `- ${i.name} x${i.qty}`)
+    .join('\n');
+
+  return `🧾 Tu pedido:\n${items}\n\nTotal: $${context.cart.total}`;
+}
+
+export function getCartContext(context: UserContext) {
+  if (!context.cart || !Array.isArray(context.cart.items)) {
+    context.cart = { items: [], total: 0 };
+  }
+  return context.cart;
+}
+
+export function clearCartContext(context: UserContext) {
+  context.cart = { items: [], total: 0 };
 }

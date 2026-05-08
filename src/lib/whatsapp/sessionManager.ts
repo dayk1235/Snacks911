@@ -3,7 +3,7 @@
  * Reads and writes WhatsApp bot sessions (cart + state) in Supabase.
  */
 
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 
 const db = () => getSupabaseAdmin() || supabaseAnon;
 
@@ -29,6 +29,7 @@ export interface BotSession {
   phone_number: string;
   state: BotState;
   cart_data: CartItem[];
+  cart?: any;
   unknown_count: number;
   last_interaction: string;
 }
@@ -188,5 +189,22 @@ export async function logEvent(
     await client
       .from('wa_events')
       .insert({ phone_number: phone, event_type, payload });
+  } catch {}
+}
+
+
+// ── Save full session ──────────────────────────────
+export async function saveSession(phone: string, session: BotSession): Promise<void> {
+  try {
+    const client = db();
+    if (!client) return;
+    await client
+      .from('wa_sessions')
+      .upsert({
+        phone_number: phone,
+        state: session.state,
+        cart_data: session.cart_data || [],
+        last_interaction: new Date().toISOString(),
+      });
   } catch {}
 }

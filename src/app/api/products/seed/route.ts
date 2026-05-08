@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 import { MENU } from '@/data/menu';
 import { requireApiRole } from '@/lib/server/apiAuth';
 

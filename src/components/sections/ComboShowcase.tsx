@@ -15,7 +15,7 @@ export default function ComboShowcase({ combos, onHide }: ComboShowcaseProps) {
     const product = products.find(p => 
       p.id.toString() === c.id || 
       p.name.toLowerCase().replace(/ /g, '_') === c.id ||
-      c.id.includes(p.name.toLowerCase().replace(/ /g, '_'))
+      typeof c.id === 'string' && c.id.includes(p.name.toLowerCase().replace(/ /g, '_'))
     );
     return product ? { ...product, dynamicBadge: c.badge } : null;
   }).filter(Boolean) as any[];

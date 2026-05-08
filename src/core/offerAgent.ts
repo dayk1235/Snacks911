@@ -8,10 +8,10 @@
 
 import { Intent, CartItem, CustomerProfile } from './types';
 import { Product } from '@/data/products';
-import { dbGetProducts } from '@/lib/db';
 import { checkStock } from './inventoryMiddleware';
 import { getCurrentLevel } from './salesThermostat';
-import { supabase } from '@/lib/supabase';
+// import { dbGetProducts } from '@/lib/db.server';
+// import { supabase } from '@/lib/db.server';
 import { isProductSafe, filterProducts } from '@/core/allergyFilter';
 
 /**

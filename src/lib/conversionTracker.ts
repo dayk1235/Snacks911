@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 
 /**
  * Marks a conversation as converted into a successful order.

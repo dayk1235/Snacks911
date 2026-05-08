@@ -42,7 +42,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const { isOpen: storeOpen, closedMessage, heroTitle, heroSubtitle, fetchSettings } = useStoreSettings();
 
   const combos = products.filter(p => p.category === 'combos');
-  const topCombo = combos.find(p => p.badges?.some(b => b.includes('Más pedido'))) ?? combos[0];
+  const topCombo = combos.find(p => p.badges?.some(b => typeof b === 'string' && b.includes('Más pedido'))) ?? combos[0];
 
   useEffect(() => {
     AdminStore.getSettings()
@@ -172,7 +172,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {featuredProduct && (() => {
-                      const isBest = featuredProduct.popular || featuredProduct.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
+                      const isBest = featuredProduct.popular || featuredProduct.badges?.some(b => typeof b === 'string' && (b.includes('vendido') || b.includes('pedido')));
                       const savings = featuredProduct.originalPrice ? featuredProduct.originalPrice - featuredProduct.price : 0;
                       
                       let label = isBest ? "⭐ Más pedido" : savings > 0 ? `💰 Ahorra $${savings}` : null;
@@ -290,7 +290,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
                 flexWrap: 'wrap',
               }}>
                 {combos.slice(0, 3).map(combo => {
-                  const isTop = combo.badges?.some(b => b.includes('Más pedido'));
+                  const isTop = combo.badges?.some(b => typeof b === 'string' && b.includes('Más pedido'));
                   const badge = isTop ? '🔥 Más vendido' : combo.badges?.[0] ?? '⚡ Combo';
                   return (
                     <Button

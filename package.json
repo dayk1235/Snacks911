@@ -17,7 +17,8 @@
     "ai:manage-staff": "node ai/cli.js manage-staff",
     "ai:auto": "node ai/cli.js auto",
     "eval": "tsx src/tests/auto-evaluator.ts",
-    "train:auto": "tsx src/core/autoTrainer.ts"
+    "train:auto": "tsx src/core/autoTrainer.ts",
+    "dataset:review": "tsx src/scripts/dataset-review.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

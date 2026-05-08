@@ -1,4 +1,4 @@
-import { dbGetProducts } from '@/lib/db';
+import { dbGetProducts } from '@/lib/db.server';
 
 export async function validateOrderItems(items: any[]) {
   try {

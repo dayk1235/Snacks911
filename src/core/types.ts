@@ -32,6 +32,15 @@ export type Intent =
   | 'pedido'
   | 'hambre'
   | 'precio'
+  | 'SHOW_MENU'
+  | 'ADD_TO_CART'
+  | 'VIEW_CART'
+  | 'CONFIRM_ORDER'
+  | 'CHECKOUT'
+  | 'EDIT_CART'
+  | 'RECOMMEND'
+  | 'UNKNOWN'
+  | 'SHOW_CATEGORY'
   | 'other';
 
 export type ActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
@@ -62,6 +71,12 @@ export type Stage = 'inicio' | 'explorando' | 'decidiendo' | 'ordenando' | 'post
 export type UpsellStep = 'none' | 'papas' | 'bebida' | 'postre' | 'done';
 export type DeliveryStep = 'none' | 'name' | 'address' | 'reference' | 'payment' | 'done';
 
+export interface RecommendedProduct {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface ConversationState {
   stage: Stage;
   lastIntent: Intent;
@@ -82,6 +97,9 @@ export interface ConversationState {
   orderTimestamp?: number;
   reset: boolean;
   allergies: string[];
+  recommendedProducts?: RecommendedProduct[];
+  lastProductsShown?: string[];
+  messages: ChatMessage[];
 }
 
 export interface QuickAction {
@@ -96,6 +114,7 @@ export interface ChatMessage {
   id: number;
   text: string;
   sender: 'bot' | 'user';
+  type?: 'text' | 'buttons' | 'products';
   actions?: QuickAction[];
   productCards?: CoreProduct[];
 }
@@ -114,6 +133,33 @@ export interface CoreProduct {
   badge?: string;
   badges?: string[];
   originalPrice?: number;
+  stock?: number;
+}
+
+// ─── Standardized Types ──────────────────────────────────────────────────────
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+}
+
+export interface CartItem {
+  productId: string;
+  name: string;
+  price: number;
+  qty: number;
+}
+
+export interface Cart {
+  items: CartItem[];
+  total: number;
+}
+
+export interface UserContext {
+  userId: string;
+  cart: Cart;
+  state: string;
 }
 
 export interface ProductRefs {
@@ -136,7 +182,8 @@ export interface ProductRefs {
 
 // ─── Cart Types ──────────────────────────────────────────────────────────────
 
-export interface CartItem {
+// Legacy Cart types (to be migrated)
+export interface LegacyCartItem {
   id: string;
   name: string;
   description: string;

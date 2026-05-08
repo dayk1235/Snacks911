@@ -110,12 +110,64 @@ export type AntiLoopStrategy = 'antojo' | 'fomo' | 'social' | 'anchor';
 
 const STRATEGY_SEQUENCE: AntiLoopStrategy[] = ['antojo', 'fomo', 'social', 'anchor'];
 
-/**
- * Returns the next strategy to use after a loop is detected.
- * Cycles: antojo → fomo → social → anchor → antojo → …
- */
 export function getNextStrategy(retryCount: number): AntiLoopStrategy {
   return STRATEGY_SEQUENCE[retryCount % STRATEGY_SEQUENCE.length];
+}
+
+// ─── Analytics-driven strategy cache ──────────────────────────────────────────
+
+let cachedStrategy: AntiLoopStrategy | null = null;
+let lastFetch = 0;
+const CACHE_TTL = 300_000; // 5 minutes
+
+/**
+ * Fetches the best strategy from analytics (Async).
+ */
+export async function getBestStrategy(): Promise<AntiLoopStrategy> {
+  try {
+    const { getTopPerformingStrategy } = await import('./analytics');
+    const strategies = await getTopPerformingStrategy(30);
+
+    if (strategies && strategies.length > 0) {
+      return strategies[0].strategy as AntiLoopStrategy;
+    }
+  } catch (err) {
+    console.warn("[STRATEGY] Analytics fetch failed:", err);
+  }
+  return getNextStrategy(0); // Fallback to rotation
+}
+
+/**
+ * Returns the best strategy using a cache (Sync).
+ * Triggers background refresh if stale.
+ */
+export function getBestStrategySync(): AntiLoopStrategy {
+  const now = Date.now();
+
+  if (cachedStrategy && (now - lastFetch < CACHE_TTL)) {
+    return cachedStrategy;
+  }
+
+  // Refresh in background
+  getBestStrategy().then(s => {
+    cachedStrategy = s;
+    lastFetch = now;
+    console.log("[STRATEGY] Updated best strategy to:", s);
+  }).catch(() => {});
+
+  const selected = cachedStrategy || getNextStrategy(0);
+  console.log("[STRATEGY] Selected strategy:", selected);
+  return selected;
+}
+
+// ─── Legacy methods (kept for compatibility during migration) ────────────────
+
+export async function getBestStrategyFromAnalytics(retryCount: number): Promise<AntiLoopStrategy> {
+  return getBestStrategySync();
+}
+
+export function getBestStrategyFromAnalyticsSync(retryCount: number): AntiLoopStrategy {
+  return getBestStrategySync();
 }
 
 /**

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
-import { requireApiRole } from '@/lib/server/apiAuth';
+import { getSupabaseAdmin } from '@/lib/db.server';
+import { authGuard } from '@/middleware/authGuard';
 
 export async function POST(req: Request) {
-  const auth = await requireApiRole(req, ['admin', 'gerente']);
-  if (!auth.ok) return auth.response;
+  const auth = await authGuard(req, ['admin', 'gerente']);
+  if (!auth.ok) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
+  }
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -15,9 +17,9 @@ export async function POST(req: Request) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-    // Call RPC to toggle (or implement here)
-    const { error } = await supabase.rpc('toggle_product_available', { p_id: id });
-    if (error) throw error;
+    // Call centralized toggle function (handles cache invalidation)
+    const { dbToggleProduct } = await import('@/lib/db.server');
+    await dbToggleProduct(id);
 
     return NextResponse.json({ ok: true });
   } catch (error: unknown) {

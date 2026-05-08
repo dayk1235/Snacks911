@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AdminStore } from '@/lib/adminStore';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db.client';
 import type { Order, OrderStatus } from '@/lib/adminTypes';
 
 const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {

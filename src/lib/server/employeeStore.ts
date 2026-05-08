@@ -5,7 +5,7 @@
  */
 
 import crypto from 'crypto';
-import { getSupabaseAdmin, supabaseAnon } from './supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '../db.server';
 
 function getDb() {
   return getSupabaseAdmin() || supabaseAnon;
@@ -191,7 +191,7 @@ export async function listEmployees(): Promise<Employee[]> {
     return [];
   }
 
-  return (data || []).map(d => mapRow(d as Record<string, unknown>));
+  return (data || []).map((d: any) => mapRow(d as Record<string, unknown>));
 }
 
 export async function initDefaultAdmin(): Promise<boolean> {

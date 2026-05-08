@@ -5,7 +5,7 @@
 
 import type { AdminProduct, Order, Customer } from './adminTypes';
 import { rowToProduct } from './db';
-import { getSupabaseAdmin } from './server/supabaseServer';
+import { getSupabaseAdmin } from './db.server';
 
 // ─── Products ───────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/lib/server/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/db.server";
 
 export async function logConversation({
   phone,

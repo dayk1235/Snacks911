@@ -3,7 +3,9 @@
  * All AdminStore methods delegate here.
  */
 
-import { supabase } from './supabase';
+import { db } from './db.server';
+const supabase = db;
+
 import type {
   AdminProduct, Order, OrderStatus,
   SaleRecord, BusinessSettings, CustomCategory,
@@ -58,6 +60,7 @@ export function rowToProduct(row: Record<string, unknown>): AdminProduct {
     available:            availabilityRaw === undefined ? true : Boolean(availabilityRaw),
     description,
     ingredients,
+    stock:                row.stock != null ? Number(row.stock) : undefined,
     applicableProductIds: (row.applicable_product_ids as string[]) ?? [],
     deliveryPrice:        row.delivery_price ? Number(row.delivery_price) : undefined,
     priceToShow:          row.delivery_price ? Number(row.delivery_price) : Number(row.price),
@@ -77,7 +80,11 @@ export function productToRow(p: AdminProduct) {
     applicable_product_ids: p.applicableProductIds ?? [],
     delivery_price:        p.deliveryPrice ?? null,
   };
-  
+
+  if (p.stock !== undefined) {
+    row.stock = p.stock;
+  }
+
   // Omit ingredients to avoid "column not found" errors until schema is updated
   return row;
 }
@@ -100,7 +107,7 @@ function mapOrderStatusToDb(status: OrderStatus): string {
   return status;
 }
 
-function createUuid() {
+export function createUuid() {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
   }
@@ -205,40 +212,44 @@ export async function dbGetOrders(): Promise<Order[]> {
 
 export async function dbSaveOrder(order: Order): Promise<string> {
   const orderId = isUuid(order.id) ? order.id : createUuid();
-  const orderRow = {
-    id:             orderId,
-    status:         mapOrderStatusToDb(order.status),
-    channel:        order.channel || 'WEB',
-    total:          order.total,
-    created_at:     order.createdAt,
-    customer_name:  order.customerName,
-    customer_phone: order.customerPhone ?? '',
-    notes:          order.notes ?? '',
-    whatsapp_confirmed: order.whatsappConfirmed ?? false,
-  };
-  const { error } = await supabase.from('orders').upsert(orderRow);
-  if (error) throw error;
 
-  // Delete existing items & re-insert (ignore error if RLS prevents delete, e.g. for public users)
-  try {
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-  } catch (e) {
-    console.warn('[db] Could not delete order_items (expected for new public orders)', e);
-  }
+  // Build items array for RPC payload
+  const itemsPayload = order.items.map(i => ({
+    productId: i.productId || '0',
+    productName: i.productName,
+    quantity: i.quantity,
+    price: i.price,
+  }));
 
-  if (order.items.length > 0) {
-    const itemRows = order.items.map(i => ({
-      order_id: orderId,
-      product_id: i.productId || '0', // fallback to '0' as text NOT NULL
-      product_name: i.productName,
-      quantity: i.quantity,
-      price: i.price,
+  // Use transactional RPC (BEGIN → FOR UPDATE → stock check → deduct → INSERT → COMMIT)
+  const { data, error } = await supabase.rpc('process_order', {
+    p_order_id:         orderId,
+    p_channel:          order.channel || 'WEB',
+    p_total:            order.total,
+    p_customer_name:    order.customerName,
+    p_customer_phone:   order.customerPhone ?? '',
+    p_notes:            order.notes ?? '',
+    p_whatsapp_confirmed: order.whatsappConfirmed ?? false,
+    p_items:            itemsPayload,
+  });
+
+  if (error) {
+    const msg = error.message || String(error);
+    // Preserve OUT_OF_STOCK for caller to handle gracefully
+    if (msg.includes('OUT_OF_STOCK')) {
+      throw new Error(msg);
+    }
+    // Fallback for other DB errors
+    console.error(JSON.stringify({
+      event: 'SAVE_ORDER_FAILED',
+      orderId,
+      error: msg,
+      timestamp: Date.now(),
     }));
-    const { error: itemsErr } = await supabase.from('order_items').insert(itemRows);
-    if (itemsErr) throw itemsErr;
+    throw error;
   }
 
-  return orderId;
+  return data as string;
 }
 
 export async function dbUpdateOrderStatus(id: string, status: OrderStatus, handledBy?: string): Promise<void> {
@@ -318,7 +329,7 @@ export async function dbGetSales(): Promise<SaleRecord[]> {
 export async function dbGetCustomCategories(): Promise<CustomCategory[]> {
   const { data, error } = await supabase.from('custom_categories').select('*');
   if (error) throw error;
-  return (data ?? []).map(r => ({
+  return (data ?? []).map((r: any) => ({
     id:    (r as Record<string, unknown>).id as string,
     label: (r as Record<string, unknown>).label as string,
     emoji: (r as Record<string, unknown>).emoji as string,
@@ -394,7 +405,7 @@ export async function dbGetAuditLogs(): Promise<AuditLog[]> {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(r => ({
+  return (data ?? []).map((r: any) => ({
     id:        String(r.id),
     tableName: String(r.table_name),
     recordId:  String(r.record_id),

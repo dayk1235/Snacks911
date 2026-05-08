@@ -1,6 +1,6 @@
-import { dbGetCustomer, dbGetProducts } from '@/lib/db';
+import { dbGetCustomer, dbGetProducts } from '@/lib/db.server';
 import { dbSaveOrderServer } from '@/lib/dbServer';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db.server';
 import { validateOrderItems } from '@/core/validationService';
 import { getCustomerProfile, updateCustomerFromOrder } from '@/core/customerProfileStore';
 import { getBotResponse } from "@/core/botEngine";

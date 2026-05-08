@@ -9,14 +9,16 @@
  *   5. OUTPUT → { text, actions?, nextState }
  */
 
-import { dbGetProducts } from "@/lib/db";
-import { getCustomerProfileFromDB } from "@/lib/server/supabaseServer";
 import { filterProducts } from "./allergyFilter";
+import { createUuid } from "@/lib/uuid";
 import { extractFoodIntent, rankProductsByIntent } from "./contextRanker";
 import { detectIntent } from "./intentDetector";
-import { applyLoopStrategy, getNextStrategy } from "./antojo";
-import { buildPersonalizedResponse } from "./botEngine";
-import { getContext, updateContext } from "./userContext";
+import { applyLoopStrategy, getBestStrategyFromAnalyticsSync } from "./antojo";
+import type { AntiLoopStrategy } from "./antojo";
+import { getBestStrategyFromAnalytics } from "./antojo";
+import { getContext, clearContext, updateContext } from "./context";
+import { addToCart, getCartContext, clearCartContext, getCartSummary } from "./cartEngine";
+import { resolveNextState, type OrderState } from "./orderFlow";
 import type {
   ConversationState,
   ResponseOutput,
@@ -29,6 +31,8 @@ import type {
 import { getThermostatSettings } from "./salesThermostat";
 import { validateResponseOutput } from "./responseValidator";
 import { recordFallback } from "./autoTrainer";
+import { isGreetingOnly, startsWithGreeting } from "./nluBaseline";
+import { inventoryFilter } from "./inventoryFilter";
 
 export const INITIAL_STATE: ConversationState = {
   stage: "inicio",
@@ -48,6 +52,7 @@ export const INITIAL_STATE: ConversationState = {
   whatsappUrl: null,
   orderTimestamp: undefined,
   reset: false,
+  messages: [],
   allergies: [],
 };
 
@@ -183,6 +188,37 @@ function inferActionFromText(
   }
 
   return undefined;
+}
+
+// ─── Upsell Generator ────────────────────────────────────────────────────────
+
+function generateUpsell(productCategory: string, cart: any): string | null {
+  // RULE: Skip if 3+ products in cart
+  if (cart.items.length >= 3) return null;
+
+  // RULE: Skip if already has bebida + papas + proteína
+  const cartCategories = cart.items.map((item: any) => String(item.category || '').toLowerCase());
+  const hasProteina = cartCategories.some((cat: string) => 
+    ['proteina', 'alitas', 'boneless', 'pollo'].includes(cat)
+  );
+  const hasPapas = cartCategories.some((cat: string) => cat === 'papas');
+  const hasBebidas = cartCategories.some((cat: string) => cat === 'bebidas');
+  if (hasProteina && hasPapas && hasBebidas) return null;
+
+  // Per-category upsell logic
+  if (productCategory === 'proteina') {
+    return "🔥 ¿Le agregamos papas o bebida para completar tu pedido?";
+  }
+  if (productCategory === 'papas') {
+    return "🔥 ¿Quieres agregar una proteína como boneless o alitas?";
+  }
+  if (productCategory === 'combos') {
+    return "🔥 ¿Te agrego una salsa o bebida extra?";
+  }
+  if (productCategory === 'bebidas') {
+    return "🔥 ¿Te agrego algo para acompañar como boneless o papas?";
+  }
+  return null;
 }
 
 // ─── Stage-aware prompt selector (GOD MODE copy) ──────────────────────────────
@@ -464,14 +500,12 @@ function applyAntiLoop(
   retryCount: number,
   ctx: PromptContext,
 ): { text: string; newRetryCount: number } {
-  // No loop detected
   if (!lastResponse || text === lastResponse) {
-    // Note: In the original lib version, text === lastResponse triggers the loop.
-    // Let's keep it consistent.
     if (!lastResponse) return { text, newRetryCount: 0 };
 
-    // Loop detected → apply next strategy
-    const strategy = getNextStrategy(retryCount);
+    // Loop detected → pick best strategy from analytics (sync cache),
+    // fallback to deterministic rotation if no analytics data available
+    const strategy: AntiLoopStrategy = getBestStrategyFromAnalyticsSync(retryCount);
     const modifiedText = applyLoopStrategy(
       text,
       strategy,
@@ -970,14 +1004,17 @@ function buildRecommendations(
 ): any[] {
   const safeProducts = applySafetyFilter(products, constraints);
 
-  const combos = safeProducts.filter(
+  // Shuffle safe products to provide variety
+  const shuffled = [...safeProducts].sort(() => Math.random() - 0.5);
+
+  const combos = shuffled.filter(
     (p) => String(p.category).toLowerCase() === "combos",
   );
-  const proteina = safeProducts.filter((p) => {
+  const proteina = shuffled.filter((p) => {
     const cat = String(p.category).toLowerCase();
     return cat === "proteina" || cat === "alitas" || cat === "boneless";
   });
-  const papas = safeProducts.filter((p) => {
+  const papas = shuffled.filter((p) => {
     const cat = String(p.category).toLowerCase();
     const name = String(p.name).toLowerCase();
     return cat === "papas" || name.includes("papas");
@@ -985,17 +1022,18 @@ function buildRecommendations(
 
   const selected = new Set<any>();
 
+  // Ensure variety: combo + papas + proteína
   if (combos.length > 0) selected.add(combos[0]);
-  if (proteina.length > 0) selected.add(proteina[0]);
   if (papas.length > 0) selected.add(papas[0]);
+  if (proteina.length > 0) selected.add(proteina[0]);
 
-  // Si falta alguno, rellenar con los mejores productos restantes hasta tener 5
-  for (const p of safeProducts) {
+  // Fill remaining slots up to 5 with shuffled products
+  for (const p of shuffled) {
     if (selected.size >= 5) break;
     selected.add(p);
   }
 
-  return Array.from(selected).slice(0, 5);
+  return Array.from(selected);
 }
 
 function matchProducts(
@@ -1089,13 +1127,70 @@ export async function handleMessageModular(
   allProductsOverride?: AdminProduct[],
 ): Promise<ResponseOutput> {
   try {
+    // Warm analytics cache in background (non-blocking)
+    getBestStrategyFromAnalytics(0).catch(() => {});
+
     console.log("[responseEngine] MODULAR PIPELINE START");
 
   const userId = String(state.phone || "anonymous");
   const userCtx = getContext(userId);
+  const n = normalizeText(text);
+
+  if (isGreetingOnly(text)) {
+    return validateResponseOutput(
+      {
+        text: '¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo? 🔥',
+        type: 'text',
+        nextState: state
+      },
+      state
+    );
+  }
 
   // 1. Detectar intent
-  const intentResult = detectIntent(text);
+  const intentResult = detectIntent(text, userCtx);
+  const currentFlow: OrderState = userCtx.flowState || 'IDLE';
+  const nextFlow = resolveNextState(currentFlow, intentResult.intent, {
+    state: currentFlow,
+    cartItems: userCtx.cart?.items?.length ?? 0,
+    hasProductMatch: (intentResult.entities?.products?.length ?? 0) > 0,
+  });
+
+  // VIEW CART ONLY FROM VALID STATES
+  if (intentResult.intent.toUpperCase() === 'VIEW_CART' && currentFlow === 'IDLE') {
+    return validateResponseOutput(
+      {
+        text: 'Aún no has agregado nada 😅',
+        type: 'text',
+        nextState: state
+      },
+      state
+    );
+  }
+
+  // Negative intent guard
+  const negativeInputs = ['no', 'nop', 'nel', 'no gracias'];
+  if (negativeInputs.includes(n.trim())) {
+    return validateResponseOutput(
+      {
+        text: 'Perfecto 👍\n\n¿Quieres ver el menú o algo más?',
+        type: 'text',
+        nextState: state
+      },
+      state
+    );
+  }
+
+  // Hard override for price/total questions
+  if (
+    n.includes('cuanto') ||
+    n.includes('total') ||
+    n.includes('debo') ||
+    n.includes('cuanto voy') ||
+    n.includes('precio total')
+  ) {
+    intentResult.intent = 'VIEW_CART';
+  }
   const { includeWords, excludeWords } = parseUserRequest(text);
 
   // 2. Extraer entidades (producto, categoría)
@@ -1114,7 +1209,18 @@ export async function handleMessageModular(
   const nextState = { ...state, allergies: allConstraints };
 
   // 4. Obtener productos base desde DB
-  const allProducts = allProductsOverride || (await dbGetProducts());
+  const rawProducts = allProductsOverride || (await (await import("@/lib/db.server")).dbGetProducts());
+
+  // 4.5 Filtrar productos sin stock ANTES de ranking/matching
+  const allProducts = inventoryFilter(rawProducts as any[]);
+
+  if (allProducts.length === 0) {
+    return validateResponseOutput({
+      text: "😅 Ahorita no tenemos disponibles esos productos. ¿Quieres que te recomiende algo diferente? 🔥",
+      type: 'text',
+      nextState: state
+    }, state);
+  }
 
   // 5. Aplicar match por intención
   const matchedProducts = matchProducts(
@@ -1135,6 +1241,32 @@ export async function handleMessageModular(
     allConstraints,
   );
 
+  // ── Context-continuity guard ─────────────────────────────────────────────
+  // If the user already has items in the cart and sends a short/additive
+  // message, treat it as ADD_TO_CART instead of falling into SHOW_MENU /
+  // recommendation flows that would reset the conversation focus.
+  const cartHasItems = userCtx.cart.items.length > 0;
+  const infoWords = [
+    'menu', 'ver', 'que', 'precio', 'cuanto', 'total'
+  ];
+
+  const isGreetingMsg = startsWithGreeting(text);
+  const isInfoRequest = infoWords.some(w => n.includes(w));
+
+  const isAdditivePhrase =
+    /^(y |oye y |ah y |también |tambien )/i.test(text.trim());
+
+  if (
+    cartHasItems &&
+    isAdditivePhrase &&
+    !isGreetingMsg &&
+    !isInfoRequest &&
+    intentResult.intent.toUpperCase() !== "UNKNOWN"
+  ) {
+    intentResult.intent = "ADD_TO_CART";
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   switch (intentResult.intent.toUpperCase()) {
     case "SHOW_MENU":
       responseProducts = safeAllProductsBase;
@@ -1151,6 +1283,14 @@ export async function handleMessageModular(
       }
       break;
     case "ADD_TO_CART":
+      if (!productEntities.length) {
+        updateContext(userId, { flowState: nextFlow });
+        return validateResponseOutput({
+          text: '¿Qué producto quieres agregar exactamente? 😅',
+          type: 'text',
+          nextState: state
+        }, state);
+      }
       responseProducts =
         safeProducts.length > 0 ? safeProducts : safeAllProductsBase;
       break;
@@ -1173,6 +1313,425 @@ export async function handleMessageModular(
         foodIntent,
       );
       break;
+  }
+
+  // Failsafe for short messages
+  const hasProducts = Array.isArray(intentResult.entities?.products) && intentResult.entities.products.length > 0;
+  if (intentResult.intent.toUpperCase() === "ADD_TO_CART" && (n.length <= 4 || startsWithGreeting(text)) && !hasProducts) {
+    updateContext(userId, { flowState: nextFlow });
+    return validateResponseOutput(
+      {
+        text: '¿Qué te gustaría ordenar? 😏',
+        type: 'text',
+        nextState
+      },
+      state
+    );
+  }
+
+  // 7. Handle Add to Cart Logic
+  if (intentResult.intent.toUpperCase() === "ADD_TO_CART") {
+
+    // HARD BLOCK: Only allow in correct flow
+    if (nextFlow !== 'BUILDING_CART') {
+      return validateResponseOutput(
+        {
+          text: 'Primero dime qué te gustaría ordenar 😏',
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+
+    // Guard: Greetings should never trigger ADD_TO_CART
+    if (startsWithGreeting(text)) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: '¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo? 🔥',
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+
+    // Problem 1: Cart mutates on ANY input
+    const invalidAddTriggers = [
+      'menu', 'ver menu', 'ver',
+      'que tienes', 'que hay',
+      'cuanto', 'precio', 'total'
+    ];
+
+    if (invalidAddTriggers.includes(n) || startsWithGreeting(text)) {
+        updateContext(userId, { flowState: nextFlow });
+        return validateResponseOutput(
+          {
+            text: '¿Quieres ver el menú o agregar algo específico? 😏',
+            type: 'text',
+            nextState
+          },
+          state
+        );
+    }
+      // PREVENCIÓN: Si es pregunta de total, redirigir a VIEW_CART
+      if (n.includes('cuanto') || n.includes('total')) {
+        updateContext(userId, { flowState: nextFlow });
+        return validateResponseOutput(
+          {
+            text: `🧾 Tu total actual es: $${userCtx.cart.total}`,
+            type: 'text',
+            nextState
+          },
+          state
+        );
+      }
+
+    // Check if user is accepting recommendations (context has recommendedProducts)
+    const recommendedProducts = userCtx?.recommendedProducts ?? [];
+    
+    if (recommendedProducts.length > 0 && (n.includes('si') || n.includes('sí') || n.includes('dale') || n.includes('ok'))) {
+      // User is accepting recommended products - add them to cart
+      let addedCount = 0;
+      if (nextFlow === 'BUILDING_CART' && intentResult.intent.toUpperCase() === 'ADD_TO_CART') {
+        for (const recProd of recommendedProducts) {
+          addToCart(userCtx, recProd);
+          addedCount++;
+        }
+      }
+      
+        // Clear recommended products from context
+    updateContext(userId, {
+      lastIntent: intentResult.intent,
+      constraints: allConstraints,
+      flowState: nextFlow
+    });
+      
+      return validateResponseOutput(
+        {
+          text: `✅ ${addedCount} producto(s) recomendado(s) agregado(s) a tu pedido\nTotal: $${userCtx.cart.total}\n\n¿Quieres algo más o confirmamos?`,
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+    
+    // Problem 4: Cart grows without control
+    if (userCtx.cart.items.length >= 10) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: 'Tu pedido ya es bastante grande 😅\n¿Confirmamos antes de agregar más?',
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+
+    // Guard: Block ADD_TO_CART if product.stock <= 0
+    const firstProduct = responseProducts[0];
+    if (firstProduct && firstProduct.stock <= 0) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: `😅 Perdón, se nos agotó el ${firstProduct.name}. ¿Quieres probar con algo más? 🔥`,
+          type: 'text',
+          nextState: state
+        },
+        state
+      );
+    }
+
+    // Problem 5: Prevent accidental adds from weak intent
+    if (!intentResult.entities?.products?.length && includeWords.length === 0) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: 'No entendí qué producto quieres agregar 🤔\n¿Quieres ver el menú?',
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+
+    // Check for clear product match before adding
+    if (!responseProducts || responseProducts.length === 0) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: 'No entendí qué producto quieres agregar 🤔\n¿Quieres ver el menú?',
+          type: 'text',
+          nextState
+        },
+        state
+      );
+    }
+    
+    const productToAdd = responseProducts[0];
+    if (productToAdd) {
+      // Problem 3: Prevent duplicate rapid adds
+      const lastProduct = userCtx.lastAddedProductId;
+      const now = Date.now();
+
+      if (
+        lastProduct === productToAdd.id &&
+        userCtx.lastAddTimestamp &&
+        now - userCtx.lastAddTimestamp < 3000
+      ) {
+        updateContext(userId, { flowState: nextFlow });
+        return validateResponseOutput(
+          {
+            text: 'Ese producto ya lo agregué hace un momento 😉\n¿Quieres algo más?',
+            type: 'text',
+            nextState
+          },
+          state
+        );
+      }
+
+      if (nextFlow === 'BUILDING_CART' && intentResult.intent.toUpperCase() === 'ADD_TO_CART') {
+        addToCart(userCtx, productToAdd);
+      }
+
+      // Track last add for deduplication
+      updateContext(userId, {
+        lastAddedProductId: productToAdd.id,
+        lastAddTimestamp: Date.now()
+      });
+
+    // ── Upsell logic (new) ────────────────────────────────────────────────────
+    const productCategory = String(productToAdd.category || '').toLowerCase();
+    const upsellMessage = generateUpsell(productCategory, userCtx.cart) || '';
+    // ───────────────────────────────────────────────────────────────────────────
+
+    const textRes = `✅ ${productToAdd.name} agregado a tu pedido\nTotal: $${userCtx.cart.total}${upsellMessage ? `\n\n${upsellMessage}` : ''}\n\n¿Quieres algo más o confirmamos?`;
+
+      updateContext(userId, {
+        lastIntent: intentResult.intent,
+        constraints: allConstraints,
+        lastProductsShown: responseProducts.map((p: any) => String(p.id)),
+        flowState: nextFlow
+      });
+
+   return validateResponseOutput(
+     {
+       text: textRes,
+       type: "text",
+       nextState,
+     },
+     state,
+   );
+     }
+   }
+
+  // 7.1 Handle Recommend Logic — curated trio: 1 combo + 1 papas + 1 bebida
+  if (intentResult.intent.toUpperCase() === "RECOMMEND") {
+    const safe = safeAllProductsBase as any[];
+
+    const combo  = safe.find((p) => String(p.category).toLowerCase() === "combos");
+    const papas  = safe.find((p) => String(p.category).toLowerCase() === "papas");
+    const bebida = safe.find((p) => String(p.category).toLowerCase() === "bebidas");
+
+    const picks = [combo, papas, bebida].filter(Boolean);
+
+    const lines = picks
+      .map((p: any) => `🍗 ${p.name} — $${p.price}`)
+      .join("\n");
+
+    const total = picks.reduce((sum: number, p: any) => sum + p.price, 0);
+
+  const textRes = picks.length > 0
+    ? `💡 Te recomiendo este combo perfecto:\n\n${lines}\n\nTotal si pides todo: $${total} 🔥\n\n¿Arrancamos con algo de esto?`
+    : "💡 Todo está bueno hoy, ¿qué se te antoja? 😏";
+
+  // Add upsell tip as per user request
+  const finalTextRes = picks.length > 0 
+    ? `${textRes}\n\n🔥 Tip: Puedes armar combo con papas + bebida` 
+    : textRes;
+
+    updateContext(userId, {
+        lastIntent: intentResult.intent,
+        constraints: allConstraints,
+        lastProductsShown: picks.map((p: any) => String(p.id)),
+        recommendedProducts: picks.map((p: any) => ({ id: p.id, name: p.name, price: p.price })),
+        flowState: nextFlow
+      });
+
+    return validateResponseOutput(
+      { text: finalTextRes, type: "text", nextState },
+      state,
+    );
+  }
+
+  if (intentResult.intent === 'VIEW_CART' && currentFlow === 'IDLE') {
+    return validateResponseOutput(
+      {
+        text: 'Aún no has agregado nada 😅',
+        type: 'text',
+        nextState
+      },
+      state
+    );
+  }
+
+  // 7.2 Handle View Cart Logic
+  if (intentResult.intent.toUpperCase() === "VIEW_CART") {
+    // Check if cart is empty
+    if (userCtx.cart.items.length === 0) {
+      return validateResponseOutput(
+        {
+          text: 'No tienes productos en tu pedido todavía 😅',
+          type: "text",
+          nextState
+        },
+        state,
+      );
+    }
+
+    // Cart has items - show them
+    const cartLines = userCtx.cart.items.map((i: any) => `- ${i.name} x${i.qty || 1}`).join('\n');
+    const textRes = `🧾 Tu pedido:\n${cartLines}\n\nTotal: $${userCtx.cart.total}`;
+    
+    // Add confirmation prompt
+    const finalText = textRes + "\n\n¿Confirmamos tu pedido?";
+
+    // Add upsell if cart has only 1 item (user's point 4)
+    const withUpsell = userCtx.cart.items.length === 1 
+      ? finalText + "\n\n🔥 ¿Quieres complementar tu pedido?"
+      : finalText;
+
+    updateContext(userId, {
+      lastIntent: intentResult.intent,
+      constraints: allConstraints,
+    });
+
+    return validateResponseOutput(
+      {
+        text: withUpsell,
+        type: "text",
+        nextState,
+      },
+      state,
+    );
+  }
+
+  if (
+    intentResult.intent === 'CONFIRM_ORDER' &&
+    userCtx.cart.items.length === 0
+  ) {
+    return validateResponseOutput(
+      {
+        text: 'Tu carrito está vacío 😅',
+        type: 'text',
+        nextState
+      },
+      state
+    );
+  }
+
+  // 7.3 Handle Confirm Order Logic
+  if (intentResult.intent.toUpperCase() === "CONFIRM_ORDER") {
+    // Check for valid cart context before confirming
+    if (!userCtx.cart.items || userCtx.cart.items.length === 0) {
+      updateContext(userId, { flowState: nextFlow });
+      return validateResponseOutput(
+        {
+          text: 'Aún no tienes nada en tu pedido 😅\n¿Quieres ver el menú?',
+          type: "text",
+          nextState
+        },
+        state
+      );
+    }
+
+    try {
+      console.log('🟡 INTENT: CONFIRM_ORDER');
+      console.log('🛒 CART:', userCtx.cart);
+
+      await (await import("@/lib/db.server")).dbSaveOrder({
+        id: createUuid(),
+        status: "pending",
+        channel: "WHATSAPP",
+        total: userCtx.cart.total,
+        createdAt: new Date().toISOString(),
+        customerPhone: userId,
+        customerName: "Cliente",
+        whatsappConfirmed: true,
+        items: userCtx.cart.items.map((i: any) => ({
+          productId: String(i.id),
+          productName: i.name,
+          quantity: i.qty || 1,
+          price: i.price
+        }))
+      });
+
+      console.log('✅ ORDER CREATED:', {
+        total: userCtx.cart.total,
+        items: userCtx.cart.items.length
+      });
+    } catch (e) {
+      const errMsg = String(e);
+      const isOutOfStock = errMsg.includes('OUT_OF_STOCK');
+
+      if (isOutOfStock) {
+        updateContext(userId, { flowState: nextFlow });
+        return validateResponseOutput(
+          {
+            text: '🔥 Ese producto se acaba de agotar 😅\n¿Te muestro opciones similares?',
+            type: 'text',
+            nextState
+          },
+          state
+        );
+      }
+
+      console.warn(JSON.stringify({
+        event: 'ORDER_SAVE_ERROR',
+        error: errMsg,
+        userId,
+        timestamp: Date.now(),
+      }));
+    }
+
+    const finalTotal = userCtx.cart.total;
+    clearContext(userId);
+
+    updateContext(userId, {
+      lastIntent: intentResult.intent,
+      constraints: allConstraints,
+      flowState: nextFlow
+    });
+
+    return validateResponseOutput(
+      {
+        text: `🔥 Pedido confirmado\nTotal: $${finalTotal}`,
+        type: "text",
+        nextState
+      },
+      state
+    );
+  }
+
+  // 7.4 Handle Unknown Intent
+  if (intentResult.intent.toUpperCase() === "UNKNOWN" || intentResult.intent.toUpperCase() === "OTHER") {
+    updateContext(userId, { flowState: nextFlow });
+    return validateResponseOutput(
+      {
+        text: `No te entendí bien 😅
+
+¿Quieres:
+1) Ver menú
+2) Recomendarte algo
+3) Ver tu carrito?`,
+        type: "text",
+        nextState,
+      },
+      state,
+    );
   }
 
   if (!responseProducts || responseProducts.length === 0) {
@@ -1202,7 +1761,7 @@ export async function handleMessageModular(
   if (currentIds === lastIds && responseProducts.length > 0) {
     const safeAll = applySafetyFilter(allProducts as any[], allConstraints);
     const unused = safeAll.filter(
-      (p: any) => !userCtx.lastProductsShown.includes(String(p.id)),
+      (p: any) => !(userCtx.lastProductsShown || []).includes(String(p.id)),
     );
 
     if (unused.length > 0) {
@@ -1238,8 +1797,9 @@ export async function handleMessageModular(
   }
 
   let profile = null;
-  if (state.phone) {
+  if (state.phone && typeof window === 'undefined') {
     try {
+      const { getCustomerProfileFromDB } = await import("@/lib/db.server");
       profile = await getCustomerProfileFromDB(
         String(state.phone).replace(/\D/g, ""),
       );
@@ -1260,22 +1820,25 @@ export async function handleMessageModular(
   console.log("FINAL:", responseProducts);
 
   // 9. Construir respuesta final
-  let responseText = await buildPersonalizedResponse(
-    text,
-    state.phone,
-    responseProducts,
-    profile,
-    allProducts.length,
-    allConstraints,
-  );
+  let responseText = '';
 
-  const safeAllProducts = applySafetyFilter(allProducts as any, allConstraints);
-  responseText = sanitizeRestrictedMentions(
-    responseText,
-    allProducts as any[],
-    safeAllProducts as any[],
-    hasActiveRestrictions,
-  );
+  if (responseProducts && (responseProducts as any).length > 0) {
+    responseText =
+      'Aquí tienes opciones:\n\n' +
+      (responseProducts as any)
+        .slice(0, 5)
+        .map((p: any) => `🍗 ${p.name} - $${p.price}`)
+        .join('\n') +
+      '\n\n¿Qué te gustaría ordenar? 😏';
+  } else {
+    responseText = 'No encontré opciones 😅\n¿Quieres ver el menú?';
+  }
+
+  if (intentResult.intent.toUpperCase() === "ADD_TO_CART") {
+    responseText = responseText.replace(/Te sugiero estas opciones:\n*/gi, "");
+    responseText = responseText.replace(/¡Buenísima elección! Te sugiero:\n*/gi, "");
+    responseText = responseText.replace(/¡Claro! /gi, "");
+  }
 
   updateContext(userId, {
     lastIntent: intentResult.intent,
@@ -1283,6 +1846,7 @@ export async function handleMessageModular(
       categoryEntities.length > 0 ? categoryEntities[0] : userCtx.lastCategory,
     constraints: allConstraints,
     lastProductsShown: responseProducts.map((p: any) => String(p.id)),
+    flowState: nextFlow
   });
 
   return validateResponseOutput(
@@ -1296,9 +1860,18 @@ export async function handleMessageModular(
   } catch (error) {
     console.error("[responseEngine] FATAL ERROR in Modular Pipeline:", error);
     // Absolute fallback to keep the user engaged
-    const fallbackProducts = (allProductsOverride && allProductsOverride.length > 0) 
+    let fallbackProducts = (allProductsOverride && allProductsOverride.length > 0) 
       ? allProductsOverride 
-      : (await dbGetProducts()).slice(0, 5);
+      : [];
+      
+    if (fallbackProducts.length === 0 && typeof window === 'undefined') {
+      try {
+        const { dbGetProducts } = await import("@/lib/db.server");
+        fallbackProducts = (await dbGetProducts()).slice(0, 5);
+      } catch (e) {
+        console.error("[responseEngine] Error loading fallback products:", e);
+      }
+    }
       
     return validateResponseOutput(
       {

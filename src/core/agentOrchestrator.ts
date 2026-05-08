@@ -7,8 +7,8 @@
 import { detectIntent } from './intentDetector';
 import { getEntryRecommendation, getBestUpsell } from './offerAgent';
 import { shouldHandoff } from './humanHandoff';
-import { getCustomerProfileFromDB } from '@/lib/server/supabaseServer';
-import { dbGetProducts } from "@/lib/db";
+import { getCustomerProfileFromDB } from '@/lib/db.server';
+import { dbGetProducts } from "@/lib/db.server";
 import { filterProducts, isProductSafe } from '@/core/allergyFilter';
 import { Intent } from './types';
 import type { Product } from '@/data/products';

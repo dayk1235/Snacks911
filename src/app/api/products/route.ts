@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { dbGetProducts, dbInsertProducts, dbDeleteAllProducts } from '@/lib/db';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { dbGetProducts, dbInsertProducts, dbDeleteAllProducts } from '@/lib/db.server';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 import { requireApiRole } from '@/lib/server/apiAuth';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }

@@ -9,7 +9,7 @@ interface CacheEntry {
   created_at: string;
 }
 
-async function getFromCache(key: string): Promise<string | null> {
+async function getFromCache(key: string): Promise<any | null> {
   const { data, error } = await supabase
     .from('ai_cache')
     .select('response, created_at')
@@ -26,13 +26,18 @@ async function getFromCache(key: string): Promise<string | null> {
     return null;
   }
 
-  return data.response;
+  try {
+    return JSON.parse(data.response);
+  } catch {
+    return data.response;
+  }
 }
 
-async function saveToCache(key: string, response: string): Promise<void> {
+async function saveToCache(key: string, response: any): Promise<void> {
+  const responseStr = typeof response === 'string' ? response : JSON.stringify(response);
   await supabase
     .from('ai_cache')
-    .upsert({ key, response, created_at: new Date().toISOString() });
+    .upsert({ key, response: responseStr, created_at: new Date().toISOString() });
 }
 
 async function logCostEvent(event: string, cost: number): Promise<void> {
@@ -56,13 +61,14 @@ const INTENT_MAPPING: Record<string, string> = {
   'complaint': 'queja',
 };
 
-export async function getCostEfficientResponse(userMessage: string, phone: string): Promise<string> {
+export async function getCostEfficientResponse(userMessage: string, phone: string): Promise<any> {
   const { intent: rawIntent } = detectIntent(userMessage);
   const intent = INTENT_MAPPING[rawIntent] || rawIntent;
 
   if (['saludo', 'pedir_menu', 'despedida'].includes(intent)) {
     const profile = await getCustomerProfile(phone);
-    return STATIC_RESPONSES[intent as keyof typeof STATIC_RESPONSES](profile);
+    const text = STATIC_RESPONSES[intent as keyof typeof STATIC_RESPONSES](profile);
+    return { text, intent, type: 'text' };
   }
 
   const cacheKey = crypto.createHash('sha256').update(userMessage.substring(0, 50)).digest('hex');

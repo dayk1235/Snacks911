@@ -17,7 +17,7 @@ import {
   sendUpsellOffer, sendHandoffMessage, sendButtons
 } from './metaClient';
 import { getAIResponse, buildContextPayload, type MenuItemContext } from './aiService';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 
 const db = () => getSupabaseAdmin() ?? supabaseAnon ?? null;
 

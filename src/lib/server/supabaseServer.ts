@@ -1,8 +1,10 @@
 
-console.log("[SUPABASE SERVER ENV]:", {
-  url: process.env.NEXT_PUBLIC_SUPABASE_URL ? "OK" : "MISSING",
-  key: process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "MISSING"
-});
+if (typeof window === 'undefined') {
+  console.log("[SUPABASE SERVER ENV]:", {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ? "OK" : "MISSING",
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "MISSING"
+  });
+}
 
 /**
  * Server-only Supabase client with service_role (bypasses RLS).
@@ -26,7 +28,9 @@ function createAnonClient(): SupabaseClient {
   });
 }
 
-export const supabaseAnon: SupabaseClient = createAnonClient();
+export const supabaseAnon: SupabaseClient = (typeof window === 'undefined') 
+  ? createAnonClient() 
+  : ({} as any);
 
 export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

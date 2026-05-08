@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
 export interface StoreSettingsState {
   isOpen: boolean;
   closedMessage: string;
@@ -30,7 +32,7 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
   fetchSettings: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch('/api/store/settings');
+      const res = await fetch(`${BASE}/api/store/settings`);
       if (!res.ok) throw new Error('Error al cargar configuraciones');
       const data = await res.json();
 
@@ -65,7 +67,7 @@ export const useStoreSettings = create<StoreSettingsState>()((set, get) => ({
       if (newSettings.heroTitle !== undefined) payload.hero_title = newSettings.heroTitle;
       if (newSettings.heroSubtitle !== undefined) payload.hero_subtitle = newSettings.heroSubtitle;
 
-      const res = await fetch('/api/store/settings', {
+      const res = await fetch(`${BASE}/api/store/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

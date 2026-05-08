@@ -1,4 +1,4 @@
-import { UserContext } from "./userContext";
+import { UserContext } from "./context";
 import { formatWhatsAppMessage } from "@/lib/whatsapp/formatter";
 
 export interface ProductParam {

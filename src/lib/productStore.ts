@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { Product } from '@/data/products';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
 interface ProductState {
   products: Product[];
   isLoading: boolean;
@@ -63,7 +65,7 @@ export const useProductStore = create<ProductState>()((set, get) => ({
         is_available: product.available !== false,
       };
 
-      const res = await fetch('/api/products', {
+      const res = await fetch(`${BASE}/api/products`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dbFormat),
@@ -100,7 +102,7 @@ export const useProductStore = create<ProductState>()((set, get) => ({
         is_available: product.available !== false,
       };
 
-      const res = await fetch('/api/products', {
+      const res = await fetch(`${BASE}/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dbFormat),

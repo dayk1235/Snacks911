@@ -101,16 +101,16 @@ export default function ChatBot() {
         comboBonelessPrice: 99,
         ahorroBoneless: 40,
         currentTotal: state.cartTotal,
-        hasPapas: state.cart.includes('Papas Loaded'),
-        hasBebida: state.cart.some(i => i.includes('Refresco')),
-        hasPostre: state.cart.some(i => i.includes('Brownie')),
+        hasPapas: Array.isArray(state.cart) && state.cart.includes('Papas Loaded'),
+        hasBebida: Array.isArray(state.cart) && state.cart.some(i => typeof i === 'string' && i.includes('Refresco')),
+        hasPostre: Array.isArray(state.cart) && state.cart.some(i => typeof i === 'string' && i.includes('Brownie')),
       });
 
       setState(output.nextState);
       
       // If a product was recommended, find it in data
       const recommendedProduct = products.find(p => 
-        output.text.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+        typeof output.text === 'string' && typeof p.name === 'string' && output.text.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
       );
 
       setMessages(prev => [

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminStore } from '@/lib/adminStore';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db.client';
 import { playOrderNotification } from '@/lib/sound';
 import type { Order, OrderStatus } from '@/lib/adminTypes';
 import OrderAlertModal, { type PendingOrder } from '@/components/modals/OrderAlertModal';

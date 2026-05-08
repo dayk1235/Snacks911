@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db.server';
 
 // Force dynamic behavior to prevent unwanted caching of GET requests
 export const dynamic = 'force-dynamic';

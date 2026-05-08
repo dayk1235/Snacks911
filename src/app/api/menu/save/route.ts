@@ -9,14 +9,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { dbSaveProduct, dbGetProducts } from '@/lib/db';
+import { dbSaveProduct, dbGetProducts } from '@/lib/db.server';
 import type { AdminProduct } from '@/lib/adminTypes';
-import { requireApiRole } from '@/lib/server/apiAuth';
+import { authGuard } from '@/middleware/authGuard';
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireApiRole(req, ['admin', 'gerente']);
-    if (!auth.ok) return auth.response;
+    const auth = await authGuard(req, ['admin', 'gerente']);
+    if (!auth.ok) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
+    }
 
     const body = await req.json();
     const items: Array<{ name: string; price: number; description: string; category: string; imageUrl?: string }> = body.items;
@@ -76,6 +78,6 @@ export async function POST(req: NextRequest) {
 }
 
 async function deleteProductById(id: string) {
-  const { supabase } = await import('@/lib/supabase');
-  await supabase.from('products').delete().eq('id', id);
+  const { dbDeleteProduct } = await import('@/lib/db.server');
+  await dbDeleteProduct(id);
 }

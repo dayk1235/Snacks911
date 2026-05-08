@@ -1,5 +1,5 @@
 import './env-setup';
-import { dbGetProducts } from '../lib/db';
+import { dbGetProducts } from '../lib/db.server';
 import { filterProducts } from '../core/allergyFilter';
 
 // Helper to support both Jest and standalone tsx execution

@@ -4,27 +4,16 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin, supabaseAnon } from '@/lib/server/supabaseServer';
+import { getSupabaseAdmin, supabaseAnon } from '@/lib/db.server';
 import { verifySessionToken, ADMIN_SESSION_COOKIE } from '@/lib/server/adminSession';
 
 function getDb() { return getSupabaseAdmin() || supabaseAnon; }
 
-function parseCookie(req: Request, name: string): string | undefined {
-  const cookie = req.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-async function requireAdmin(req: Request) {
-  const token = parseCookie(req, ADMIN_SESSION_COOKIE);
-  const session = await verifySessionToken(token);
-  if (!session || session.role !== 'admin') return null;
-  return session;
-}
+import { authGuard } from '@/middleware/authGuard';
 
 export async function GET(req: Request) {
-  const auth = await requireAdmin(req);
-  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const auth = await authGuard(req, ['admin']);
+  if (!auth.ok) return NextResponse.json({ error: 'No autorizado' }, { status: auth.status });
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Sin conexión' }, { status: 503 });

@@ -24,8 +24,8 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
   const sortedCombos = useMemo(() => {
     return [...combos]
       .sort((a, b) => {
-        const aIsBest = a.badges?.some(b => b.includes('Más pedido')) ? 1 : 0;
-        const bIsBest = b.badges?.some(b => b.includes('Más pedido')) ? 1 : 0;
+        const aIsBest = a.badges?.some(b => typeof b === 'string' && b.includes('Más pedido')) ? 1 : 0;
+        const bIsBest = b.badges?.some(b => typeof b === 'string' && b.includes('Más pedido')) ? 1 : 0;
         if (aIsBest !== bIsBest) return bIsBest - aIsBest;
         return a.price - b.price;
       })
@@ -68,7 +68,7 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
         gap: '1rem',
       }}>
         {sortedCombos.map(combo => {
-          const isBest = combo.badges?.some(b => b.includes('Más pedido') || b.includes('Best seller'));
+          const isBest = combo.badges?.some(b => typeof b === 'string' && (b.includes('Más pedido') || b.includes('Best seller')));
           const isAdded = addedId === combo.id;
 
           return (
@@ -82,7 +82,7 @@ function CombosSectionComponent({ onAdd }: CombosSectionProps) {
             >
               {/* Badge */}
               {(() => {
-                const isBest = combo.popular || combo.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
+                const isBest = combo.popular || combo.badges?.some(b => typeof b === 'string' && (b.includes('vendido') || b.includes('pedido')));
                 const savings = combo.originalPrice ? combo.originalPrice - combo.price : 0;
                 
                 let displayBadge = null;

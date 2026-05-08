@@ -1,4 +1,4 @@
-import { dbGetCustomer, dbUpsertCustomer, Customer } from '@/lib/db';
+import { dbGetCustomer, dbUpsertCustomer, Customer } from '@/lib/db.server';
 import { CustomerProfile } from './types';
 
 export async function getCustomerProfile(phone: string): Promise<CustomerProfile | undefined> {

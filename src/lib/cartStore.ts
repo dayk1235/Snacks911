@@ -70,7 +70,7 @@ function persistState(newState: CartState) {
 export const cartStore = {
   add: (product: CoreProduct | Omit<CartItem, 'quantity'>) => {
     const isNewCart = state.items.length === 0;
-    const newState = cartEngine.addToCart(state, product);
+    const newState = cartEngine.addCartStateItem(state, product);
     persistState(newState);
 
     if (isNewCart) {
