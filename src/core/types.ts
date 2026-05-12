@@ -102,6 +102,27 @@ export interface ConversationState {
   messages: ChatMessage[];
 }
 
+export const INITIAL_STATE: ConversationState = {
+  stage: 'inicio',
+  lastIntent: 'UNKNOWN',
+  lastResponse: null,
+  comboSelected: false,
+  upsellStep: 'none',
+  deliveryStep: 'none',
+  customerName: '',
+  customerAddress: '',
+  customerReference: '',
+  customerPayment: '',
+  orderConfirmed: false,
+  retryCount: 0,
+  cart: { items: [], total: 0 },
+  cartTotal: 0,
+  whatsappUrl: null,
+  reset: false,
+  allergies: [],
+  messages: []
+};
+
 export interface QuickAction {
   label: string;
   value: string;

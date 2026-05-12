@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../ui/Button';
-import { handleMessageModular, INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
+import { INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
 import { products as allProducts } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
 import { createUuid } from '@/lib/utils/core';

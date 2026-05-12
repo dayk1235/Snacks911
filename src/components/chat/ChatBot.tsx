@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { handleMessageModular, INITIAL_STATE, type ConversationState } from '@/core';
+import { INITIAL_STATE, type ConversationState } from '@/core';
 import { products, getProductImage, type Product } from '@/data/products';
 import { useCartStore } from '@/lib/cartStore';
 
@@ -87,26 +87,15 @@ export default function ChatBot() {
     setTyping(true);
 
     try {
-      // Modular engine call
-      const output = await handleMessageModular(text, state, {
-        comboName: '🔥 Combo 911',
-        comboPrice: 119,
-        papasName: 'Papas Loaded',
-        papasPrice: 69,
-        bebidaName: 'Refresco',
-        bebidaPrice: 25,
-        postreName: 'Brownie',
-        postrePrice: 59,
-        comboBonelessName: '🍗 Combo Boneless',
-        comboBonelessPrice: 99,
-        ahorroBoneless: 40,
-        currentTotal: state.cartTotal,
-        hasPapas: Array.isArray(state.cart) && state.cart.includes('Papas Loaded'),
-        hasBebida: Array.isArray(state.cart) && state.cart.some(i => typeof i === 'string' && i.includes('Refresco')),
-        hasPostre: Array.isArray(state.cart) && state.cart.some(i => typeof i === 'string' && i.includes('Brownie')),
+      const r = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, phone: 'web-user' })
       });
+      
+      const output = await r.json();
 
-      setState(output.nextState);
+      setState(prev => ({ ...prev, cart: output.cart }));
       
       // If a product was recommended, find it in data
       const recommendedProduct = products.find(p => 

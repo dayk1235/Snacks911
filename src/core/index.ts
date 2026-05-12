@@ -34,14 +34,7 @@ export type {
 // Intent detection (Unified Agent)
 export { detectIntent } from './intentDetector';
 
-// Response engine (GOD MODE & Modular Integration)
-export {
-  handleMessage,
-  handleMessageModular,
-  buildDeliveryPrompt,
-  buildOrderConfirmation,
-  INITIAL_STATE,
-} from './response';
+export { INITIAL_STATE } from './types';
 
 export { filterProducts, isProductSafe } from './allergyFilter';
 

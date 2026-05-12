@@ -1,1 +1,1 @@
-export * from '@/core/response';
+// Deleted module

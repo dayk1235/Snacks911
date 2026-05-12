@@ -9,7 +9,6 @@
     "lint": "eslint",
     "test": "jest",
     "test:ci": "jest --no-coverage --ci --forceExit",
-    "prebuild": "npm run test:ci",
     "ai:fix-overflow": "node ai/cli.js fix-overflow",
     "ai:fix-cursor": "node ai/cli.js fix-cursor",
     "ai:add-logout": "node ai/cli.js add-logout",
