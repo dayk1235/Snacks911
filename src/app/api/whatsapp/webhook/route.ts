@@ -9,6 +9,7 @@ import { logConversation } from '@/lib/logger';
 import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
 import { detectIntent } from '@/core';
+import { getDBCircuitHealth, resetDBCircuits } from '@/lib/db.server';
 
 /* =========================
    CONFIG
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    console.log("[WA RAW] Payload received:", JSON.stringify(body, null, 2).slice(0, 500));
     
     if (!body.entry) {
       return NextResponse.json({ status: 'ok' });
@@ -111,6 +113,15 @@ export async function POST(req: NextRequest) {
           }
 
           console.log('[WA] Processing:', { from, text: userInput, tenant: tenant.business_name });
+          
+          // --- Debug Admin ---
+          const adminPhone = process.env.ADMIN_WHATSAPP_PHONE;
+          console.log('[WA DEBUG] Admin Check:', { incoming: from, expected: adminPhone, match: from === adminPhone });
+
+          if (adminPhone && from === adminPhone) {
+            const handled = await handleAdminCommand(from, userInput, tenant.whatsapp_token, metadata.phone_number_id);
+            if (handled) continue;
+          }
 
           // 2. Detect Intent
           const nlu = detectIntent(userInput);
@@ -147,6 +158,36 @@ export async function POST(req: NextRequest) {
     console.error('[WA] Error:', error);
     return NextResponse.json({ status: 'error' }, { status: 200 });
   }
+}
+
+/* =========================
+   Admin Commands
+========================= */
+
+async function handleAdminCommand(phone: string, text: string, token?: string, phoneNumberId?: string): Promise<boolean> {
+  const command = text.toUpperCase().trim();
+
+  if (command === 'DB STATUS') {
+    const health = getDBCircuitHealth();
+    const status = `📊 *DB Circuit Health*\n\n` +
+      `*AI Costs:* ${health.ai_costs.state} (F: ${health.ai_costs.failuresCount}, B: ${health.ai_costs.bufferSize})\n` +
+      `*AI Logs:* ${health.ai_logs.state} (F: ${health.ai_logs.failuresCount}, B: ${health.ai_logs.bufferSize})`;
+    await sendWhatsAppMessage(phone, status, token, phoneNumberId);
+    return true;
+  }
+
+  if (command === 'DB RESET') {
+    resetDBCircuits();
+    await sendWhatsAppMessage(phone, "✅ Circuit breakers manually reset to CLOSED.");
+    return true;
+  }
+
+  if (command === 'ADMIN HELP' || command === 'HELP ADMIN') {
+    await sendWhatsAppMessage(phone, "🛠 *Admin Commands:*\n- DB STATUS\n- DB RESET\n- ADMIN HELP");
+    return true;
+  }
+
+  return false;
 }
 
 /* =========================

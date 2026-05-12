@@ -84,7 +84,7 @@ export async function PATCH(req: Request) {
       updatePayload.delivered_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('orders')
       .update(updatePayload)
       .eq('id', id)
@@ -92,6 +92,20 @@ export async function PATCH(req: Request) {
       .select('*')
       .single();
     
+    // Fallback: If delivered_at column is missing, retry without it
+    if (error && (error.code === 'PGRST204' || error.message?.includes('delivered_at'))) {
+      console.warn('[API Status Update] delivered_at column missing, retrying without it. Please run migration 20260508_reviews.sql');
+      const fallbackRes = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', id)
+        .eq('status', currentStatus)
+        .select('*')
+        .single();
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
+
     if (error) {
       if (error.code === 'PGRST116') {
         return NextResponse.json(

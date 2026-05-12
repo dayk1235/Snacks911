@@ -2,12 +2,12 @@
   {
     "input": "quiero boneless",
     "expected": "ADD_TO_CART",
-    "got": "mixto"
+    "got": "ERROR"
   },
   {
     "input": "agrega papas",
     "expected": "ADD_TO_CART",
-    "got": "mixto"
+    "got": "ERROR"
   },
   {
     "input": "ver carrito",
@@ -77,7 +77,7 @@
   {
     "input": "quiero 1 combo",
     "expected": "ADD_TO_CART",
-    "got": "mixto"
+    "got": "ERROR"
   },
   {
     "input": "dame unas wings",

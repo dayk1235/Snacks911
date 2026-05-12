@@ -6,11 +6,13 @@
 
 import type {
   ConversationState,
-  QuickAction,
+  Action,
   ProductRefs,
   PromptContext,
   Intent,
   Stage,
+  BotUI,
+  UICard,
 } from "../types";
 import { applySafetyFilter } from "./errorHandler";
 
@@ -53,8 +55,9 @@ export function getPromptByStage(
   upsellStep: ConversationState["upsellStep"],
 ): {
   text: (ctx: PromptContext) => string;
-  actions?: QuickAction[] | ((ctx: PromptContext) => QuickAction[]);
+  actions?: Action[] | ((ctx: PromptContext) => Action[]);
   type?: "text" | "buttons" | "products";
+  ui?: BotUI | ((ctx: PromptContext) => BotUI);
 } {
   // ── rechazo_fuerte: soft reset, zero pressure ────────────────────────────
   if (intent === "rechazo_fuerte") {
@@ -69,8 +72,8 @@ export function getPromptByStage(
       text: () =>
         `Sin bronca. Aceptamos **transferencia** o **QR**.\n\n¿Cuál te va mejor?`,
       actions: [
-        { label: "📱 QR", value: "payment_qr" },
-        { label: "💳 Transferencia", value: "payment_transfer" },
+        { id: "payment-qr", type: "navigate", label: "📱 QR", value: "payment_qr" },
+        { id: "payment-transfer", type: "navigate", label: "💳 Transferencia", value: "payment_transfer" },
       ],
     };
   }
@@ -80,9 +83,9 @@ export function getPromptByStage(
     return {
       text: () => `Entendido. ¿Algo diferente?`,
       actions: [
-        { label: "🍗 Alitas", value: "show_alitas" },
-        { label: "🥡 Boneless", value: "show_boneless" },
-        { label: "🔥 Ver combos", value: "exploracion" },
+        { id: "show-alitas", type: "show_category", label: "🍗 Alitas", value: "show_alitas" },
+        { id: "show-boneless", type: "show_category", label: "🥡 Boneless", value: "show_boneless" },
+        { id: "exploracion", type: "navigate", label: "🔥 Ver combos", value: "exploracion" },
       ],
     };
   }
@@ -112,9 +115,9 @@ export function getPromptByStage(
           ];
         },
         actions: [
-          { label: "🔥 Sí, dámelo", value: "accept_combo_911" },
-          { label: "🍗 Boneless", value: "accept_combo_boneless" },
-          { label: "🌮 Callejero", value: "accept_combo_callejero" },
+          { id: "accept-combo-911", type: "add_to_cart", label: "🔥 Sí, dámelo", value: "accept_combo_911" },
+          { id: "accept-combo-boneless", type: "add_to_cart", label: "🍗 Boneless", value: "accept_combo_boneless" },
+          { id: "accept-combo-callejero", type: "add_to_cart", label: "🌮 Callejero", value: "accept_combo_callejero" },
         ],
       };
 
@@ -125,9 +128,9 @@ export function getPromptByStage(
           text: () =>
             `Lo que hay:\n\n• 🔥 Combos — los más pedidos\n• 🍗 Alitas BBQ y Buffalo\n• 🥡 Boneless Clásico e Inferno\n• 🍟 Papas Gajo y Loaded\n• 🌭 Banderillas\n• 🍫 Postres\n\n¿Qué se te antoja?`,
           actions: [
-            { label: "🔥 Combo 911", value: "accept_combo_911" },
-            { label: "🍗 Alitas", value: "show_alitas" },
-            { label: "🥡 Boneless", value: "show_boneless" },
+            { id: "accept-combo-911-exp", type: "add_to_cart", label: "🔥 Combo 911", value: "accept_combo_911" },
+            { id: "show-alitas-exp", type: "show_category", label: "🍗 Alitas", value: "show_alitas" },
+            { id: "show-boneless-exp", type: "show_category", label: "🥡 Boneless", value: "show_boneless" },
           ],
         };
       }
@@ -140,7 +143,7 @@ export function getPromptByStage(
       return {
         text: (ctx) =>
           `👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que todos eligen.`,
-        actions: [{ label: "🔥 Va, dámelo", value: "accept_combo_911" }],
+        actions: [{ id: "accept-combo-911-default", type: "add_to_cart", label: "🔥 Va, dámelo", value: "accept_combo_911" }],
       };
 
     // ── DECIDIENDO ────────────────────────────────────────────────────────────
@@ -150,7 +153,7 @@ export function getPromptByStage(
         return {
           text: (ctx) =>
             `Te decido yo: **${ctx.comboName}** — $${ctx.comboPrice}. Crujiente, caliente, todo incluido. 🔥\n\n¿Va?`,
-          actions: [{ label: "🔥 Va, dámelo", value: "accept_combo_911" }],
+          actions: [{ id: "accept-combo-911-duda", type: "add_to_cart", label: "🔥 Va, dámelo", value: "accept_combo_911" }],
         };
       }
       if (intent === "precio") {
@@ -158,8 +161,8 @@ export function getPromptByStage(
           text: (ctx) =>
             `El que más conviene: **${ctx.comboBonelessName}** — $${ctx.comboBonelessPrice}.\n\nAhorras $${ctx.ahorroBoneless} vs individual. ¿Va?`,
           actions: [
-            { label: "🔥 Sí, va", value: "accept_combo_boneless" },
-            { label: "🌮 Callejero $89", value: "accept_combo_callejero" },
+            { id: "accept-combo-boneless-price", type: "add_to_cart", label: "🔥 Sí, va", value: "accept_combo_boneless" },
+            { id: "accept-combo-callejero-price", type: "add_to_cart", label: "🌮 Callejero $89", value: "accept_combo_callejero" },
           ],
         };
       }
@@ -168,8 +171,8 @@ export function getPromptByStage(
           text: (ctx) =>
             `🔥 **${ctx.comboName}** — $${ctx.comboPrice}. Recién hecho, caliente.\n\n¿Lo preparo?`,
           actions: [
-            { label: "🔥 Sí, dámelo", value: "accept_combo_911" },
-            { label: "🍗 Boneless", value: "accept_combo_boneless" },
+            { id: "accept-combo-911-hambre", type: "add_to_cart", label: "🔥 Sí, dámelo", value: "accept_combo_911" },
+            { id: "accept-combo-boneless-hambre", type: "add_to_cart", label: "🍗 Boneless", value: "accept_combo_boneless" },
           ],
         };
       }
@@ -177,7 +180,7 @@ export function getPromptByStage(
       return {
         text: (ctx) =>
           `👉 **${ctx.comboName}** — $${ctx.comboPrice}. El que mejor sabe.\n\n¿Va?`,
-        actions: [{ label: "🔥 Sí, dámelo", value: "accept_combo_911" }],
+        actions: [{ id: "accept-combo-911-fallback", type: "add_to_cart", label: "🔥 Sí, dámelo", value: "accept_combo_911" }],
       };
 
     // ── ORDENANDO ─────────────────────────────────────────────────────────────
@@ -188,15 +191,21 @@ export function getPromptByStage(
           text: (ctx) =>
             `🍟 ¡Excelente elección! \n\nAcompaña tus ${ctx.comboName} con unas papas loaded extra crujientes. \n\n🔥 Solo +$${ctx.papasPrice}.`,
           type: "products",
-          actions: (ctx) => [
-            {
-              label: "🍟 Sí, agrégalas",
-              value: "add_papas",
-              price: ctx.papasPrice,
-              image:
-                "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
-            },
-            { label: "🤔 Por ahora no", value: "skip_papas" },
+          ui: (ctx) => ({
+            cards: [
+              {
+                id: "card-papas",
+                title: "🍟 Papas Loaded",
+                price: ctx.papasPrice,
+                imageUrl: "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
+                actions: [
+                  { id: "add-papas", type: "add_to_cart", label: "🍟 Sí, agrégalas", value: "add_papas" }
+                ]
+              }
+            ]
+          }),
+          actions: [
+            { id: "skip-papas", type: "dismiss", label: "🤔 Por ahora no", value: "skip_papas" },
           ],
         };
       }
@@ -206,15 +215,21 @@ export function getPromptByStage(
           text: (ctx) =>
             `🥤 ¡Refrescante! \n\nUn refresco bien frío para acompañar. Casi todo el mundo lo agrega.\n\n💡 +$${ctx.bebidaPrice}.`,
           type: "products",
-          actions: (ctx) => [
-            {
-              label: "🥤 Sí, dámelo",
-              value: "add_bebida",
-              price: ctx.bebidaPrice,
-              image:
-                "https://images.unsplash.com/photo-1596803244618-5d346399c390?auto=format&fit=crop&w=400",
-            },
-            { label: "🤔 Paso", value: "skip_bebida" },
+          ui: (ctx) => ({
+            cards: [
+              {
+                id: "card-bebida",
+                title: "🥤 Refresco Frío",
+                price: ctx.bebidaPrice,
+                imageUrl: "https://images.unsplash.com/photo-1596803244618-5d346399c390?auto=format&fit=crop&w=400",
+                actions: [
+                  { id: "add-bebida", type: "add_to_cart", label: "🥤 Sí, dámelo", value: "add_bebida" }
+                ]
+              }
+            ]
+          }),
+          actions: [
+            { id: "skip-bebida", type: "dismiss", label: "🤔 Paso", value: "skip_bebida" },
           ],
         };
       }
@@ -224,15 +239,21 @@ export function getPromptByStage(
           text: (ctx) =>
             `🍫 ¡El toque final! \n\nUn brownie caliente con helado para cerrar con broche de oro. \n\n✨ +$${ctx.postrePrice}.`,
           type: "products",
-          actions: (ctx) => [
-            {
-              label: "🍫 ¡SÍ, QUIERO!",
-              value: "add_postre",
-              price: ctx.postrePrice,
-              image:
-                "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
-            },
-            { label: "🤔 Por ahora no", value: "skip_postre" },
+          ui: (ctx) => ({
+            cards: [
+              {
+                id: "card-postre",
+                title: "🍫 Brownie con Helado",
+                price: ctx.postrePrice,
+                imageUrl: "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
+                actions: [
+                  { id: "add-postre", type: "add_to_cart", label: "🍫 ¡SÍ, QUIERO!", value: "add_postre" }
+                ]
+              }
+            ]
+          }),
+          actions: [
+            { id: "skip-postre", type: "dismiss", label: "🤔 Por ahora no", value: "skip_postre" },
           ],
         };
       }
@@ -242,8 +263,8 @@ export function getPromptByStage(
           text: (ctx) =>
             `🔥 Pedido listo. Total: **$${ctx.currentTotal}**\n\n¿Confirmamos?`,
           actions: [
-            { label: "✅ Confirmar", value: "confirm_order" },
-            { label: "🔄 Otro pedido", value: "order_again" },
+            { id: "confirm-order", type: "checkout", label: "✅ Confirmar", value: "confirm_order" },
+            { id: "order-again", type: "navigate", label: "🔄 Otro pedido", value: "order_again" },
           ],
         };
       }
@@ -254,9 +275,9 @@ export function getPromptByStage(
           text: (ctx) =>
             `Claro. ¿Qué agrego?\n\n• Papas Loaded — $${ctx.papasPrice}\n• Refresco — $${ctx.bebidaPrice}\n• Brownie — $${ctx.postrePrice}`,
           actions: [
-            { label: "🍟 Papas", value: "add_papas" },
-            { label: "🥤 Refresco", value: "add_bebida" },
-            { label: "🍫 Brownie", value: "add_postre" },
+            { id: "add-papas-edit", type: "add_to_cart", label: "🍟 Papas", value: "add_papas" },
+            { id: "add-bebida-edit", type: "add_to_cart", label: "🥤 Refresco", value: "add_bebida" },
+            { id: "add-postre-edit", type: "add_to_cart", label: "🍫 Brownie", value: "add_postre" },
           ],
         };
       }
@@ -264,7 +285,7 @@ export function getPromptByStage(
         return {
           text: (ctx) =>
             `🔥 **${ctx.comboName}** — el más rápido de preparar. ¿Lo envío?`,
-          actions: [{ label: "🔥 Rápido, dámelo", value: "accept_combo_911" }],
+          actions: [{ id: "accept-combo-911-urgencia", type: "add_to_cart", label: "🔥 Rápido, dámelo", value: "accept_combo_911" }],
         };
       }
       // Guardia: nunca vacío en ordenando
@@ -272,8 +293,8 @@ export function getPromptByStage(
         text: (ctx) =>
           `🔥 Pedido en progreso. Total: **$${ctx.currentTotal}**.\n\n¿Confirmamos?`,
         actions: [
-          { label: "✅ Confirmar", value: "confirm_order" },
-          { label: "Agregar algo", value: "edicion" },
+          { id: "confirm-order-fallback", type: "checkout", label: "✅ Confirmar", value: "confirm_order" },
+          { id: "edicion-fallback", type: "navigate", label: "Agregar algo", value: "edicion" },
         ],
       };
 
@@ -299,7 +320,7 @@ export function getPromptByStage(
 
 export function getDeliveryPrompt(
   step: ConversationState["deliveryStep"],
-): { text: string; actions?: QuickAction[] } | null {
+): { text: string; actions?: Action[] } | null {
   switch (step) {
     case "name":
       return { text: `📍 Tu **nombre** para el envío.` };
@@ -313,8 +334,8 @@ export function getDeliveryPrompt(
       return {
         text: `💰 ¿Cómo pagas?\n\n• Efectivo 💵\n• Transferencia/QR 📱`,
         actions: [
-          { label: "💵 Efectivo", value: "payment_cash" },
-          { label: "📱 QR/Transferencia", value: "payment_qr" },
+          { id: "payment-cash", type: "navigate", label: "💵 Efectivo", value: "payment_cash" },
+          { id: "payment-qr-final", type: "navigate", label: "📱 QR/Transferencia", value: "payment_qr" },
         ],
       };
     case "done":
@@ -330,7 +351,7 @@ export function getDeliveryPrompt(
 
 export function buildDeliveryPrompt(state: ConversationState): {
   text: string;
-  actions?: QuickAction[];
+  actions?: Action[];
 } {
   return getDeliveryPrompt(state.deliveryStep) ?? { text: "" };
 }
@@ -338,7 +359,7 @@ export function buildDeliveryPrompt(state: ConversationState): {
 export function buildOrderConfirmation(
   state: ConversationState,
   products: ProductRefs,
-): { text: string; actions?: QuickAction[] } {
+): { text: string; actions?: Action[] } {
   const t = state.cartTotal || products.currentTotal;
   const items: string[] = [];
   if (state.comboSelected) items.push(`- ${products.comboName} x1`);
@@ -349,8 +370,8 @@ export function buildOrderConfirmation(
   return {
     text: `🧾 **Tu pedido:**\n\n${items.join("\n")}\n\n💰 **Total: $${t}**\n\n👉 20-30 min\n\n¿Confirmas? ✅`,
     actions: [
-      { label: "✅ Confirmar", value: "confirm_order" },
-      { label: "🔄 Otro pedido", value: "order_again" },
+      { id: "confirm-order-summary", type: "checkout", label: "✅ Confirmar", value: "confirm_order" },
+      { id: "order-again-summary", type: "navigate", label: "🔄 Otro pedido", value: "order_again" },
     ],
   };
 }

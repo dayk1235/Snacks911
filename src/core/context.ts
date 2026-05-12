@@ -20,6 +20,8 @@ export interface UserContext extends CoreUserContext {
   recommendedProducts?: any[];
   lastAddedProductId?: string | number;
   lastAddTimestamp?: number;
+  /** Processed action IDs for idempotency (last 50) */
+  processedActionIds?: string[];
   flowState?: OrderState;
   paymentUrl?: string;
   conektaOrderId?: string;
@@ -42,6 +44,46 @@ export interface UserContext extends CoreUserContext {
   appliedReferralCode?: string;
   /** Flag to track if we've asked for a referral code in this session */
   referralPromptShown?: boolean;
+}
+
+const MAX_ACTION_IDS = 50;
+const DEDUP_WINDOW_MS = 1000;
+
+/**
+ * Checks if an action has already been processed for this user.
+ * Returns false and tracks it if not yet processed.
+ */
+export function checkAndTrackAction(ctx: UserContext, actionId: string): boolean {
+  if (!actionId) return false;
+  if (!ctx.processedActionIds) ctx.processedActionIds = [];
+  if (ctx.processedActionIds.includes(actionId)) return true;
+  ctx.processedActionIds.push(actionId);
+  if (ctx.processedActionIds.length > MAX_ACTION_IDS) {
+    ctx.processedActionIds = ctx.processedActionIds.slice(-MAX_ACTION_IDS);
+  }
+  return false;
+}
+
+/**
+ * Returns true if the same product was added within the dedup window.
+ * When true, the caller should increment quantity instead of adding a new item.
+ */
+export function isDuplicateAdd(ctx: UserContext, productId: string | number): boolean {
+  const now = Date.now();
+  return (
+    ctx.lastAddedProductId != null &&
+    String(ctx.lastAddedProductId) === String(productId) &&
+    ctx.lastAddTimestamp != null &&
+    now - ctx.lastAddTimestamp < DEDUP_WINDOW_MS
+  );
+}
+
+/**
+ * Records that a product was added to cart (for dedup tracking).
+ */
+export function trackProductAdd(ctx: UserContext, productId: string | number): void {
+  ctx.lastAddedProductId = productId;
+  ctx.lastAddTimestamp = Date.now();
 }
 
 const sessionStore = new Map<string, UserContext>();

@@ -13,6 +13,7 @@
 
 import type { CartItem, CartState, CoreProduct } from './types';
 import type { UserContext } from './context';
+import { isDuplicateAdd, trackProductAdd } from './context';
 
 /**
  * Create empty cart state.
@@ -212,14 +213,17 @@ export function addToCart(context: any, product: any) {
   const price = Number(product.price || 0);
   const name = String(product.name || 'Producto');
 
+  // Idempotency: duplicate add within 1s → increment quantity only
+  const isDupe = isDuplicateAdd(context, productId);
+
   const existing = context.cart.items.find((i: any) => i.productId === productId || i.id === productId);
 
   if (existing) {
     existing.qty = (existing.qty ?? 0) + 1;
     existing.quantity = existing.qty;
-  } else {
+  } else if (!isDupe) {
+    // Only push a new item if this is NOT a duplicate tap
     context.cart.items.push({
-      // Canonical unified fields
       id: productId,
       productId,
       name,
@@ -229,8 +233,10 @@ export function addToCart(context: any, product: any) {
       category: product.category || 'unknown',
     });
   }
+  // If isDupe and no existing item: item was already added, skip push
 
   context.cart.total += price;
+  trackProductAdd(context, productId);
 }
 
 export function getCartSummary(context: any) {

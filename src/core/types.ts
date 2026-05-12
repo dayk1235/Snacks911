@@ -44,7 +44,6 @@ export type Intent =
   | 'APPLY_REFERRAL'
   | 'other';
 
-export type ActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
 
 export type CategoryType = 'combo' | 'boneless' | 'alitas' | 'papas' | 'bebida' | 'postre' | 'extra' | 'none';
 
@@ -111,10 +110,51 @@ export interface QuickAction {
   price?: number;
 }
 
-export interface Action {
+export type ActionType =
+  | 'add_to_cart'
+  | 'upsell'
+  | 'show_category'
+  | 'recommend'
+  | 'navigate'
+  | 'dismiss'
+  | 'repeat_order'
+  | 'checkout'
+  | 'view_cart';
+
+export interface Action<T = any> {
+  id: string;
   label: string;
-  type: string;
-  payload?: any;
+  type: ActionType;
+  payload?: T;
+  disabled?: boolean;
+  meta?: {
+    sourceSkill?: string;
+    strategy?: string;
+  };
+  /** @deprecated use type/payload */
+  value?: string;
+  image?: string;
+  price?: number;
+}
+
+export interface UICard {
+  id: string;
+  title: string;
+  description?: string;
+  price?: number;
+  imageUrl?: string;
+  actions?: Action[];
+}
+
+export interface UICart {
+  total: number;
+  itemCount: number;
+}
+
+export interface BotUI {
+  cards?: UICard[];
+  suggestions?: string[];
+  cart?: UICart;
 }
 
 export interface ChatMessage {
@@ -122,7 +162,7 @@ export interface ChatMessage {
   text: string;
   sender: 'bot' | 'user';
   type?: 'text' | 'buttons' | 'products';
-  actions?: QuickAction[];
+  actions?: Action[];
   productCards?: CoreProduct[];
 }
 
@@ -284,7 +324,8 @@ export interface PromptContext {
 export interface ResponseOutput {
   text: string;
   type?: 'text' | 'buttons' | 'products';
-  actions?: QuickAction[];
+  actions?: Action[];
   cart?: Cart;
   nextState: ConversationState;
+  ui?: BotUI;
 }

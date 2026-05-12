@@ -40,7 +40,7 @@ function persistLearnedRules(rules: any[]): void {
 }
 
 
-export type ActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
+export type IntentActionType = 'quiero' | 'ver' | 'duda' | 'rechazo' | 'aceptacion' | 'precio' | 'edicion' | 'other';
 export type CategoryType = 'combo' | 'boneless' | 'alitas' | 'papas' | 'bebida' | 'postre' | 'extra' | 'none';
 
 export interface Entities {
@@ -80,7 +80,7 @@ export interface IntentResult {
   intent: Intent;
   confidence: number;
   entities: Record<string, string>;
-  action?: ActionType;
+  action?: IntentActionType;
   filters?: string[];
   category?: CategoryType;
   allergies?: string[];
@@ -316,7 +316,7 @@ const INTENT_RULES: IntentRule[] = [
 /**
  * Extracts the user's action type from the message.
  */
-function extractAction(lower: string): ActionType {
+function extractAction(lower: string): IntentActionType {
   const purchaseVerbs = ['quiero', 'dame', 'ponme', 'pido', 'llevo', 'agrega', 'añade', 'ordenar'];
   const exploreVerbs = ['ver', 'mostrar', 'muestra', 'enseñame', 'pasame'];
   const rejectWords = ['no', 'mejor no', 'sin eso', 'no gracias'];

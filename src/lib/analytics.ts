@@ -36,3 +36,7 @@ export function track(event: string, params?: Record<string, unknown>) {
   }
   logLocal(event, params || {});
 }
+
+/** Alias for conversion funnel tracking */
+export const trackEvent = track;
+

@@ -1,4 +1,4 @@
-import type { ConversationState, QuickAction, ResponseOutput } from './types';
+import type { ConversationState, Action, ResponseOutput } from './types';
 
 const ACTION_VALUE_RE = /^[a-z0-9_:-]+$/i;
 
@@ -8,9 +8,14 @@ function hasBrokenFormatting(text: string): boolean {
   return text.includes('�') || boldCount % 2 !== 0 || backtickCount % 2 !== 0;
 }
 
-function sanitizeActions(actions: QuickAction[] | undefined): QuickAction[] | undefined {
+function sanitizeActions(actions: Action[] | undefined): Action[] | undefined {
   if (!actions?.length) return undefined;
-  const filtered = actions.filter(a => a.label?.trim() && ACTION_VALUE_RE.test(a.value));
+  const filtered = actions.filter(a => {
+    const hasLabel = !!a.label?.trim();
+    const hasValidValue = a.value ? ACTION_VALUE_RE.test(a.value) : false;
+    const hasValidType = a.type ? ACTION_VALUE_RE.test(a.type) : false;
+    return hasLabel && (hasValidValue || hasValidType);
+  });
   return filtered.length ? filtered : undefined;
 }
 
@@ -45,7 +50,9 @@ export function validateResponseOutput(
     text, 
     actions, 
     type: output.type,
-    nextState: output.nextState 
+    cart: output.cart,
+    nextState: output.nextState,
+    ui: output.ui
   };
 }
 

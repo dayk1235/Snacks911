@@ -17,7 +17,7 @@ import { inventoryFilter } from "../inventoryFilter";
 import type {
   ConversationState,
   ResponseOutput,
-  QuickAction,
+  Action,
   ProductRefs,
   PromptContext,
   Intent,
@@ -502,32 +502,37 @@ export function handleMessage(
       {
         text: "¡Chécate estos favoritos! 👇",
         type: "products",
-        actions: [
-          {
-            id: "p1",
-            label: "Combo Mixto",
-            value: "add_combo_mixto",
-            price: 120,
-            image:
-              "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400",
-          },
-          {
-            id: "p5",
-            label: "Papas Gajo",
-            value: "add_papas_gajo",
-            price: 80,
-            image:
-              "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
-          },
-          {
-            id: "p3",
-            label: "Boneless Mango",
-            value: "add_boneless_mango",
-            price: 130,
-            image:
-              "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
-          },
-        ],
+        ui: {
+          cards: [
+            {
+              id: "card-p1",
+              title: "Combo Mixto",
+              price: 120,
+              imageUrl: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=400",
+              actions: [
+                { id: "p1", type: "add_to_cart", label: "➕ Agregar", value: "add_combo_mixto" }
+              ]
+            },
+            {
+              id: "card-p5",
+              title: "Papas Gajo",
+              price: 80,
+              imageUrl: "https://images.unsplash.com/photo-1573082833946-f99a2dbbb50d?auto=format&fit=crop&w=400",
+              actions: [
+                { id: "p5", type: "add_to_cart", label: "➕ Agregar", value: "add_papas_gajo" }
+              ]
+            },
+            {
+              id: "card-p3",
+              title: "Boneless Mango",
+              price: 130,
+              imageUrl: "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400",
+              actions: [
+                { id: "p3", type: "add_to_cart", label: "➕ Agregar", value: "add_boneless_mango" }
+              ]
+            }
+          ]
+        },
         nextState,
       },
       state,
@@ -733,8 +738,8 @@ export async function handleMessageModular(
         text: `⏰ Tu pago está pendiente.\n\n¿Reenvío tu link? Responde *SÍ* o *NO*${linkLine}`,
         type: 'buttons',
         actions: [
-          { label: "✅ SÍ, reenviar", value: "resend_payment" },
-          { label: "❌ NO", value: "cancel_payment" },
+          { id: "resend-payment", type: "navigate", label: "✅ SÍ, reenviar", value: "resend_payment" },
+          { id: "cancel-payment", type: "dismiss", label: "❌ NO", value: "cancel_payment" },
         ],
         nextState: state,
       },
@@ -875,12 +880,17 @@ export async function handleMessageModular(
           papasProducts.slice(0, 4).map((p: any) => `• ${p.name} - $${p.price}`).join('\n') +
           `\n\n¿Cuál quieres?`,
         type: papasProducts.length > 0 ? 'products' : 'text',
-        actions: papasProducts.slice(0, 4).map((p: any) => ({
-          label: `${p.name} ($${p.price})`,
-          value: `add_product_${p.id}`,
-          price: p.price,
-          image: p.image,
-        })),
+        ui: {
+          cards: papasProducts.slice(0, 4).map((p: any) => ({
+            id: `card-papas-${p.id}`,
+            title: p.name,
+            price: p.price,
+            imageUrl: p.image,
+            actions: [
+              { id: String(p.id), type: "add_to_cart", label: "➕ Agregar", value: `add_product_${p.id}` }
+            ]
+          }))
+        },
         nextState: { ...state, stage: "ordenando" as any }
       },
       state
@@ -1185,7 +1195,7 @@ export async function handleMessageModular(
         process.env.NODE_ENV !== "test" &&
         lastProduct === productToAdd.id &&
         userCtx.lastAddTimestamp &&
-        now - userCtx.lastAddTimestamp < 3000
+        now - userCtx.lastAddTimestamp < 1000
       ) {
         updateContext(userId, { flowState: nextFlow });
         return validateResponseOutput(
@@ -1259,15 +1269,43 @@ export async function handleMessageModular(
      }
    }
 
-  // 7.1 Handle Recommend Logic — curated trio: 1 combo + 1 papas + 1 bebida
+  // 7.1 Handle Recommend Logic — context-aware cross-selling
   if (intentResult.intent.toUpperCase() === "RECOMMEND") {
     const safe = safeAllProductsBase as any[];
+    const cartItems = userCtx.cart?.items || [];
+    const cartCategories = new Set(cartItems.map((i: any) => (i.category || '').toLowerCase()));
 
-    const combo  = safe.find((p) => String(p.category).toLowerCase() === "combos");
-    const papas  = safe.find((p) => String(p.category).toLowerCase() === "papas");
-    const bebida = safe.find((p) => String(p.category).toLowerCase() === "bebidas");
+    const MAIN_CATEGORIES = ['combos', 'combo', 'boneless', 'alitas', 'banderillas'];
+    const DRINK_CATEGORIES = ['bebidas', 'bebida'];
+    const SIDE_CATEGORIES = ['papas'];
 
-    const picks = [combo, papas, bebida].filter(Boolean);
+    const hasMain = cartItems.some((i: any) => MAIN_CATEGORIES.includes((i.category || '').toLowerCase()));
+    const hasDrink = cartItems.some((i: any) => DRINK_CATEGORIES.includes((i.category || '').toLowerCase()));
+    const hasSide = cartItems.some((i: any) => SIDE_CATEGORIES.includes((i.category || '').toLowerCase()));
+
+    let picks: any[] = [];
+
+    // Rule 1: If cart has main but no drink → suggest drinks
+    if (hasMain && !hasDrink) {
+      picks = safe
+        .filter((p: any) => DRINK_CATEGORIES.includes(String(p.category).toLowerCase()))
+        .filter((p: any) => !cartItems.some((ci: any) => String(ci.productId || ci.id) === String(p.id)))
+        .slice(0, 4);
+    }
+    // Rule 2: If cart has drink but no side → suggest sides
+    else if (hasDrink && !hasSide) {
+      picks = safe
+        .filter((p: any) => SIDE_CATEGORIES.includes(String(p.category).toLowerCase()))
+        .filter((p: any) => !cartItems.some((ci: any) => String(ci.productId || ci.id) === String(p.id)))
+        .slice(0, 4);
+    }
+    // Default: offer curated trio (combo + papas + bebida)
+    if (picks.length === 0) {
+      const combo  = safe.find((p) => String(p.category).toLowerCase() === "combos");
+      const papas  = safe.find((p) => String(p.category).toLowerCase() === "papas");
+      const bebida = safe.find((p) => String(p.category).toLowerCase() === "bebidas");
+      picks = [combo, papas, bebida].filter(Boolean);
+    }
 
     const lines = picks
       .map((p: any) => `🍗 ${p.name} — $${p.price}`)
@@ -1275,14 +1313,18 @@ export async function handleMessageModular(
 
     const total = picks.reduce((sum: number, p: any) => sum + p.price, 0);
 
-  const textRes = picks.length > 0
-    ? `💡 Te recomiendo este combo perfecto:\n\n${lines}\n\nTotal si pides todo: $${total} 🔥\n\n¿Arrancamos con algo de esto?`
-    : "💡 Todo está bueno hoy, ¿qué se te antoja? 😏";
+    const contextLabel = hasMain && !hasDrink ? '🥤 Para acompañar tu pedido' :
+                         hasDrink && !hasSide ? '🍟 Para completar' :
+                         '💡 Te recomiendo este combo perfecto';
 
-  // Add upsell tip as per user request
-  const finalTextRes = picks.length > 0 
-    ? `${textRes}\n\n🔥 Tip: Puedes armar combo con papas + bebida` 
-    : textRes;
+    const textRes = picks.length > 0
+      ? `${contextLabel}:\n\n${lines}\n\nTotal si pides todo: $${total} 🔥\n\n¿Arrancamos con algo de esto?`
+      : "💡 Todo está bueno hoy, ¿qué se te antoja? 😏";
+
+    // Add upsell tip as per user request
+    const finalTextRes = picks.length > 0 
+      ? `${textRes}\n\n🔥 Tip: Puedes armar combo con papas + bebida` 
+      : textRes;
 
     updateContext(userId, {
         lastIntent: intentResult.intent,
@@ -1741,12 +1783,16 @@ export async function handleMessageModular(
           ? `[TEST FAILSAFE] error: ${String(error).substring(0, 50)}`
           : "¡Hola! 👋 Hubo un pequeño salto en la conexión, pero aquí seguimos. ¿Qué te gustaría ordenar?",
         type: "products",
-        actions: fallbackProducts.map(p => ({
-          id: String(p.id),
-          label: p.name,
-          value: `add_${p.id}`,
-          price: p.price
-        })),
+        ui: {
+          cards: fallbackProducts.map(p => ({
+            id: `card-fallback-${p.id}`,
+            title: p.name,
+            price: p.price,
+            actions: [
+              { id: String(p.id), type: "add_to_cart", label: "➕ Agregar", value: `add_${p.id}` }
+            ]
+          }))
+        },
         nextState: state,
       },
       state,

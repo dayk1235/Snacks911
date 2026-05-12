@@ -7,13 +7,16 @@ import { products as allProducts } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
 import { createUuid } from '@/lib/utils/core';
 
+import { trackEvent } from '@/lib/analytics';
+import { type Action } from '@/core';
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Msg {
   id: number;
   text: string;
   sender: 'bot' | 'user';
   type?: 'text' | 'buttons' | 'products';
-  actions?: { label: string; value: string; image?: string; price?: number; }[];
+  actions?: Action[];
 }
 
 type EngineType = 'modular' | 'ai';
@@ -86,6 +89,21 @@ export default function OrderBot() {
       }));
     }
   }, [open, state.messages.length, engine]);
+
+  // Track shown actions
+  useEffect(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg && lastMsg.sender === 'bot' && lastMsg.actions?.length) {
+      lastMsg.actions.forEach(a => {
+        trackEvent("ACTION_SHOWN", {
+          actionId: a.id,
+          actionType: a.type,
+          label: a.label,
+          ...(a.meta || {})
+        });
+      });
+    }
+  }, [state.messages]);
 
   // WhatsApp confirmation + Checkout Completed
   useEffect(() => {
@@ -179,13 +197,43 @@ export default function OrderBot() {
     await processResponse(t);
   }, [input, thinking, processResponse]);
 
-  const handleAction = useCallback(async (actionValue: string, label: string) => {
+  const handleAction = useCallback(async (action: Action) => {
     if (thinking) return;
+
+    const label = action.label;
+    const actionValue = action.value || action.type;
+
+    // 1. Track Click
+    trackEvent("ACTION_CLICKED", {
+      actionId: action.id,
+      actionType: action.type,
+      productId: action.payload?.productId,
+      ...(action.meta || {})
+    });
+
+    // 2. Specialized Tracking
+    if (action.type === 'add_to_cart') {
+      trackEvent("ADD_TO_CART", {
+        productId: action.payload?.productId,
+        name: action.payload?.name,
+        actionId: action.id
+      });
+    }
+
+    if (action.type === 'upsell') {
+      trackEvent("UPSELL_ACCEPTED", {
+        productId: action.payload?.productId,
+        actionId: action.id
+      });
+    }
+
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, { id: idRef.current++, text: label, sender: 'user' }]
     }));
-    await processResponse('', actionValue);
+    
+    // Fallback: use value for legacy support, otherwise use label or type to trigger bot
+    await processResponse(action.value || label);
   }, [thinking, processResponse]);
 
   return (
@@ -308,8 +356,8 @@ export default function OrderBot() {
                 }}>
                   {m.actions.map((a: any) => (
                     <div
-                      key={a.value}
-                      onClick={() => handleAction(a.value, a.label)}
+                      key={a.id || a.value}
+                      onClick={() => handleAction(a)}
                       style={{
                         minWidth: '160px', background: 'var(--bg-card)',
                         borderRadius: '12px', border: '1px solid var(--border-subtle)',
@@ -335,8 +383,8 @@ export default function OrderBot() {
                 }}>
                   {m.actions.map((a: any, ai: number) => (
                     <button
-                      key={a.value}
-                      onClick={() => handleAction(a.value, a.label)}
+                      key={a.id || a.value}
+                      onClick={() => handleAction(a)}
                       style={{
                         padding: '8px 14px',
                         borderRadius: '10px',

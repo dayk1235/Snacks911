@@ -6,7 +6,7 @@ import { detectIntent } from "./intentDetector";
 import { filterProducts, isProductSafe } from "@/core/allergyFilter";
 import { extractFoodIntent, rankProductsByIntent } from "@/core/contextRanker";
 import { addToCart, getCartSummary } from "./cartEngine";
-import { getContext, clearContext, updateContext } from './context';
+import { getContext, clearContext, updateContext, checkAndTrackAction, isDuplicateAdd, trackProductAdd } from './context';
 import { handleMessageModular, INITIAL_STATE } from "./responseEngine";
 import { registerErrorEvent, getSystemMode, type SystemMode } from "./selfHealingEngine";
 import { isGreetingOnly } from "./nluBaseline";
@@ -146,7 +146,13 @@ function classifyError(error: unknown): string {
 //   4. validateResult    — output safety validation (pure)
 //   5. buildResponse     — final response assembly (pure)
 
-import type { Intent, Action } from './types';
+import type { Intent, Action, ActionType, UICard, BotUI } from './types';
+
+/** Generates a unique action instance ID */
+function genActionId(prefix: string): string {
+  const suffix = typeof createUuid === 'function' ? createUuid() : Date.now().toString(36);
+  return `${prefix}-${suffix}`;
+}
 
 // ─── Pipeline Types ──────────────────────────────────────────────────────
 
@@ -166,6 +172,7 @@ type PipelineSkill =
 interface IntentResult {
   intent: string;
   detectedRestrictions: string[];
+  payload?: Record<string, string>;
 }
 
 interface SkillResult {
@@ -174,6 +181,7 @@ interface SkillResult {
   cart: any;
   type: string;
   actions?: Action[];
+  ui?: BotUI;
 }
 
 interface ValidationResult {
@@ -198,6 +206,7 @@ interface PipelineInput {
   memory?: any;
   intent?: string;
   config?: TenantConfig;
+  actionPayload?: Record<string, string>;
 }
 
 // ─── Phase 1: Intent Detection ───────────────────────────────────────────
@@ -209,6 +218,26 @@ function resolveIntent(message: string, context: any): IntentResult {
   }
 
   const normalized = message.trim().toLowerCase();
+
+  // ── Action-triggered message detection ──────────────────────────────
+  // Format: "add:PRODUCT_ID", "upsell:CATEGORY", "checkout"
+  const actionMatch = normalized.match(/^(add|upsell):(.+)$/);
+  if (actionMatch) {
+    const [, action, value] = actionMatch;
+    const payload: Record<string, string> = {};
+    switch (action) {
+      case 'add':
+        payload.productId = value.trim();
+        return { intent: 'ADD_TO_CART', detectedRestrictions: [], payload };
+      case 'upsell':
+        payload.category = value.trim();
+        return { intent: 'SHOW_CATEGORY', detectedRestrictions: [], payload };
+    }
+  }
+  if (normalized === 'checkout') {
+    return { intent: 'CONFIRM_ORDER', detectedRestrictions: [] };
+  }
+
   const negativeInputs = ['no', 'nop', 'nel', 'no gracias'];
   if (negativeInputs.includes(normalized)) {
     return { intent: 'NEGATIVE', detectedRestrictions: [] };
@@ -272,6 +301,34 @@ export function selectSkill(intent: string, strategy: Strategy = "default"): Pip
   }
 }
 
+const CATEGORY_CARD_LIMIT = 6;
+
+/**
+ * Builds UI cards from the products that were shown in a category/menu response.
+ */
+function buildProductCards(
+  lastShownIds: (string | number)[] | undefined,
+  safeProducts: any[],
+): UICard[] | undefined {
+  if (!lastShownIds || lastShownIds.length === 0) return undefined;
+
+  const idSet = new Set(lastShownIds.map(String));
+  const matched = safeProducts.filter((p: any) => idSet.has(String(p.id)));
+
+  if (matched.length === 0) return undefined;
+
+  return matched.slice(0, CATEGORY_CARD_LIMIT).map((p: any) => ({
+    id: `card-shown-${p.id}`,
+    title: p.name,
+    description: p.description,
+    price: p.price,
+    imageUrl: p.imageUrl,
+    actions: [
+      { id: genActionId(`card-add-${p.id}`), label: '➕ Agregar', type: 'add_to_cart' as ActionType, payload: { productId: p.id, name: p.name, price: p.price } },
+    ],
+  }));
+}
+
 // ─── Phase 3: Skill Execution ────────────────────────────────────────────
 
 async function runSkill(
@@ -283,19 +340,23 @@ async function runSkill(
   const emptyCart = { items: [] as any[], total: 0 };
 
   switch (skill) {
-    case 'greeting': {
+case 'greeting': {
       if (ctx.cart?.items?.length > 5) {
         ctx.cart = emptyCart;
       }
+      const bizName = ctx.businessName;
       return {
-        text: `¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo de *${ctx.businessName}*? 🔥`,
+        text: `¡Hola! 👋\n¿Quieres ver el menú o te recomiendo algo de *${bizName}*? 🔥`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
         actions: [
-          { label: '🔥 Ver menú', type: 'navigate', payload: { target: 'menu' } },
-          { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+          { id: genActionId('greeting-show-menu'), label: '🔥 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'greeting' } },
+          { id: genActionId('greeting-recommend'), label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' }, meta: { sourceSkill: 'greeting' } },
         ],
+        ui: {
+          suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida', 'Ver menú', 'Recomiéndame algo'],
+        },
       };
     }
 
@@ -306,8 +367,11 @@ async function runSkill(
         cart: ctx.cart || emptyCart,
         type: 'text',
         actions: [
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { id: genActionId('negative-show-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'negative' } },
         ],
+        ui: {
+          suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'],
+        },
       };
     }
 
@@ -318,9 +382,12 @@ async function runSkill(
         cart: ctx.cart || emptyCart,
         type: 'text',
         actions: [
-          { label: '🔥 Ver combos', type: 'show_category', payload: { category: 'combos' } },
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { id: genActionId('block-empty-show-combos'), label: '🔥 Ver combos', type: 'show_category', payload: { category: 'combos' }, meta: { sourceSkill: 'block_empty_cart' } },
+          { id: genActionId('block-empty-show-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'block_empty_cart' } },
         ],
+        ui: {
+          suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'],
+        },
       };
     }
 
@@ -332,13 +399,16 @@ async function runSkill(
         cart: ctx.cart || emptyCart,
         type: 'text',
         actions: [
-          { label: '✅ Sí, repite pedido', type: 'repeat_order', payload: { action: 'confirm' } },
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { id: genActionId('repeat-order-confirm'), label: '✅ Sí, repite pedido', type: 'repeat_order', payload: { action: 'confirm' }, meta: { sourceSkill: 'repeatOrder' } },
+          { id: genActionId('repeat-order-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'repeatOrder' } },
         ],
+        ui: {
+          suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'],
+        },
       };
     }
 
-    case 'scarcity': {
+case 'scarcity': {
       const product = input.inventory?.lowStock?.[0];
       const prodName = product ? product.name : "nuestras especialidades";
       const prodId = product?.id;
@@ -348,14 +418,15 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
-        actions: [
-          { label: `🔥 Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
-        ],
+        actions: filterInvalidActions([
+          { id: genActionId('scarcity-add'), label: `🔥 Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice, category: product?.category, source: 'recommendation' }, meta: { sourceSkill: 'scarcity', strategy } },
+          { id: genActionId('scarcity-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'scarcity' } },
+        ], product),
+        ui: product ? { cards: [{ id: `card-scarcity-${prodId}`, title: prodName, price: prodPrice, imageUrl: product.imageUrl, actions: [{ id: genActionId(`scarcity-card-add-${prodId}`), label: 'Agregar', type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } }] }], suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'] } : { suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'] },
       };
     }
 
-    case 'upsell': {
+case 'upsell': {
       const product = input.inventory?.highStock?.[0] || input.safeProducts[0];
       const prodName = product ? product.name : "algo delicioso";
       const prodId = product?.id;
@@ -365,10 +436,11 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
-        actions: [
-          { label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
-          { label: 'No, gracias', type: 'dismiss', payload: null },
-        ],
+        actions: filterInvalidActions([
+          { id: genActionId('upsell-add'), label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice, category: product?.category, source: 'upsell' }, meta: { sourceSkill: 'upsell', strategy } },
+          { id: genActionId('upsell-dismiss'), label: 'No, gracias', type: 'dismiss', payload: null, meta: { sourceSkill: 'upsell' } },
+        ], product),
+        ui: product ? { cards: [{ id: `card-upsell-${prodId}`, title: prodName, price: prodPrice, imageUrl: product.imageUrl, description: product.description, actions: [{ id: genActionId(`upsell-card-add-${prodId}`), label: '🥤 Agregar', type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } }, { id: genActionId(`upsell-card-dismiss-${prodId}`), label: '❌ No gracias', type: 'dismiss', payload: null }] }], suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'] } : { suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'] },
       };
     }
 
@@ -378,15 +450,34 @@ async function runSkill(
       const comboName = combo ? combo.name : "uno de nuestros Combos Especiales";
       const comboId = combo?.id;
       const comboPrice = combo?.price;
+      const comboDesc = combo?.description;
+      const comboImg = combo?.imageUrl;
+      const comboActions: Action[] = filterInvalidActions([
+        { id: genActionId('combo-rec-add'), label: `🔥 Quiero ${comboName}`, type: 'add_to_cart', payload: { productId: comboId, name: comboName, price: comboPrice }, meta: { sourceSkill: 'comboRecommendation', strategy } },
+        { id: genActionId('combo-rec-show-all'), label: '📋 Ver todos los combos', type: 'show_category', payload: { category: 'combos' }, meta: { sourceSkill: 'comboRecommendation' } },
+      ], combo);
+
+      const uiCards: UICard[] = [];
+      for (const c of combos.slice(0, 3)) {
+        uiCards.push({
+          id: `card-combo-${c.id}`,
+          title: c.name,
+          description: c.description,
+          price: c.price,
+          imageUrl: c.imageUrl,
+          actions: [
+            { id: genActionId(`card-add-${c.id}`), label: 'Agregar', type: 'add_to_cart', payload: { productId: c.id, name: c.name, price: c.price } },
+          ],
+        });
+      }
+
       return {
         text: `Te sugiero ${comboName}, es una excelente opción. ¿Qué te parece?`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
-        actions: [
-          { label: `🔥 Quiero ${comboName}`, type: 'add_to_cart', payload: { productId: comboId, name: comboName, price: comboPrice } },
-          { label: '📋 Ver todos los combos', type: 'show_category', payload: { category: 'combos' } },
-        ],
+        actions: comboActions,
+        ui: { cards: uiCards, suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'] },
       };
     }
 
@@ -401,10 +492,11 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
-        actions: [
-          { label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
-          { label: '📋 Ver todo el menú', type: 'navigate', payload: { target: 'menu' } },
-        ],
+        actions: filterInvalidActions([
+          { id: genActionId('cheap-rec-add'), label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice }, meta: { sourceSkill: 'cheapRecommendation', strategy } },
+          { id: genActionId('cheap-rec-menu'), label: '📋 Ver todo el menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'cheapRecommendation' } },
+        ], cheapest),
+        ui: cheapest ? { cards: [{ id: `card-cheap-${prodId}`, title: prodName, price: prodPrice, imageUrl: cheapest.imageUrl, description: cheapest.description }] } : undefined,
       };
     }
 
@@ -431,9 +523,12 @@ async function runSkill(
         cart: ctx.cart || emptyCart,
         type: 'text',
         actions: [
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
-          { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+          { id: genActionId('fallback-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'fallback' } },
+          { id: genActionId('fallback-recommend'), label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' }, meta: { sourceSkill: 'fallback' } },
         ],
+        ui: {
+          suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'],
+        },
       };
     }
     case 'productFlow': {
@@ -444,23 +539,41 @@ async function runSkill(
       const shouldForceAdd = (intentLower === 'ADD_TO_CART') || (intentLower === 'PRODUCT_QUERY' && hasActionWord) || hasActionWord;
 
       let pToForceAdd: any = null;
-      const matchedProducts = input.safeProducts.filter(p => {
-        const name = p.name.toLowerCase();
-        const cat = (p.category || '').toLowerCase();
-        // Match if message contains full name, category, or any significant word from the name
-        return msgLower.includes(name) || msgLower.includes(cat) || 
-                name.split(/\s+/).some((word: string) => word.length > 3 && msgLower.includes(word));
-      });
-      
-      if (matchedProducts.length > 0) {
-         pToForceAdd = matchedProducts[0];
-      } else {
-         const productKeywords = ['boneless', 'alitas', 'papas', 'combo', 'banderilla', 'dedos', 'queso', 'hamburguesa'];
-         const matchedKw = productKeywords.find(kw => msgLower.includes(kw));
-         if (matchedKw) {
-            const pList = input.safeProducts.filter(p => p.name.toLowerCase().includes(matchedKw));
-            if (pList.length > 0) pToForceAdd = pList[0];
-         }
+
+      // Action-triggered: direct product lookup by ID
+      if (input.actionPayload?.productId) {
+        const targetId = input.actionPayload.productId;
+        pToForceAdd = input.safeProducts.find(
+          (p: any) => String(p.id) === targetId || String(p.productId) === targetId,
+        ) || input.allProducts?.find(
+          (p: any) => String(p.id) === targetId || String(p.productId) === targetId,
+        );
+        if (pToForceAdd) {
+          // Found by ID, skip name-based matching
+        } else {
+          pToForceAdd = null;
+        }
+      }
+
+      // Name-based matching (only if not found by action payload)
+      if (!pToForceAdd) {
+        const matchedProducts = input.safeProducts.filter(p => {
+          const name = p.name.toLowerCase();
+          const cat = (p.category || '').toLowerCase();
+          return msgLower.includes(name) || msgLower.includes(cat) || 
+                  name.split(/\s+/).some((word: string) => word.length > 3 && msgLower.includes(word));
+        });
+        
+        if (matchedProducts.length > 0) {
+           pToForceAdd = matchedProducts[0];
+        } else {
+           const productKeywords = ['boneless', 'alitas', 'papas', 'combo', 'banderilla', 'dedos', 'queso', 'hamburguesa'];
+           const matchedKw = productKeywords.find(kw => msgLower.includes(kw));
+           if (matchedKw) {
+              const pList = input.safeProducts.filter(p => p.name.toLowerCase().includes(matchedKw));
+              if (pList.length > 0) pToForceAdd = pList[0];
+           }
+        }
       }
 
       // Fallback: "agrega otro" / "uno mas" with no product name → re-add last cart item
@@ -474,8 +587,31 @@ async function runSkill(
       }
 
       if (shouldForceAdd && pToForceAdd) {
-        let currentCartItems = [...(input.conversationState?.cart?.items || [])];
-        let currentTotal = Number(input.conversationState?.cart?.total) || 0;
+        const ctx = input.conversationState;
+        const actionId = `add-${pToForceAdd.id}-${Date.now()}`;
+
+        // Idempotency: reject if this exact action was already processed
+        if (checkAndTrackAction(ctx, actionId)) {
+          return {
+            text: `🔥 ${pToForceAdd.name} ya está en tu pedido. ¿Quieres algo más?`,
+            nextState: ctx,
+            cart: ctx.cart || emptyCart,
+            type: 'text',
+          };
+        }
+
+        // Dedup: same product within 1s → silently use existing cart
+        if (isDuplicateAdd(ctx, pToForceAdd.id)) {
+          return {
+            text: `🔥 ${pToForceAdd.name} ya está en tu pedido. ¿Quieres algo más?`,
+            nextState: ctx,
+            cart: ctx.cart || emptyCart,
+            type: 'text',
+          };
+        }
+
+        let currentCartItems = [...(ctx.cart?.items || [])];
+        let currentTotal = Number(ctx.cart?.total) || 0;
         if (isNaN(currentTotal)) currentTotal = 0;
         
         const price = Number(pToForceAdd.priceToShow || pToForceAdd.price) || 0;
@@ -495,8 +631,10 @@ async function runSkill(
         }
         currentTotal += price;
 
+        trackProductAdd(ctx, pToForceAdd.id);
+
         const nextState = {
-           ...input.conversationState,
+           ...ctx,
            cart: {
               items: currentCartItems,
               total: currentTotal
@@ -519,14 +657,44 @@ async function runSkill(
           responseText += `\n¿Quieres algo más?`;
         }
 
+        const actionInstanceId = createUuid();
         const productFlowActions: Action[] = [
-          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { id: `productflow-menu-${actionInstanceId}`, label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'productFlow' } },
         ];
         if (upsellProduct) {
           productFlowActions.unshift({
+            id: `productflow-upsell-${upsellProduct.id}-${actionInstanceId}`,
             label: `➕ Agregar ${upsellProduct.name}`,
             type: 'add_to_cart',
-            payload: { productId: upsellProduct.id, name: upsellProduct.name, price: upsellProduct.price },
+            payload: { productId: upsellProduct.id, name: upsellProduct.name, price: upsellProduct.price, category: upsellProduct.category, source: 'upsell' },
+            meta: { sourceSkill: 'productFlow', strategy },
+          });
+        }
+
+        const productFlowCards: UICard[] = [
+          {
+            id: `card-added-${pToForceAdd.id}`,
+            title: pToForceAdd.name,
+            description: pToForceAdd.description,
+            price,
+            imageUrl: pToForceAdd.imageUrl,
+            actions: [
+              { id: genActionId(`card-add-${pToForceAdd.id}`), label: '➕ Agregar', type: 'add_to_cart', payload: { productId: pToForceAdd.id, name: pToForceAdd.name, price } },
+              { id: genActionId(`card-combo-${pToForceAdd.id}`), label: '🔥 Ver combo', type: 'recommend', payload: { target: 'combo' } },
+            ],
+          },
+        ];
+        if (upsellProduct) {
+          productFlowCards.push({
+            id: `card-upsell-${upsellProduct.id}`,
+            title: upsellProduct.name,
+            description: upsellProduct.description,
+            price: upsellProduct.priceToShow || upsellProduct.price,
+            imageUrl: upsellProduct.imageUrl,
+            actions: [
+              { id: genActionId(`card-upsell-add-${upsellProduct.id}`), label: '🥤 Agregar', type: 'add_to_cart', payload: { productId: upsellProduct.id, name: upsellProduct.name, price: upsellProduct.price } },
+              { id: genActionId(`card-upsell-dismiss-${upsellProduct.id}`), label: '❌ No gracias', type: 'dismiss', payload: null },
+            ],
           });
         }
 
@@ -535,7 +703,8 @@ async function runSkill(
           nextState: nextState,
           cart: nextState.cart,
           type: 'text',
-          actions: productFlowActions,
+          actions: filterInvalidActions(productFlowActions, pToForceAdd),
+          ui: { cards: productFlowCards },
         };
       }
 
@@ -572,6 +741,7 @@ async function runSkill(
         cart: modularRes.nextState.cart,
         type: modularRes.type || 'text',
         actions: modularRes.actions,
+        ui: { cards: buildProductCards(modularRes.nextState?.lastProductsShown, input.safeProducts) },
       };
     }
 
@@ -592,9 +762,60 @@ async function runSkill(
         cart: modularRes.nextState.cart,
         type: modularRes.type || 'text',
         actions: modularRes.actions,
+        ui: { cards: buildProductCards(modularRes.nextState?.lastProductsShown, input.safeProducts) },
       };
     }
   }
+}
+
+
+const COMBO_INCLUDED_CATEGORIES = ['papas', 'bebida', 'bebidas'];
+
+/**
+ * Filters out actions that violate product business rules.
+ *
+ * Rules:
+ * - If current product is a combo, remove add_to_cart actions for papas/bebidas
+ *   (the combo already includes them — suggesting them would be redundant/confusing)
+ */
+function filterInvalidActions(actions: Action[], currentProduct: any): Action[] {
+  if (!actions || actions.length === 0) return actions;
+
+  const currentCat = (currentProduct?.category || '').toLowerCase();
+  const isCombo = currentCat === 'combo' || currentCat === 'combos';
+
+  return actions.filter((action) => {
+    const targetId = action.payload?.productId;
+    const targetName = (action.payload?.name || '').toLowerCase();
+
+    // Basic Rule: Don't suggest adding the exact same product again
+    if (action.type === 'add_to_cart' && targetId && String(targetId) === String(currentProduct?.id)) {
+      return false;
+    }
+
+    if (isCombo) {
+      // Rule 1: If current product is a combo, don't suggest papas/bebida
+      // (combo already includes sides and drinks)
+      if (action.type === 'add_to_cart') {
+        if (COMBO_INCLUDED_CATEGORIES.some(cat => targetName.includes(cat))) return false;
+      }
+
+      // Rule 2: Whitelist allowed action types for combo flows
+      const isViewMenu = action.type === 'navigate' && action.payload?.target === 'menu';
+      const isCheckout = action.type === 'checkout';
+      const isUpsell = action.type === 'upsell';
+      const isDismiss = action.type === 'dismiss';
+
+      if (isViewMenu || isCheckout || isUpsell || isDismiss) {
+        return true;
+      }
+
+      // Block any other add_to_cart or navigation that isn't whitelisted for combos
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /**
@@ -649,18 +870,23 @@ function selectBestUpsell(params: {
 
     // Rule 1: Progression (Main -> Drink -> Side -> Dessert)
     if (progressionEnabled) {
+      // User Rule: if cart has main -> suggest drink (+50)
       if (hasMain && !hasDrink && (cat === 'bebida' || cat === 'bebidas')) {
-        categoryWeight += 1000;
-      } else if (hasDrink && !hasSide && cat === 'papas') {
-        categoryWeight += 800;
-      } else if (hasSide && !hasDessert && (cat === 'postre' || cat === 'postres')) {
-        categoryWeight += 600;
+        categoryWeight += 50;
+      } 
+      // User Rule: if cart has drink -> suggest side (+50)
+      else if (hasDrink && !hasSide && cat === 'papas') {
+        categoryWeight += 50;
+      }
+      // Native progression: Side -> Dessert
+      else if (hasSide && !hasDessert && (cat === 'postre' || cat === 'postres')) {
+        categoryWeight += 30;
       }
     }
 
-    // Rule 2: Avoid repeating categories (Strong penalty)
+    // Rule 2: Avoid repeating categories (Extreme penalty to prevent duplicates)
     const catInCart = cartCategories.includes(cat);
-    const repeatPenalty = catInCart ? -2000 : 0;
+    const repeatPenalty = catInCart ? -5000 : 0;
 
     // Maintain profit margin priority
     const price = Number(p.price) || 0;
@@ -760,6 +986,7 @@ function buildResponse(
     type: result.type,
     actions: result.actions,
     nextState: result.nextState,
+    ui: result.ui,
   };
 }
 
@@ -772,9 +999,12 @@ function fallbackResponse(): any {
     cart: { items: [], total: 0 },
     type: 'text',
     actions: [
-      { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
-      { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+      { id: genActionId('fallback-resp-menu'), label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' }, meta: { sourceSkill: 'fallbackResponse' } },
+      { id: genActionId('fallback-resp-recommend'), label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' }, meta: { sourceSkill: 'fallbackResponse' } },
     ],
+    ui: {
+      suggestions: ['🔥 Ver combos', '🍟 Algo rápido', '🥤 Solo bebida'],
+    },
     nextState: null,
   };
 }
@@ -797,7 +1027,7 @@ export async function handleMessage(
   input: PipelineInput,
   memoryData?: any,
 ): Promise<any> {
-  const { intent } = resolveIntent(
+  const { intent, payload } = resolveIntent(
     input.message,
     input.conversationState,
   );
@@ -820,7 +1050,7 @@ export async function handleMessage(
     // Ignore to not break flow
   }
 
-  let result = await runSkill(skill, { ...input, memory: memoryData, intent }, strategy);
+  let result = await runSkill(skill, { ...input, memory: memoryData, intent, actionPayload: payload }, strategy);
   let validation = validateResult(result, input.safeProducts, input.allProducts);
 
   if (!validation.valid) {
@@ -850,11 +1080,35 @@ export async function handleMessage(
       ? (result.nextState?.lastIntent as string) || publicIntent
       : publicIntent;
 
-  return buildResponse(
+  const response = buildResponse(
     { ...result, text: validation.sanitizedText || result.text },
     responseIntent,
     memoryData,
   );
+
+  // Attach cart summary when cart has items
+  if (response.cart?.items?.length > 0) {
+    response.ui = {
+      ...response.ui,
+      cart: {
+        total: response.cart.total ?? response.cart.items.reduce((s: number, i: any) => s + (i.price * (i.quantity || i.qty || 1)), 0),
+        itemCount: response.cart.items.length,
+      },
+    };
+
+    // Add cart actions if not already present
+    if (!response.actions) response.actions = [];
+    const hasCartView = response.actions.some((a: Action) => a.type === 'view_cart');
+    const hasCheckout = response.actions.some((a: Action) => a.type === 'checkout');
+    if (!hasCartView) {
+      response.actions.push({ id: genActionId('ui-view-cart'), label: '🛒 Ver carrito', type: 'view_cart', payload: null, meta: { sourceSkill: 'cartSummary' } });
+    }
+    if (!hasCheckout) {
+      response.actions.push({ id: genActionId('ui-checkout'), label: '💳 Pagar', type: 'checkout', payload: null, meta: { sourceSkill: 'cartSummary' } });
+    }
+  }
+
+  return response;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

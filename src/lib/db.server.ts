@@ -1,26 +1,156 @@
 import { supabaseAdmin as admin } from './supabaseAdmin';
 import * as server from './server/supabaseServer';
 import { createUuid } from '@/lib/utils/core';
+import { sendAlert } from './alert';
 export type { Customer } from './adminTypes';
 
-const isServer = typeof window === 'undefined';
+const IS_SERVER_ENV = typeof window === 'undefined';
 
-if (!isServer) {
+if (!IS_SERVER_ENV) {
   console.warn(
     'db.server.ts is server-only. Do not import in React components or client code.'
   );
 }
 
-export const db = isServer ? admin : ({} as any);
-export const supabase = isServer ? admin : ({} as any);
+// --- Circuit Breaker Logic ---
+type CBState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+const CB_COOLDOWN_MS = 60000;
 
-export const getSupabaseAdmin = isServer ? server.getSupabaseAdmin : (() => ({} as any));
-export const supabaseAnon = isServer ? server.supabaseAnon : ({} as any);
-export const getCustomerProfileFromDB = isServer ? server.getCustomerProfileFromDB : (async () => null);
-export const upsertCustomerProfile = isServer ? server.upsertCustomerProfile : (async () => {});
+class CircuitBreaker {
+  private state: CBState = 'CLOSED';
+  private lastRetryAt = 0;
+  private failuresCount = 0;
+  private lastFailureTimestamp = 0;
+  private transitions: { from: CBState; to: CBState; ts: string }[] = [];
+  private name: string;
+  private buffer: any[] = [];
+  private maxBufferSize = 200;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  private transitionTo(newState: CBState) {
+    if (this.state === newState) return;
+    this.transitions.push({
+      from: this.state,
+      to: newState,
+      ts: new Date().toISOString()
+    });
+    if (this.transitions.length > 10) this.transitions.shift();
+    this.state = newState;
+  }
+
+  shouldSkip(): boolean {
+    if (this.state === 'CLOSED') return false;
+    const now = Date.now();
+    if (this.state === 'OPEN') {
+      if (now - this.lastRetryAt > CB_COOLDOWN_MS) {
+        this.transitionTo('HALF_OPEN');
+        this.lastRetryAt = now;
+        console.log(`[db.server] Circuit breaker ${this.name} HALF_OPEN. Testing recovery...`);
+        return false;
+      }
+      return true;
+    }
+    if (this.state === 'HALF_OPEN') return true; // Block others while testing
+    return false;
+  }
+
+  handleError(error: any, itemToBuffer?: any) {
+    const isMissingTable = error.code === '42P01' || error.code === 'PGRST205' || error.message?.includes('does not exist');
+    if (isMissingTable) {
+      if (itemToBuffer) this.addToBuffer(itemToBuffer);
+      this.failuresCount++;
+      this.lastFailureTimestamp = Date.now();
+      
+      const wasOpen = this.state === 'OPEN';
+      this.transitionTo('OPEN');
+      this.lastRetryAt = Date.now();
+
+      if (!wasOpen) {
+        const alertMsg = `🚨 [CRITICAL] DB Circuit OPEN: ${this.name}\n` +
+          `Code: ${error.code || 'UNKNOWN'}\n` +
+          `Env: ${process.env.NODE_ENV}\n` +
+          `Time: ${new Date().toISOString()}`;
+        
+        console.error(alertMsg);
+        sendAlert(alertMsg).catch(() => {});
+      }
+    } else {
+      console.error(`[db.server] Error in ${this.name}:`, error);
+    }
+  }
+
+  async handleSuccess(flushFn?: () => Promise<void>) {
+    if (this.state === 'HALF_OPEN') {
+      this.transitionTo('CLOSED');
+      console.log(`[db.server] Circuit breaker ${this.name} CLOSED. Recovered.`);
+      if (flushFn) await flushFn();
+    }
+  }
+
+  addToBuffer(item: any) {
+    if (this.buffer.length >= this.maxBufferSize) {
+      this.buffer.shift();
+    }
+    this.buffer.push(item);
+  }
+
+  getBuffer() {
+    return this.buffer;
+  }
+
+  clearBuffer() {
+    this.buffer = [];
+  }
+
+  getHealth() {
+    return {
+      state: this.state,
+      failuresCount: this.failuresCount,
+      lastFailureTimestamp: this.lastFailureTimestamp ? new Date(this.lastFailureTimestamp).toISOString() : null,
+      transitions: this.transitions,
+      cooldownRemainingMs: this.state === 'OPEN' ? Math.max(0, CB_COOLDOWN_MS - (Date.now() - this.lastRetryAt)) : 0
+    };
+  }
+
+  reset() {
+    this.state = 'CLOSED';
+    this.failuresCount = 0;
+    this.lastFailureTimestamp = 0;
+    this.transitions = [];
+  }
+}
+
+const costsBreaker = new CircuitBreaker('ai_costs');
+const logsBreaker = new CircuitBreaker('ai_logs');
+
+export function getDBCircuitHealth() {
+  return {
+    ai_costs: { ...costsBreaker.getHealth(), bufferSize: costsBreaker.getBuffer().length },
+    ai_logs: { ...logsBreaker.getHealth(), bufferSize: logsBreaker.getBuffer().length }
+  };
+}
+
+export function resetDBCircuits() {
+  costsBreaker.reset();
+  logsBreaker.reset();
+  console.log("[db.server] Circuit breakers manually reset to CLOSED.");
+}
+
+// Removal of warning block since moved up
+
+export const db = IS_SERVER_ENV ? admin : ({} as any);
+export const supabase = IS_SERVER_ENV ? admin : ({} as any);
+
+export const getSupabaseAdmin = IS_SERVER_ENV ? server.getSupabaseAdmin : (() => ({} as any));
+export const supabaseAnon = IS_SERVER_ENV ? server.supabaseAnon : ({} as any);
+export const getCustomerProfileFromDB = IS_SERVER_ENV ? server.getCustomerProfileFromDB : (async () => null);
+export const upsertCustomerProfile = IS_SERVER_ENV ? server.upsertCustomerProfile : (async () => {});
 
 export async function getSystemState() {
-  if (!isServer) return { mode: 'NORMAL' };
+  if (!IS_SERVER_ENV) return { mode: 'NORMAL' };
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('system_state')
@@ -32,7 +162,7 @@ export async function getSystemState() {
 }
 
 export async function updateSystemState(updates: any) {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('system_state')
@@ -49,21 +179,32 @@ export async function saveAiCost(data: {
   intent?: string;
   order_id?: string;
 }) {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
+  
+  if (costsBreaker.shouldSkip()) {
+    costsBreaker.addToBuffer(data);
+    return;
+  }
+
   try {
     const supabase = getSupabaseAdmin();
     const { error } = await supabase
       .from('ai_costs')
       .insert(data);
+      
     if (error) {
-      if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        console.warn("AI cost skipped:", error.message);
-      } else {
-        console.error('[db.server] Error saving AI cost:', error);
-      }
+      costsBreaker.handleError(error, data);
+    } else {
+      await costsBreaker.handleSuccess(async () => {
+        const buffer = costsBreaker.getBuffer();
+        if (buffer.length > 0) {
+          const { error: flushErr } = await supabase.from('ai_costs').insert(buffer);
+          if (!flushErr) costsBreaker.clearBuffer();
+        }
+      });
     }
   } catch (err: any) {
-    console.warn("AI cost skipped:", err?.message || err);
+    console.warn("AI cost exception:", err?.message || err);
   }
 }
 
@@ -96,7 +237,7 @@ export function invalidateProductCache() {
 }
 
 export const dbGetProducts = async () => {
-  if (!isServer) return [];
+  if (!IS_SERVER_ENV) return [];
   
   const now = Date.now();
   if (productCache && (now - productCacheTime < CACHE_TTL)) {
@@ -115,7 +256,7 @@ export const dbGetProducts = async () => {
 };
 
 export const dbSaveProduct = async (product: any) => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   const res = await m.dbSaveProduct(product);
   invalidateProductCache();
@@ -123,7 +264,7 @@ export const dbSaveProduct = async (product: any) => {
 };
 
 export const dbInsertProducts = async (products: any[]) => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   const res = await m.dbInsertProducts(products);
   invalidateProductCache();
@@ -131,7 +272,7 @@ export const dbInsertProducts = async (products: any[]) => {
 };
 
 export const dbDeleteProduct = async (id: string) => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   const res = await m.dbDeleteProduct(id);
   invalidateProductCache();
@@ -139,7 +280,7 @@ export const dbDeleteProduct = async (id: string) => {
 };
 
 export const dbDeleteAllProducts = async () => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   const res = await m.dbDeleteAllProducts();
   invalidateProductCache();
@@ -147,7 +288,7 @@ export const dbDeleteAllProducts = async () => {
 };
 
 export const dbToggleProduct = async (id: string) => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   const res = await m.dbToggleProduct(id);
   invalidateProductCache();
@@ -155,7 +296,7 @@ export const dbToggleProduct = async (id: string) => {
 };
 
 export const dbSaveOrder = async (order: any) => {
-  if (!isServer) return { status: "error", code: "SERVER_ONLY" };
+  if (!IS_SERVER_ENV) return { status: "error", code: "SERVER_ONLY" };
 
   try {
     const supabase = getSupabaseAdmin();
@@ -222,19 +363,19 @@ export const dbSaveOrder = async (order: any) => {
 };
 
 export const dbGetCustomer = async (phone: string) => {
-  if (!isServer) return null;
+  if (!IS_SERVER_ENV) return null;
   const m = await getDbModule();
   return m.dbGetCustomer(phone);
 };
 
 export const dbUpsertCustomer = async (customer: any) => {
-  if (!isServer) return;
+  if (!IS_SERVER_ENV) return;
   const m = await getDbModule();
   return m.dbUpsertCustomer(customer);
 };
 
 export const productToRow = async (p: any) => {
-  if (!isServer) return {};
+  if (!IS_SERVER_ENV) return {};
   const m = await getDbModule();
   return m.productToRow(p);
 };
@@ -251,7 +392,7 @@ export async function checkCartAbandonment(
   userId: string,
   windowMs: number,
 ): Promise<{ abandoned: boolean; lastCartAt?: string; cartValue?: number }> {
-  if (!isServer) return { abandoned: false };
+  if (!IS_SERVER_ENV) return { abandoned: false };
   try {
     const supabase = getSupabaseAdmin();
     const since = new Date(Date.now() - windowMs * 2).toISOString();
@@ -317,7 +458,13 @@ export async function checkCartAbandonment(
 }
 
 export async function saveAiLog(log: any): Promise<{ success: boolean; error?: string }> {
-  if (!isServer) return { success: true };
+  if (!IS_SERVER_ENV) return { success: true };
+
+  if (logsBreaker.shouldSkip()) {
+    logsBreaker.addToBuffer(log);
+    return { success: true };
+  }
+
   try {
     const supabase = getSupabaseAdmin();
 
@@ -336,20 +483,31 @@ export async function saveAiLog(log: any): Promise<{ success: boolean; error?: s
     });
 
     if (error) {
-      if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        console.warn("AI log skipped:", error.message);
-        return { success: true };
-      }
-      console.error(JSON.stringify({
-        event: 'SAVE_AI_LOG_DB_ERROR',
-        error: error.message,
-        code: error.code,
-        traceId: log.traceId,
-        userId: log.userId,
-        timestamp: Date.now(),
-      }));
-      return { success: false, error: error.message };
+      logsBreaker.handleError(error, log);
+      return { success: true };
     }
+
+    await logsBreaker.handleSuccess(async () => {
+      const buffer = logsBreaker.getBuffer();
+      if (buffer.length > 0) {
+        // Transform buffer to DB schema if needed
+        const rows = buffer.map(l => ({
+          trace_id: l.traceId,
+          user_id: l.userId,
+          channel: l.channel,
+          input: l.input,
+          intent: l.intent,
+          flow_state: l.flowState,
+          cart: l.cart,
+          total: l.total,
+          products_shown: l.productsShown,
+          error: l.error,
+          session_status: l.sessionStatus || 'ACTIVE',
+        }));
+        const { error: flushErr } = await supabase.from('ai_logs').insert(rows);
+        if (!flushErr) logsBreaker.clearBuffer();
+      }
+    });
 
     return { success: true };
   } catch (err) {
