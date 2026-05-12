@@ -1,36 +1,22 @@
 import { getBestStrategySync, getNextStrategy } from '../antojo';
 
-function assert(condition: boolean, message: string) {
-  if (!condition) {
-    throw new Error(`❌ Assertion Failed: ${message}`);
-  }
-  console.log(`✅ ${message}`);
-}
+describe('antojo strategy engine', () => {
+  test('getNextStrategy rotates through the sequence', () => {
+    expect(getNextStrategy(0)).toBe('antojo');
+    expect(getNextStrategy(1)).toBe('fomo');
+    expect(getNextStrategy(2)).toBe('social');
+    expect(getNextStrategy(3)).toBe('anchor');
+    expect(getNextStrategy(4)).toBe('antojo');
+  });
 
-async function runTests() {
-  console.log("--- Running strategy Tests ---");
+  test('getBestStrategySync returns a valid strategy', () => {
+    const strategy = getBestStrategySync();
+    expect(['antojo', 'fomo', 'social', 'anchor']).toContain(strategy);
+  });
 
-  // Test 1: Fallback rotation works
-  const s0 = getNextStrategy(0);
-  const s1 = getNextStrategy(1);
-  assert(s0 === 'antojo', "Strategy 0 is antojo");
-  assert(s1 === 'fomo', "Strategy 1 is fomo");
-  assert(s0 !== s1, "Strategy rotates correctly");
-
-  // Test 2: getBestStrategySync returns a valid strategy immediately (fallback)
-  const best = getBestStrategySync();
-  assert(['antojo', 'fomo', 'social', 'anchor'].includes(best), "Best strategy returns valid type");
-
-  // Test 3: Caching (internal behavior check)
-  const best2 = getBestStrategySync();
-  assert(best === best2, "Synchronous calls return same strategy (cached or fallback)");
-
-  console.log("--- strategy Tests Passed ---");
-}
-
-runTests().catch(err => {
-  console.error(err);
-  if (process.env.NODE_ENV !== 'test') {
-    process.exit(1);
-  }
+  test('getBestStrategySync returns same strategy on repeated calls (cached/fallback)', () => {
+    const first = getBestStrategySync();
+    const second = getBestStrategySync();
+    expect(first).toBe(second);
+  });
 });

@@ -1,61 +1,200 @@
-# Snacks 911 — Architecture Guide
+# ARCHITECTURE — Snacks 911 System
 
-## Target Architecture
+## 🧠 Visión general
+
+Snacks 911 es un sistema híbrido compuesto por:
+
+- Aplicación web (Next.js)
+- Motor de IA (multi-agente)
+- Backend lógico basado en GitHub Issues
+- Integraciones externas (WhatsApp, Supabase)
+
+---
+
+## 🧱 Capas del sistema
+
+### 1. Frontend (UI)
+
+Ubicación:
+src/app/
+src/components/
+
+Responsabilidad:
+- Mostrar menú
+- Capturar pedidos
+- Interacción del usuario
+
+---
+
+### 2. Backend API (Next.js)
+
+Ubicación:
+src/app/api/
+
+Responsabilidad:
+- Manejo de requests
+- Conectar frontend con lógica
+- Entrada al sistema IA
+
+---
+
+### 3. Core Engine
+
+Ubicación:
+src/core/
+
+Componentes clave:
+- agentOrchestrator.ts
+- botEngine.ts
+- responseEngine.ts
+- intentDetector.ts
+
+Responsabilidad:
+- Procesar conversaciones
+- Tomar decisiones
+- Ejecutar lógica de negocio
+
+---
+
+### 4. AI Runtime
+
+Ubicación:
+src/ai/
+
+Responsabilidad:
+- Ejecución de agentes
+- Enrutamiento de decisiones
+- Integración multi-modelo
+
+---
+
+### 5. Services (lib)
+
+Ubicación:
+src/lib/
+
+Ejemplos:
+- github.ts
+- multiAiRouter.ts
+- supabase.ts
+
+Responsabilidad:
+- Conectar con servicios externos
+- Persistencia
+- APIs externas
+
+---
+
+### 6. Data Layer
+
+Ubicación:
+supabase/
+src/data/
+
+Responsabilidad:
+- Almacenamiento
+- Productos
+- Usuarios
+- Conversaciones
+
+---
+
+### 7. GitHub System
+
+Repositorio:
+dayk1235/Snacks911
+
+Responsabilidad:
+- Issues → tareas
+- PRDs → especificaciones
+- Labels → clasificación
+
+---
+
+## 🔁 Flujo principal
+
+Cliente → ChatBot → IntentDetector → Orchestrator → Acción
+
+Acciones posibles:
+- Respuesta al usuario
+- Generación de oferta
+- Creación de issue en GitHub
+- Registro en base de datos
+
+---
+
+## 🔁 Flujo de desarrollo
+
+Idea → Issue → PRD → Tasks → Código → Deploy
+
+---
+
+## 🤖 Flujo de IA
+
+Input usuario  
+→ análisis (intent + contexto)  
+→ decisión (agentOrchestrator)  
+→ ejecución (acción)  
+→ aprendizaje  
+
+---
+
+## ⚠️ Consideraciones
+
+- El sistema es event-driven
+- Las decisiones deben ser trazables
+- GitHub actúa como sistema de control
+- La IA nunca opera sin contexto
+
+---
+
+## 🚀 Evolución futura
+
+- Automatización completa del ciclo de desarrollo
+- Sistema auto-optimizable
+- Integración con múltiples canales
+- Expansión a SaaS multi-negocio
+
+## SaaS-Ready Layered Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        UI LAYER (Next.js)                    │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │  Pages (App Router)                                   │   │
-│  │  - All dynamic/interactive → dynamic(ssr: false)     │   │
-│  │  - Static sections → SSR OK                          │   │
-│  └──────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Components (React)                                   │   │
-│  │  - UI only, no business logic                        │   │
-│  │  - Import from @/core/ for logic                     │   │
-│  │  - Use 'use client' for interactivity                │   │
+│  │  Pages & Components (@/*)                            │   │
+│  │  - Consume @core for logic                           │   │
+│  │  - Consume @app for tenant config                    │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                          │                                   │
-│                    Adapter Layer                             │
-│                    (@/core/index.ts)                         │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  APP CONFIG LAYER (@app/*)                            │   │
+│  │  - snacks911.ts, default.ts, index.ts                │   │
+│  │  - Feature flags, identity, personality              │   │
+│  └──────────────────────────────────────────────────────┘   │
 │                          │                                   │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │  CORE LAYER (Pure TypeScript)                         │   │
-│  │  ┌────────────┐ ┌──────────────┐ ┌───────────────┐  │   │
-│  │  │intents.ts  │ │responseEngine│ │ cartEngine.ts │  │   │
-│  │  │(detection) │ │(GOD MODE)    │ │ (cart ops)    │  │   │
-│  │  └────────────┘ └──────────────┘ └───────────────┘  │   │
-│  │  ┌────────────┐ ┌──────────────┐                    │   │
-│  │  │antojo.ts   │ │recommendation│                    │   │
-│  │  │(phrases)   │ │Engine.ts     │                    │   │
-│  │  └────────────┘ └──────────────┘                    │   │
-│  │  NO React, NO DOM, NO side effects                  │   │
-│  │  Input → Output only                                │   │
+│  │  PLATFORM CORE (@core/*)                              │   │
+│  │  - botEngine, cartEngine, flowController             │   │
+│  │  - PURE platform logic (Business Agnostic)           │   │
+│  │  - Reads from TenantConfig (No hardcoding)           │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## CORE Layer Rules
+## Modularization Rules
 
-Files in `src/core/` MUST:
-- ✅ Have NO React imports
-- ✅ Have NO useState / useEffect
-- ✅ Have NO window / document access
-- ✅ Have NO JSX
-- ✅ Be pure functions only (input → output)
-- ✅ Be testable in isolation
+### 1. Platform Core (@core/*)
+- **Rule**: MUST NOT import from `@app/*` or `@/*`.
+- **Rule**: MUST NOT contain business names like "Snacks 911".
+- **Rule**: MUST be purely config-driven using `TenantConfig`.
 
-Files in `src/components/` or `src/app/` MUST:
-- ✅ Use `'use client'` for interactive components
-- ✅ Use `dynamic(..., { ssr: false })` for components with:
-  - Animations
-  - localStorage access
-  - Window/document access
-  - Live data
-  - Time-based UI
-- ✅ Import business logic from `@/core/` only
-- ✅ NOT contain intent detection, decision making, or state machines
+### 2. App Config (@app/*)
+- **Rule**: Contains the identity of the specific deployment (e.g., Snacks 911).
+- **Rule**: Defines feature flags and overrides for core behavior.
+
+### 3. Feature Flags
+- All new functionality must be gated behind a flag in `@core/config/featureFlags.ts`.
+- Default values in `defaultConfig.ts` must be `false` (fail-closed).
 
 ## Hydration Prevention Checklist
 

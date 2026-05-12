@@ -159,6 +159,7 @@ export function getSuggestedUpsell(state: CartState, allProducts: CoreProduct[])
 export function buildWhatsAppUrl(
   state: CartState,
   phoneNumber: string,
+  businessName: string = 'SABOR 911',
 ): string {
   const mainItems = state.items.filter(i => !i.isStandaloneExtra);
   const extraItems = state.items.filter(i => i.isStandaloneExtra);
@@ -175,7 +176,7 @@ export function buildWhatsAppUrl(
     `  + ${i.name} x${i.quantity} — $${i.price * i.quantity}`
   );
 
-  let message = `🚨 *PEDIDO SNACKS 911*\n\n`;
+  let message = `🚨 *PEDIDO ${businessName.toUpperCase()}*\n\n`;
 
   if (productLines.length > 0) {
     message += `*🍗 Productos:*\n${productLines.join('\n')}\n`;

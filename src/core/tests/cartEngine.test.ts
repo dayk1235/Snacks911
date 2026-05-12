@@ -1,49 +1,39 @@
 import { addToCart } from '../cartEngine';
 import { isValidCart } from '../context';
 
-function assert(condition: boolean, message: string) {
-  if (!condition) {
-    throw new Error(`❌ Assertion Failed: ${message}`);
-  }
-  console.log(`✅ ${message}`);
-}
+describe('cartEngine', () => {
+  test('addToCart increases total and adds item', () => {
+    const ctx: any = { cart: { items: [], total: 0 } };
+    const product = { id: '1', name: 'Boneless', price: 100 };
+    addToCart(ctx, product);
+    expect(ctx.cart.total).toBe(100);
+    expect(ctx.cart.items.length).toBe(1);
+  });
 
-async function runTests() {
-  console.log("--- Running cartEngine Tests ---");
+  test('addToCart accumulates quantity and total for same product', () => {
+    const ctx: any = { cart: { items: [], total: 0 } };
+    const product = { id: '1', name: 'Boneless', price: 100 };
+    addToCart(ctx, product);
+    addToCart(ctx, product);
+    expect(ctx.cart.items[0].qty).toBe(2);
+    expect(ctx.cart.total).toBe(200);
+  });
 
-  // Test 1: Add item increases total
-  const ctx1: any = { cart: { items: [], total: 0 } };
-  const prod1 = { id: '1', name: 'Boneless', price: 100 };
-  addToCart(ctx1, prod1);
-  assert(ctx1.cart.total === 100, "Total increases after add");
-  assert(ctx1.cart.items.length === 1, "Item added to list");
+  test('isValidCart rejects malformed cart, enabling reset', () => {
+    const ctx: any = { cart: { items: 'not-an-array', total: 0 } };
+    expect(isValidCart(ctx.cart)).toBe(false);
+    if (!isValidCart(ctx.cart)) {
+      ctx.cart = { items: [], total: 0 };
+    }
+    expect(Array.isArray(ctx.cart.items)).toBe(true);
+  });
 
-  // Test 2: Qty accumulates correctly
-  addToCart(ctx1, prod1);
-  assert(ctx1.cart.items[0].qty === 2, "Quantity accumulates for same product");
-  assert(ctx1.cart.total === 200, "Total accumulates correctly");
-
-  // Test 3: Invalid cart resets (using isValidCart logic)
-  const ctx2: any = { cart: { items: "not-an-array", total: 0 } };
-  if (!isValidCart(ctx2.cart)) {
-    ctx2.cart = { items: [], total: 0 };
-  }
-  assert(Array.isArray(ctx2.cart.items), "Invalid cart items reset to empty array");
-
-  // Test 4: Sanitization
-  const ctx3: any = { cart: { items: [], total: 0 } };
-  const prod2 = { id: 123, name: null, price: "50" }; // messy input
-  addToCart(ctx3, prod2);
-  assert(ctx3.cart.items[0].productId === "123", "Product ID sanitized to string");
-  assert(ctx3.cart.items[0].price === 50, "Price sanitized to number");
-  assert(ctx3.cart.total === 50, "Total sanitized correctly");
-
-  console.log("--- cartEngine Tests Passed ---");
-}
-
-runTests().catch(err => {
-  console.error(err);
-  if (process.env.NODE_ENV !== 'test') {
-    process.exit(1);
-  }
+  test('addToCart sanitizes messy product input', () => {
+    const ctx: any = { cart: { items: [], total: 0 } };
+    const product = { id: 123, name: null, price: '50' };
+    addToCart(ctx, product);
+    expect(ctx.cart.items[0].productId).toBe('123');
+    expect(ctx.cart.items[0].price).toBe(50);
+    expect(ctx.cart.total).toBe(50);
+  });
 });

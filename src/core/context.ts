@@ -117,7 +117,8 @@ export function updateContext(phone: string, data: Partial<UserContext>): void {
  * Clears the session's cart (keeps other data).
  */
 export function clearContext(phone: string): void {
-  const ctx = getContext(phone);
+  const cleanPhone = phone.replace(/\D/g, '');
+  const ctx = getContext(cleanPhone);
   ctx.cart.items = [];
   ctx.cart.total = 0;
 }
@@ -126,5 +127,6 @@ export function clearContext(phone: string): void {
  * Completely removes session (use on order completion).
  */
 export function deleteContext(phone: string): void {
-  sessionStore.delete(phone);
+  const cleanPhone = phone.replace(/\D/g, '');
+  sessionStore.delete(cleanPhone);
 }

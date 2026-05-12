@@ -51,11 +51,11 @@ export async function findAbandonedCarts(thresholdMinutes = 7): Promise<Abandone
  * Generates a single, personalized recovery message.
  * Rule: No multiple options, just a direct nudge.
  */
-export function getRecoveryMessage(cart: AbandonedCart): string {
+export function getRecoveryMessage(cart: AbandonedCart, businessName: string = 'SABOR 911'): string {
   const itemCount = Array.isArray((cart as any)?.items) ? (cart as any).items.length : 0;
   if (itemCount === 0) return '';
   
   const itemsText = itemCount === 1 ? 'tu producto' : `${itemCount} productos`;
   
-  return `¡Hola! Vimos que dejaste ${itemsText} en tu carrito. 🚨 Tus Snacks 911 te están esperando calientitos, ¿te los mandamos de una vez?`;
+  return `¡Hola! Vimos que dejaste ${itemsText} en tu carrito. 🚨 Tus ${businessName} te están esperando calientitos, ¿te los mandamos de una vez?`;
 }

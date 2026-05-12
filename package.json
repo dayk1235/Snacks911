@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "test:ci": "jest --no-coverage --ci --forceExit",
+    "prebuild": "npm run test:ci",
     "ai:fix-overflow": "node ai/cli.js fix-overflow",
     "ai:fix-cursor": "node ai/cli.js fix-cursor",
     "ai:add-logout": "node ai/cli.js add-logout",
@@ -18,7 +20,9 @@
     "ai:auto": "node ai/cli.js auto",
     "eval": "tsx src/tests/auto-evaluator.ts",
     "train:auto": "tsx src/core/autoTrainer.ts",
-    "dataset:review": "tsx src/scripts/dataset-review.ts"
+    "dataset:review": "tsx src/scripts/dataset-review.ts",
+    "bug:detect": "tsx src/scripts/bugDetectCli.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -46,6 +50,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",

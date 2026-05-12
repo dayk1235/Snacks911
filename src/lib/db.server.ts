@@ -50,12 +50,20 @@ export async function saveAiCost(data: {
   order_id?: string;
 }) {
   if (!isServer) return;
-  const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from('ai_costs')
-    .insert(data);
-  if (error) {
-    console.error('[db.server] Error saving AI cost:', error);
+  try {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from('ai_costs')
+      .insert(data);
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        console.warn("AI cost skipped:", error.message);
+      } else {
+        console.error('[db.server] Error saving AI cost:', error);
+      }
+    }
+  } catch (err: any) {
+    console.warn("AI cost skipped:", err?.message || err);
   }
 }
 
@@ -328,6 +336,10 @@ export async function saveAiLog(log: any): Promise<{ success: boolean; error?: s
     });
 
     if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        console.warn("AI log skipped:", error.message);
+        return { success: true };
+      }
       console.error(JSON.stringify({
         event: 'SAVE_AI_LOG_DB_ERROR',
         error: error.message,

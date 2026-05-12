@@ -135,6 +135,7 @@ export interface CoreProduct {
   badges?: string[];
   originalPrice?: number;
   stock?: number;
+  cost?: number;
 }
 
 // ─── Standardized Types ──────────────────────────────────────────────────────

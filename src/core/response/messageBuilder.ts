@@ -319,7 +319,7 @@ export function getDeliveryPrompt(
       };
     case "done":
       return {
-        text: `🔥 **Pedido confirmado.**\n\n👉 Preparando todo recién hecho. 🤤\n👉 Te avisamos en cuanto salga.\n\nGracias por Snacks 911. 🔥`,
+        text: `🔥 **Pedido confirmado.**\n\n👉 Preparando todo recién hecho. 🤤\n👉 Te avisamos en cuanto salga.\n\n¡Gracias por tu confianza! 🔥`,
       };
     default:
       return null;

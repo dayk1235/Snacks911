@@ -12,6 +12,8 @@ import { dbGetProducts } from "@/lib/db.server";
 import { filterProducts, isProductSafe } from '@/core/allergyFilter';
 import { Intent } from './types';
 import type { Product } from '@/data/products';
+import { assertSystemHealthy } from './healthGuard';
+import type { OperationRisk } from './healthGuard';
 
 export interface ConversationContext {
   messageHistory: string[];
@@ -89,3 +91,7 @@ function generateClosingMessage(intent: Intent, cartTotal: number): string {
       return `Tu pedido de $${cartTotal} te espera. ¿Listo? 🤘`;
   }
 }
+
+export type { OperationRisk };
+
+export { assertSystemHealthy };

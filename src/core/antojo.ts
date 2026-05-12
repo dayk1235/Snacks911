@@ -51,7 +51,7 @@ const ANTOJO_BY_CATEGORY: Record<string, string[]> = {
   ],
   default: [
     'Recién hecho. Caliente. Listo para ti. 🔥',
-    'Snacks 911 — rápido, bueno y sin bronca.',
+    'Sabor y calidad — rápido, bueno y sin bronca.',
     'El antojo que no puedes ignorar. 🤤',
   ],
 };

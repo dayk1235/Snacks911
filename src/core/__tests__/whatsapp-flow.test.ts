@@ -156,6 +156,17 @@ if (process.env.NODE_ENV === 'test') {
     test('completo', async () => {
       await runFlowTest(cases);
     }, 30000);
+
+    test('resolves tenant and uses business name in greeting', async () => {
+      const res = await getBotResponse({
+        message: 'hola',
+        phone: 'tenant-test-phone',
+        tenantId: 'snacks911',
+      });
+      const ctx = res.nextState as Record<string, unknown>;
+      expect(ctx.businessName).toBe('Snacks 911 Test');
+      expect(res.text).toContain('Snacks 911 Test');
+    });
   });
 } else {
   runFlowTest(cases).catch(err => {

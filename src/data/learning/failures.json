@@ -1,8 +1,43 @@
 [
   {
+    "input": "quiero boneless",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "agrega papas",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "ver carrito",
+    "expected": "VIEW_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "confirmar",
+    "expected": "CONFIRM_ORDER",
+    "got": "mixto"
+  },
+  {
+    "input": "qiero bonles",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
     "input": "bnls porfavor",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "mixto"
+  },
+  {
+    "input": "dame bonless",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "ponme unas papaz",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
   },
   {
     "input": "agregar alitas",
@@ -10,44 +45,84 @@
     "got": "SHOW_CATEGORY"
   },
   {
+    "input": "quiero unas alitas",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
     "input": "pon un combo mixto",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "ERROR"
   },
   {
     "input": "manda boneles",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "mixto"
   },
   {
     "input": "q me pones unas papas",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "mixto"
   },
   {
     "input": "añade un refresco",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "mixto"
   },
   {
     "input": "ponme salchipapas",
     "expected": "ADD_TO_CART",
-    "got": "SHOW_CATEGORY"
+    "got": "mixto"
+  },
+  {
+    "input": "quiero 1 combo",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "dame unas wings",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
   },
   {
     "input": "metele una banderilla",
     "expected": "ADD_TO_CART",
-    "got": "VIEW_CART"
+    "got": "mixto"
+  },
+  {
+    "input": "agrega bnls power",
+    "expected": "ADD_TO_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "tienes algo con papas?",
+    "expected": "SHOW_CATEGORY",
+    "got": "mixto"
   },
   {
     "input": "que tienen de papas",
     "expected": "SHOW_CATEGORY",
-    "got": "SHOW_MENU"
+    "got": "ERROR"
+  },
+  {
+    "input": "muestrame combos",
+    "expected": "SHOW_CATEGORY",
+    "got": "ERROR"
+  },
+  {
+    "input": "opciones de bebidas",
+    "expected": "SHOW_CATEGORY",
+    "got": "mixto"
   },
   {
     "input": "k tienen de proteina",
     "expected": "SHOW_CATEGORY",
     "got": "SHOW_MENU"
+  },
+  {
+    "input": "listame los combos",
+    "expected": "SHOW_CATEGORY",
+    "got": "ERROR"
   },
   {
     "input": "muestrame todo",
@@ -57,21 +132,86 @@
   {
     "input": "no se que pedir",
     "expected": "RECOMMEND",
-    "got": "VIEW_CART"
+    "got": "mixto"
+  },
+  {
+    "input": "que me recomiendas",
+    "expected": "RECOMMEND",
+    "got": "ERROR"
+  },
+  {
+    "input": "sugiereme algo",
+    "expected": "RECOMMEND",
+    "got": "ERROR"
+  },
+  {
+    "input": "que es lo mejor",
+    "expected": "RECOMMEND",
+    "got": "ERROR"
+  },
+  {
+    "input": "sorprendeme",
+    "expected": "RECOMMEND",
+    "got": "ERROR"
+  },
+  {
+    "input": "algo rico para compartir",
+    "expected": "RECOMMEND",
+    "got": "ERROR"
+  },
+  {
+    "input": "mi pedido",
+    "expected": "VIEW_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "q llevo",
+    "expected": "VIEW_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "que tengo en el carrito",
+    "expected": "VIEW_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "ver orden",
+    "expected": "VIEW_CART",
+    "got": "mixto"
+  },
+  {
+    "input": "cuanto va mi pedido",
+    "expected": "VIEW_CART",
+    "got": "mixto"
   },
   {
     "input": "si",
     "expected": "CONFIRM_ORDER",
-    "got": "RECOMMEND"
+    "got": "ERROR"
+  },
+  {
+    "input": "listo, mandalo",
+    "expected": "CONFIRM_ORDER",
+    "got": "mixto"
   },
   {
     "input": "ya confirmame",
     "expected": "CONFIRM_ORDER",
-    "got": "VIEW_CART"
+    "got": "mixto"
+  },
+  {
+    "input": "ok manda el pedido",
+    "expected": "CONFIRM_ORDER",
+    "got": "mixto"
+  },
+  {
+    "input": "confirmo",
+    "expected": "CONFIRM_ORDER",
+    "got": "mixto"
   },
   {
     "input": "dale",
     "expected": "CONFIRM_ORDER",
-    "got": "RECOMMEND"
+    "got": "ERROR"
   }
 ]

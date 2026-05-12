@@ -91,10 +91,13 @@ function finalizeOrder(next: ConversationState) {
   next.stage = "post_venta";
   next.orderTimestamp = Date.now();
 
+  const bizName = (next as any).businessName || 'SABOR 911';
+  const waNum = (next as any).whatsappNumber || '525584507458';
+
   if (next.cart.items.length > 0 && next.customerName && next.customerAddress) {
     const items = next.cart.items.map((i) => `• ${i.name} (x${i.quantity})`).join("\n");
-    const msg = `🔥 *Nuevo Pedido Snacks 911*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cart.total}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || "N/A"}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
-    next.whatsappUrl = `https://wa.me/525584507458?text=${encodeURIComponent(msg)}`;
+    const msg = `🔥 *Nuevo Pedido ${bizName.toUpperCase()}*\n\n🧾 Pedido:\n${items}\n\n💰 Total: $${next.cart.total}\n\n📍 Entrega:\n• Nombre: ${next.customerName}\n• Dirección: ${next.customerAddress}\n• Referencia: ${next.customerReference || "N/A"}\n• Pago: ${next.customerPayment}\n\n👉 Tiempo estimado: 20-30 min`;
+    next.whatsappUrl = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
   }
 }
 

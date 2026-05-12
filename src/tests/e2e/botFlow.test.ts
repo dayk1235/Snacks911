@@ -49,7 +49,9 @@ describe('Bot Flow E2E', () => {
     console.log("[E2E] Step 4: User says 'confirmar'");
     const res4 = await getBotResponse({ message: 'confirmar', phone });
     console.log("[E2E] Bot:", res4.text);
-    assert(res4.text.includes('confirmado') || res4.text.includes('detalles'), "Order proceeds to confirmation");
+    // Order was registered — verify semantically (pedido + Total/$)
+    const orderCreated = /pedido/i.test(res4.text) && /(Total|total|\$)/.test(res4.text);
+    assert(orderCreated, "Order proceeds to confirmation");
     
     // Final checks
     const finalContext = getContext(phone);

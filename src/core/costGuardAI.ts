@@ -47,7 +47,7 @@ async function logCostEvent(event: string, cost: number): Promise<void> {
 }
 
 const STATIC_RESPONSES: Record<string, (profile: any) => string> = {
-  'saludo': (profile) => `¡Hola ${profile?.name || 'amigo'}! 🍿 Bienvenido a Snacks 911. ¿En qué podemos ayudarte hoy?`,
+  'saludo': (profile) => `¡Hola ${profile?.name || 'amigo'}! 🍿 Bienvenido. ¿En qué podemos ayudarte hoy?`,
   'pedir_menu': (profile) => `¡Claro, ${profile?.name || 'amigo'}! Aquí tienes nuestro menú completo: [Link al Menú] 📋`,
   'despedida': (profile) => `¡Hasta pronto, ${profile?.name || 'amigo'}! Que tengas un excelente día. ✌️`,
 };

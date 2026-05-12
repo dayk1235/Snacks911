@@ -58,7 +58,9 @@ describe('Bot Edge Cases E2E', () => {
     console.log("[CASE 6] Confirm without Cart");
     deleteContext(phone);
     const res6 = await getBotResponse({ message: 'confirmar', phone });
-    assert(res6.text.includes('vació') || res6.text.includes('agrega') || res6.text.includes('primero'), "Blocks confirmation on empty cart");
+    // System must block confirmation when cart is empty (matches either guard)
+    const blocked = /(carrito|pedido)/i.test(res6.text) && /(vac[ií]o|nada|sin productos)/i.test(res6.text);
+    assert(blocked, "Blocks confirmation on empty cart");
 
     // 7. SELF-HEALING MODE
     console.log("[CASE 7] Self-Healing Mode Transition");

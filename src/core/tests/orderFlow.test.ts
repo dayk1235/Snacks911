@@ -1,34 +1,50 @@
 import { resolveNextState } from '../orderFlow';
 
-function assert(condition: boolean, message: string) {
-  if (!condition) {
-    throw new Error(`❌ Assertion Failed: ${message}`);
-  }
-  console.log(`✅ ${message}`);
-}
+describe('orderFlow', () => {
+  test('IDLE transitions to BROWSING on SHOW_MENU', () => {
+    const next = resolveNextState('IDLE', 'SHOW_MENU');
+    expect(next).toBe('BROWSING');
+  });
 
-async function runTests() {
-  console.log("--- Running orderFlow Tests ---");
+  test('BROWSING transitions to BUILDING_CART on ADD_TO_CART with product match', () => {
+    const next = resolveNextState('BROWSING', 'ADD_TO_CART', {
+      state: 'BROWSING',
+      hasProductMatch: true,
+    });
+    expect(next).toBe('BUILDING_CART');
+  });
 
-  // Test 1: Valid transition inicio -> explorando
-  const s1 = resolveNextState('inicio', 'explorar');
-  assert(s1 === 'explorando', "inicio -> explorando via explorar");
+  test('BUILDING_CART transitions to REVIEWING on VIEW_CART with items', () => {
+    const next = resolveNextState('BUILDING_CART', 'VIEW_CART', {
+      state: 'BUILDING_CART',
+      cartItems: 1,
+    });
+    expect(next).toBe('REVIEWING');
+  });
 
-  // Test 2: Valid transition explorando -> ordenando
-  const s2 = resolveNextState('explorando', 'confirmar');
-  assert(s2 === 'ordenando', "explorando -> ordenando via confirmar");
+  test('CONFIRMING transitions to AWAITING_PAYMENT on CONFIRM_ORDER', () => {
+    const next = resolveNextState('CONFIRMING', 'CONFIRM_ORDER', {
+      state: 'CONFIRMING',
+      cartItems: 1,
+    });
+    expect(next).toBe('AWAITING_PAYMENT');
+  });
 
-  // Test 3: Invalid transition blocks (stays in same state or default)
-  // Note: orderFlow logic depends on implementation, usually unknown intent doesn't move stage
-  const s3 = resolveNextState('inicio', 'UNKNOWN' as any);
-  assert(s3 === 'inicio', "UNKNOWN intent keeps state at inicio");
+  test('unknown intent leaves state unchanged', () => {
+    const next = resolveNextState('IDLE', 'UNKNOWN_INTENT');
+    expect(next).toBe('IDLE');
+  });
 
-  console.log("--- orderFlow Tests Passed ---");
-}
+  test('CONFIRM_ORDER with empty cart stays in current state', () => {
+    const next = resolveNextState('IDLE', 'CONFIRM_ORDER');
+    expect(next).toBe('IDLE');
+  });
 
-runTests().catch(err => {
-  console.error(err);
-  if (process.env.NODE_ENV !== 'test') {
-    process.exit(1);
-  }
+  test('ADD_TO_CART without product match stays in current state', () => {
+    const next = resolveNextState('BROWSING', 'ADD_TO_CART', {
+      state: 'BROWSING',
+      hasProductMatch: false,
+    });
+    expect(next).toBe('BROWSING');
+  });
 });
