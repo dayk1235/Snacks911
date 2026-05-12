@@ -59,7 +59,7 @@ export async function processTransaction(
   businessName: string
 ): Promise<AgentResponse> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-1.5-flash',
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: agentSchema,
@@ -99,7 +99,12 @@ ${cartStr}
 
   try {
     const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const response = await result.response.text();
+    
+    if (!response || response.trim() === '') {
+      throw new Error('Empty response from AI model');
+    }
+
     const parsed = JSON.parse(response) as AgentResponse;
     return parsed;
   } catch (error) {

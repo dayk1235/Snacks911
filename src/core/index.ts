@@ -35,6 +35,7 @@ export type {
 export { detectIntent } from './intentDetector';
 
 export { INITIAL_STATE } from './types';
+export { getBotResponse } from './botEngine';
 
 export { filterProducts, isProductSafe } from './allergyFilter';
 
