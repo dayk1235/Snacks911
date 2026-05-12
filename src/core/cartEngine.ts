@@ -14,6 +14,7 @@
 import type { CartItem, CartState, CoreProduct } from './types';
 import type { UserContext } from './context';
 import { isDuplicateAdd, trackProductAdd } from './context';
+import { eventBus } from './eventBus';
 
 /**
  * Create empty cart state.
@@ -237,6 +238,15 @@ export function addToCart(context: any, product: any) {
 
   context.cart.total += price;
   trackProductAdd(context, productId);
+
+  // Emit event for Shadow Engine
+  eventBus.emit('CART_UPDATED', {
+    tenantId: context.tenantId || 'default',
+    userId: context.phone,
+    cart: context.cart.items,
+    total: context.cart.total,
+    timestamp: Date.now()
+  });
 }
 
 export function getCartSummary(context: any) {

@@ -10,6 +10,13 @@ import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
 import { getBotResponse } from '@/core/botEngine';
 import { detectIntent } from '@/core';
 import { getDBCircuitHealth, resetDBCircuits } from '@/lib/db.server';
+import { eventBus } from '@/core/eventBus';
+import { initShadowEngine } from '@/core/ai/shadowEngine';
+import { initCommander } from '@/lib/commander';
+import { updateContext, getContext } from '@/core/context';
+
+initShadowEngine();
+initCommander();
 
 /* =========================
    CONFIG
@@ -114,6 +121,14 @@ export async function POST(req: NextRequest) {
 
           console.log('[WA] Processing:', { from, text: userInput, tenant: tenant.business_name });
           
+          // Emit raw user message event
+          eventBus.emit('USER_MESSAGE', {
+            tenantId: tenant.id,
+            userId: from,
+            message: userInput,
+            timestamp: Date.now()
+          });
+
           // --- Debug Admin ---
           const adminPhone = process.env.ADMIN_WHATSAPP_PHONE;
           console.log('[WA DEBUG] Admin Check:', { incoming: from, expected: adminPhone, match: from === adminPhone });
@@ -125,6 +140,15 @@ export async function POST(req: NextRequest) {
 
           // 2. Detect Intent
           const nlu = detectIntent(userInput);
+          
+          updateContext(from, { lastUserMessage: userInput, tenantId: tenant.id });
+
+          // 3. Check if bot is paused (Human intervened)
+          const ctx = getContext(from);
+          if (ctx.botPaused) {
+            console.log(`[WA] Bot paused for ${from}, skipping AI response.`);
+            continue;
+          }
 
           // 4. Execute brain (Multi-tenant aware)
           const output = await getBotResponse({
@@ -149,6 +173,15 @@ export async function POST(req: NextRequest) {
 
           // 6. Send Response
           await sendWhatsAppMessage(from, output.text, tenant.whatsapp_token, metadata.phone_number_id);
+
+          // Emit bot response event
+          eventBus.emit('BOT_RESPONSE', {
+            tenantId: tenant.id,
+            userId: from,
+            response: output.text,
+            intentDetected: nlu.intent,
+            timestamp: Date.now()
+          });
         }
       }
     }
@@ -183,7 +216,38 @@ async function handleAdminCommand(phone: string, text: string, token?: string, p
   }
 
   if (command === 'ADMIN HELP' || command === 'HELP ADMIN') {
-    await sendWhatsAppMessage(phone, "🛠 *Admin Commands:*\n- DB STATUS\n- DB RESET\n- ADMIN HELP");
+    await sendWhatsAppMessage(phone, "🛠 *Admin Commands:*\n- DB STATUS\n- DB RESET\n- TOMAR <numero>\n- CUPON10 <numero>\n- ADMIN HELP", token, phoneNumberId);
+    return true;
+  }
+
+  // --- Commander Shadow Interventions ---
+  if (command.startsWith('TOMAR ')) {
+    const targetPhone = command.replace('TOMAR ', '').trim();
+    if (!targetPhone) return false;
+    
+    // Pause bot for this user
+    updateContext(targetPhone, { botPaused: true });
+    await sendWhatsAppMessage(phone, `✅ *Modo Manual Activado*\nLa IA ha sido pausada para ${targetPhone}. Ahora puedes responderle directamente desde la plataforma (o el bot ya no le contestará si le escribes tú). Para reactivar, envía: SOLTAR ${targetPhone}`, token, phoneNumberId);
+    return true;
+  }
+
+  if (command.startsWith('SOLTAR ')) {
+    const targetPhone = command.replace('SOLTAR ', '').trim();
+    if (!targetPhone) return false;
+    
+    // Resume bot for this user
+    updateContext(targetPhone, { botPaused: false });
+    await sendWhatsAppMessage(phone, `🤖 *IA Reactivada*\nEl bot vuelve a tomar el control para ${targetPhone}.`, token, phoneNumberId);
+    return true;
+  }
+
+  if (command.startsWith('CUPON10 ')) {
+    const targetPhone = command.replace('CUPON10 ', '').trim();
+    if (!targetPhone) return false;
+    
+    // Auto-inject a discount message
+    await sendWhatsAppMessage(targetPhone, "🎁 *¡Sorpresa!*\nMi supervisor Héctor me acaba de autorizar a darte un *10% de descuento* si confirmas tu pedido ahora mismo. ¿Te animas? 😉", token, phoneNumberId);
+    await sendWhatsAppMessage(phone, `✅ *Cupón Enviado* a ${targetPhone}.`, token, phoneNumberId);
     return true;
   }
 

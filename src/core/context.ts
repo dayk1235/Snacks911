@@ -14,6 +14,7 @@ export interface UserContext extends CoreUserContext {
   businessName: string;
   lastIntent?: string;
   lastCategory?: string;
+  lastUserMessage?: string;
   constraints?: string[];
   lastProductsShown?: string[];
   lastInteraction: number;
@@ -44,6 +45,8 @@ export interface UserContext extends CoreUserContext {
   appliedReferralCode?: string;
   /** Flag to track if we've asked for a referral code in this session */
   referralPromptShown?: boolean;
+  /** Flag to pause AI responses when admin takes over */
+  botPaused?: boolean;
 }
 
 const MAX_ACTION_IDS = 50;
