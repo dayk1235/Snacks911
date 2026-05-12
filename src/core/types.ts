@@ -111,6 +111,12 @@ export interface QuickAction {
   price?: number;
 }
 
+export interface Action {
+  label: string;
+  type: string;
+  payload?: any;
+}
+
 export interface ChatMessage {
   id: number;
   text: string;

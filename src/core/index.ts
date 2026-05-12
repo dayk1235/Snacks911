@@ -15,6 +15,7 @@ export type {
   DeliveryStep,
   ConversationState,
   QuickAction,
+  Action,
   ChatMessage,
   CoreProduct,
   ProductRefs,

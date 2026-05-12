@@ -146,7 +146,7 @@ function classifyError(error: unknown): string {
 //   4. validateResult    — output safety validation (pure)
 //   5. buildResponse     — final response assembly (pure)
 
-import type { Intent } from './types';
+import type { Intent, Action } from './types';
 
 // ─── Pipeline Types ──────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ interface SkillResult {
   nextState: any;
   cart: any;
   type: string;
-  actions?: any;
+  actions?: Action[];
 }
 
 interface ValidationResult {
@@ -292,6 +292,10 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: '🔥 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+        ],
       };
     }
 
@@ -301,6 +305,9 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+        ],
       };
     }
 
@@ -310,6 +317,10 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: '🔥 Ver combos', type: 'show_category', payload: { category: 'combos' } },
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+        ],
       };
     }
 
@@ -320,28 +331,44 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: '✅ Sí, repite pedido', type: 'repeat_order', payload: { action: 'confirm' } },
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+        ],
       };
     }
 
     case 'scarcity': {
       const product = input.inventory?.lowStock?.[0];
       const prodName = product ? product.name : "nuestras especialidades";
+      const prodId = product?.id;
+      const prodPrice = product?.price;
       return {
         text: `¡Hola! 🏃‍♂️ Date prisa porque nos quedan los últimos ${prodName}. ¿Te agrego uno a tu orden?`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: `🔥 Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+        ],
       };
     }
 
     case 'upsell': {
       const product = input.inventory?.highStock?.[0] || input.safeProducts[0];
       const prodName = product ? product.name : "algo delicioso";
+      const prodId = product?.id;
+      const prodPrice = product?.price;
       return {
         text: `¡Excelente elección! Para acompañar, te recomiendo especialmente nuestro ${prodName}. ¿Lo sumamos?`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
+          { label: 'No, gracias', type: 'dismiss', payload: null },
+        ],
       };
     }
 
@@ -349,11 +376,17 @@ async function runSkill(
       const combos = input.safeProducts.filter(p => p.category?.toLowerCase() === 'combos' || p.name.toLowerCase().includes('combo'));
       const combo = combos.length > 0 ? combos[0] : null;
       const comboName = combo ? combo.name : "uno de nuestros Combos Especiales";
+      const comboId = combo?.id;
+      const comboPrice = combo?.price;
       return {
         text: `Te sugiero ${comboName}, es una excelente opción. ¿Qué te parece?`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: `🔥 Quiero ${comboName}`, type: 'add_to_cart', payload: { productId: comboId, name: comboName, price: comboPrice } },
+          { label: '📋 Ver todos los combos', type: 'show_category', payload: { category: 'combos' } },
+        ],
       };
     }
 
@@ -361,11 +394,17 @@ async function runSkill(
       const sorted = [...input.safeProducts].filter(p => p.stock !== 0).sort((a, b) => (a.price || 0) - (b.price || 0));
       const cheapest = sorted.length > 0 ? sorted[0] : null;
       const prodName = cheapest ? cheapest.name : "una opción económica";
+      const prodId = cheapest?.id;
+      const prodPrice = cheapest?.price;
       return {
         text: `Si buscas algo más económico, te recomiendo ${prodName}. ¡Es súper rico y cuida tu bolsillo!`,
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: `✅ Agregar ${prodName}`, type: 'add_to_cart', payload: { productId: prodId, name: prodName, price: prodPrice } },
+          { label: '📋 Ver todo el menú', type: 'navigate', payload: { target: 'menu' } },
+        ],
       };
     }
 
@@ -391,6 +430,10 @@ async function runSkill(
         nextState: ctx,
         cart: ctx.cart || emptyCart,
         type: 'text',
+        actions: [
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+          { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+        ],
       };
     }
     case 'productFlow': {
@@ -476,11 +519,23 @@ async function runSkill(
           responseText += `\n¿Quieres algo más?`;
         }
 
+        const productFlowActions: Action[] = [
+          { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+        ];
+        if (upsellProduct) {
+          productFlowActions.unshift({
+            label: `➕ Agregar ${upsellProduct.name}`,
+            type: 'add_to_cart',
+            payload: { productId: upsellProduct.id, name: upsellProduct.name, price: upsellProduct.price },
+          });
+        }
+
         return {
           text: responseText,
           nextState: nextState,
           cart: nextState.cart,
-          type: 'text'
+          type: 'text',
+          actions: productFlowActions,
         };
       }
 
@@ -716,6 +771,10 @@ function fallbackResponse(): any {
     intent: 'ERROR' as Intent,
     cart: { items: [], total: 0 },
     type: 'text',
+    actions: [
+      { label: '📋 Ver menú', type: 'navigate', payload: { target: 'menu' } },
+      { label: '💡 Recomiéndame algo', type: 'recommend', payload: { target: 'best_seller' } },
+    ],
     nextState: null,
   };
 }
