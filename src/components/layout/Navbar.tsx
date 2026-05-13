@@ -145,26 +145,6 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             Menú Completo
           </a>
 
-          {/* SaaS */}
-          <a
-            href="/saas"
-            className="nav-link"
-            style={{
-              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
-              textDecoration: 'none', fontSize: '0.82rem',
-              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
-              transition: 'color 0.2s ease',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '12px',
-              display: 'flex', alignItems: 'center', gap: '0.35rem',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Para Negocios
-          </a>
-
           {/* Contacto */}
           <a
             href="#contact"
@@ -295,11 +275,6 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#FF7040', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             Menú Completo
-          </a>
-          <a href="/saas" onClick={() => setMenuOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#ccc', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Para Negocios
           </a>
           <a href="#contact" onClick={() => setMenuOpen(false)}
             style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#ccc', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>

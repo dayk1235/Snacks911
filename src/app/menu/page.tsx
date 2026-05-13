@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { products as staticProducts, categories, getProductImage } from '@/data/products';
 import type { Product } from '@/data/products';
 import type { CartItem } from '@/types';
@@ -13,6 +14,8 @@ import { AdminStore } from '@/lib/adminStore';
 import { analyzeSales } from '@/lib/salesOptimizer';
 import { useCartStore } from '@/lib/cartStore';
 import { Button } from '@/components/ui/Button';
+import { PremiumButton, AnimatedBackground } from '@/components/ui/DesignSystem';
+import { cn } from '@/lib/utils/core';
 
 import ProductCard from '@/components/common/ProductCard';
 import ProductCustomizerModal from '@/components/modals/ProductCustomizerModal';
@@ -342,8 +345,9 @@ export default function MenuPage() {
 
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080808', fontFamily: 'var(--font-body)' }}>
+    <div className="min-h-screen bg-bg-deep font-body selection:bg-accent/30">
       <CustomCursor />
+      <AnimatedBackground />
 
       {/* ── Customizer Modal ── */}
       <ProductCustomizerModal
@@ -352,420 +356,157 @@ export default function MenuPage() {
         onConfirm={handleCustomizerConfirm}
       />
 
-      {/* ── Sticky header ── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        background: 'rgba(8,8,8,0.92)', backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '0 1.5rem', height: '64px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <Link href="/" style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            color: '#555', textDecoration: 'none', fontSize: '0.82rem',
-            fontWeight: 600, letterSpacing: '0.04em', transition: 'color 0.18s',
-          }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4500'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#555'}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Inicio
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-[100] h-16 glass-dark border-b border-white/5 px-4 md:px-8 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2 text-foreground-muted hover:text-accent transition-colors text-sm font-bold uppercase tracking-widest group">
+            <motion.div whileHover={{ x: -4 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </motion.div>
+            <span className="hidden sm:inline">Inicio</span>
           </Link>
-          <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', letterSpacing: '0.05em', color: '#fff' }}>
-            SNACKS <span style={{ color: '#FF4500' }}>911</span>
+          <div className="w-px h-5 bg-white/10 hidden sm:block" />
+          <div className="font-display text-2xl tracking-tight text-white">
+            SNACKS <span className="text-accent">911</span>
           </div>
         </div>
 
-        <button
+        <PremiumButton
           onClick={() => setCartOpen(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            background: totalItems > 0 ? 'linear-gradient(135deg, #FF4500, #FF6A00)' : 'rgba(255,255,255,0.06)',
-            border: 'none', borderRadius: '100px',
-            padding: '0.55rem 1.25rem',
-            color: '#fff', fontSize: '0.85rem', fontWeight: 700,
-            cursor: 'pointer', transition: 'all 0.2s ease',
-            boxShadow: totalItems > 0 ? '0 0 24px rgba(255,69,0,0.3)' : 'none',
-          }}
+          variant={totalItems > 0 ? 'primary' : 'glass'}
+          className="rounded-full h-11 px-6"
         >
-          🛒
-          {totalItems > 0 && <span style={{ minWidth: '18px', textAlign: 'center' }}>{totalItems}</span>}
-          {totalItems > 0 && (
-            <span style={{ borderLeft: '1px solid rgba(255,255,255,0.3)', paddingLeft: '0.6rem' }}>
-              ${totalPrice}
-            </span>
-          )}
-        </button>
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🛒</span>
+            {totalItems > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="font-black">{totalItems}</span>
+                <div className="w-px h-4 bg-white/20" />
+                <span className="font-display text-lg">${totalPrice}</span>
+              </div>
+            )}
+          </div>
+        </PremiumButton>
       </header>
 
-      {/* ── Hero strip ── */}
-      <div style={{
-        textAlign: 'center', padding: '4rem 1.5rem 3rem',
-        background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,69,0,0.1) 0%, transparent 70%)',
-      }}>
-        <span style={{
-          display: 'block', color: '#FF4500', fontWeight: 700,
-          fontSize: '0.75rem', letterSpacing: '0.18em',
-          textTransform: 'uppercase', marginBottom: '0.75rem',
-        }}>🍗 Menú Completo</span>
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-          fontWeight: 400, color: '#fff', letterSpacing: '0.04em',
-          margin: '0 0 1rem', lineHeight: 1,
-        }}>
-          ¿QUÉ SE TE ANTOJA?
+      {/* ── Hero Section ── */}
+      <motion.section 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-20 px-4 max-w-4xl mx-auto"
+      >
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="hero-dot" />
+          <span className="text-accent font-black uppercase tracking-[0.3em] text-[10px]">Menú Gourmet</span>
+        </div>
+        <h1 className="font-display text-6xl md:text-8xl text-white mb-6 leading-none">
+          ¿QUÉ SE TE <br className="sm:hidden" /> <span className="fire-text">ANTOJA?</span>
         </h1>
-        <p style={{ color: '#555', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto' }}>
-          Escoge tus favoritos, personaliza tu orden y pide directo por WhatsApp.
+        <p className="text-foreground-muted text-lg max-w-lg mx-auto leading-relaxed">
+          Selección artesanal de snacks premium. <br />
+          Personaliza tu orden y recibe directo en tu puerta.
         </p>
-      </div>
+      </motion.section>
 
-      {/* ── Category filters ── */}
-      <div style={{
-        display: 'flex', gap: '0.6rem', justifyContent: 'center',
-        flexWrap: 'wrap', padding: '0 1.5rem 2rem',
-      }}>
-        {categories.filter(c => c.id !== 'extras').map(cat => {
-          const active = activeCategory === cat.id;
-          return (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} style={{
-              padding: '0.55rem 1.4rem', borderRadius: '50px',
-              fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 600,
-              cursor: 'pointer', letterSpacing: '0.02em', transition: 'all 0.15s ease',
-              background: active ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'rgba(255,255,255,0.05)',
-              border: active ? 'none' : '1px solid rgba(255,255,255,0.08)',
-              color: active ? '#fff' : '#777',
-              boxShadow: active ? '0 4px 18px rgba(255,69,0,0.3)' : 'none',
-              transform: active ? 'translateY(-1px)' : 'none',
-            }}>
-              {cat.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Sectioned Menu (shown when "Todos") ── */}
-      {activeCategory === 'todos' && (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem 7rem' }}>
-
-          {/* Section 1: 🔥 Combos */}
-          <section style={{ marginBottom: '2.5rem' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              marginBottom: '1rem', padding: '0 0.5rem',
-            }}>
-              <h2 style={{
-                fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                whiteSpace: 'nowrap',
-              }}>
-                🔥 Combos
-              </h2>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-            <div ref={gridRef} style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '1rem',
-            }}>
-              {combos.map(product => (
-                <div key={product.id}>
-                  <ProductCard
-                    product={product}
-                    onAddToCart={addToCart}
-                    onCustomize={handleCustomize}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Section 2: 🍗 Alitas & Boneless */}
-          {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'proteina');
-            if (sectionItems.length === 0) return null;
+      {/* ── Category Tabs ── */}
+      <div className="sticky top-16 z-50 py-6 glass-dark border-b border-white/5 mb-8">
+        <div className="flex gap-2 justify-center px-4 overflow-x-auto no-scrollbar">
+          {categories.filter(c => c.id !== 'extras').map(cat => {
+            const active = activeCategory === cat.id;
             return (
-              <section style={{ marginBottom: '2.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  marginBottom: '1rem', padding: '0 0.5rem',
-                }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    🍗 Alitas & Boneless
-                  </h2>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '0.85rem',
-                }}>
-                  {sectionItems.map(product => (
-                    <div key={product.id}>
-                      <ProductCard
-                        product={product}
-                        onAddToCart={addToCart}
-                        onCustomize={handleCustomize}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-
-          {/* Section 4: 🍟 Papas */}
-          {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'papas');
-            if (sectionItems.length === 0) return null;
-            return (
-              <section style={{ marginBottom: '2.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  marginBottom: '1rem', padding: '0 0.5rem',
-                }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    🍟 Papas
-                  </h2>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '0.85rem',
-                }}>
-                  {sectionItems.map(product => (
-                    <div key={product.id}>
-                      <ProductCard
-                        product={product}
-                        onAddToCart={addToCart}
-                        onCustomize={handleCustomize}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-
-          {/* Section 5: 🌭 Banderillas */}
-          {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'banderillas');
-            if (sectionItems.length === 0) return null;
-            return (
-              <section style={{ marginBottom: '2.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  marginBottom: '1rem', padding: '0 0.5rem',
-                }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    🌭 Banderillas
-                  </h2>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '0.85rem',
-                }}>
-                  {sectionItems.map(product => (
-                    <div key={product.id}>
-                      <ProductCard
-                        product={product}
-                        onAddToCart={addToCart}
-                        onCustomize={handleCustomize}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-
-          {/* Section 6: 🍫 Postres */}
-          {(() => {
-            const sectionItems = alaCarteAll.filter(p => p.category === 'postres');
-            if (sectionItems.length === 0) return null;
-            return (
-              <section style={{ marginBottom: '2.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  marginBottom: '1rem', padding: '0 0.5rem',
-                }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-                    fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    🍫 Postres
-                  </h2>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: '0.85rem',
-                }}>
-                  {sectionItems.map(product => (
-                    <div key={product.id}>
-                      <ProductCard
-                        product={product}
-                        onAddToCart={addToCart}
-                        onCustomize={handleCustomize}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-
-          {/* Show more / less toggle */}
-          {alaCarteAll.length > 8 && (
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <button
-                onClick={() => setShowAllAlaCarte(!showAllAlaCarte)}
-                style={{
-                  padding: '0.6rem 1.5rem',
-                  background: showAllAlaCarte ? 'linear-gradient(135deg, #FF4500, #FF6500)' : 'none',
-                  border: `1px solid ${showAllAlaCarte ? 'transparent' : 'rgba(255,69,0,0.3)'}`,
-                  borderRadius: '50px',
-                  color: showAllAlaCarte ? '#fff' : '#FF4500',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
+              <PremiumButton
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                variant={active ? 'primary' : 'glass'}
+                className={cn(
+                  "rounded-full whitespace-nowrap px-6 py-2 h-auto text-xs uppercase tracking-widest font-black",
+                  !active && "text-foreground-muted hover:text-white"
+                )}
               >
-                {showAllAlaCarte ? '↑ Ver menos' : `↓ Ver todo (${alaCarteAll.length})`}
-              </button>
-            </div>
-          )}
+                {cat.label}
+              </PremiumButton>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Section 7: ➕ Agrega más */}
-          {extras.length > 0 && (
+      <main className="max-w-7xl mx-auto px-4 pb-32">
+        {activeCategory === 'todos' ? (
+          <div className="space-y-20">
+            {/* ── Combos Section (Featured) ── */}
             <section>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                marginBottom: '1rem', padding: '0 0.5rem',
-              }}>
-                <h2 style={{
-                  fontFamily: 'var(--font-display)', fontSize: 'clamp(1.2rem, 3vw, 1.6rem)',
-                  fontWeight: 400, color: '#fff', margin: 0, letterSpacing: '0.03em',
-                  whiteSpace: 'nowrap',
-                }}>
-                  ➕ Agrega más
-                </h2>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="font-display text-4xl text-white tracking-tight">🔥 COMBOS</h2>
+                <div className="flex-1 h-px bg-white/5" />
               </div>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '0.75rem',
-              }}>
-                {extras.map(product => (
-                  <div key={product.id}>
-                    <ProductCard
-                      product={product}
-                      onAddToCart={addToCart}
-                      onCustomize={handleCustomize}
-                    />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {combos.map((p, idx) => (
+                  <ProductCard key={p.id} product={p} onAddToCart={addToCart} onCustomize={handleCustomize} />
                 ))}
               </div>
             </section>
-          )}
-        </div>
-      )}
 
-      {/* ── Filtered view (when a specific tab is selected) ── */}
-      {activeCategory !== 'todos' && (
-        <div ref={gridRef} style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1.5rem',
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 1.5rem 4rem',
-        }}>
-          {filtered.map(product => (
-            <div key={product.id}>
-              <ProductCard
-                product={product}
-                onAddToCart={addToCart}
-                onCustomize={handleCustomize}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+            {/* ── Proteina Section ── */}
+            <section>
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="font-display text-4xl text-white tracking-tight">🍗 ALITAS & BONELESS</h2>
+                <div className="flex-1 h-px bg-white/5" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {alaCarteAll.filter(p => p.category === 'proteina').map((p, idx) => (
+                  <ProductCard key={p.id} product={p} onAddToCart={addToCart} onCustomize={handleCustomize} />
+                ))}
+              </div>
+            </section>
 
-      {/* ── Sticky cart bar (mobile-first, always visible) ── */}
-      {totalItems > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          padding: '0.75rem 1rem',
-          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
-          background: 'rgba(14,14,14,0.95)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(255,69,0,0.2)',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.5)',
-        }}>
-          <button
-            onClick={() => setCartOpen(true)}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              padding: '0.9rem',
-              background: 'linear-gradient(135deg, #FF4500, #FF6500)',
-              border: 'none',
-              borderRadius: '12px',
-              color: '#fff',
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.95rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(255,69,0,0.3)',
-            }}
+            {/* ── Papas Section ── */}
+            <section>
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="font-display text-4xl text-white tracking-tight">🍟 PAPAS</h2>
+                <div className="flex-1 h-px bg-white/5" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {alaCarteAll.filter(p => p.category === 'papas').map((p, idx) => (
+                  <ProductCard key={p.id} product={p} onAddToCart={addToCart} onCustomize={handleCustomize} />
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filtered.map((p) => (
+              <ProductCard key={p.id} product={p} onAddToCart={addToCart} onCustomize={handleCustomize} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* ── Floating Cart Bar (Mobile) ── */}
+      <AnimatePresence>
+        {totalItems > 0 && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-6 inset-x-4 z-[110] md:hidden"
           >
-            🛒 Ver carrito
-            <span style={{
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '6px',
-              padding: '0.1rem 0.55rem',
-              fontSize: '0.85rem',
-            }}>
-              {totalItems}
-            </span>
-            <span style={{ opacity: 0.6 }}>·</span>
-            <span>${totalPrice}</span>
-          </button>
-        </div>
-      )}
+            <PremiumButton
+              onClick={() => setCartOpen(true)}
+              className="w-full h-16 rounded-2xl shadow-2xl shadow-accent/20 flex justify-between items-center px-6"
+            >
+              <div className="flex items-center gap-3">
+                <span className="bg-white/20 px-3 py-1 rounded-lg text-xs font-black">
+                  {totalItems}
+                </span>
+                <span className="font-bold">VER CARRITO</span>
+              </div>
+              <span className="font-display text-2xl">${totalPrice}</span>
+            </PremiumButton>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Cart
         isOpen={cartOpen}
@@ -778,7 +519,6 @@ export default function MenuPage() {
         onAddProduct={(p) => addToCart(p)}
       />
 
-      {/* Upsell popup */}
       {showUpsell && lastAdded && (
         <UpsellPopup
           product={lastAdded}
@@ -787,7 +527,6 @@ export default function MenuPage() {
         />
       )}
 
-      {/* Product-level upsell (combo upgrade) */}
       {showProductUpsell && (
         <UpsellModal
           product={showProductUpsell}

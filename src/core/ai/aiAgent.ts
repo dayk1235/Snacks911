@@ -1,13 +1,15 @@
-import { GoogleGenerativeAI, Schema, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getKnowledgeContext } from "@/lib/ai/obsidianSync";
 
 /**
  * core/ai/aiAgent.ts
  * 
- * El nuevo cerebro transaccional. Utiliza Structured Outputs de Gemini
- * para leer el contexto y decidir qué hacer con el carrito y qué responder.
+ * Cerebro transaccional. Usa Gemini 2.5 Flash Lite con systemInstruction
+ * y JSON parsing robusto (regex + auto-corrección).
  */
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const MODEL = 'gemini-2.5-flash-lite';
 
 export interface AgentAction {
   type: 'ADD_TO_CART' | 'REMOVE_FROM_CART' | 'CHECKOUT' | 'TALK' | 'CLEAR_CART';
@@ -20,37 +22,34 @@ export interface AgentResponse {
   response_text: string;
 }
 
-const agentSchema: Schema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    actions: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          type: { 
-            type: SchemaType.STRING, 
-            description: "Enum: ADD_TO_CART, REMOVE_FROM_CART, CHECKOUT, TALK, CLEAR_CART" 
-          },
-          productId: { 
-            type: SchemaType.STRING, 
-            description: "ID of the product (required for ADD/REMOVE)" 
-          },
-          quantity: { 
-            type: SchemaType.INTEGER, 
-            description: "Number of items (default 1)" 
-          }
-        },
-        required: ["type"]
-      }
-    },
-    response_text: {
-      type: SchemaType.STRING,
-      description: "El mensaje de texto en español mexicano que se enviará al cliente. Muy amigable y vendedor. Si agregaste algo al carrito, confírmalo aquí. Nunca digas IDs."
+const SYSTEM_INSTRUCTION = `
+Eres el agente de ventas estrella de Snacks 911. Tu objetivo es tomar pedidos de comida rápido y de forma conversacional.
+
+FORMATO OBLIGATORIO DE RESPUESTA (solo JSON, sin markdown ni texto extra):
+{
+  "actions": [
+    {
+      "type": "ADD_TO_CART" | "REMOVE_FROM_CART" | "CHECKOUT" | "TALK" | "CLEAR_CART",
+      "productId": "string" | null,
+      "quantity": number | null
     }
-  },
-  required: ["actions", "response_text"]
-};
+  ],
+  "response_text": "string"
+}
+
+REGLAS:
+- SOLO devuelve JSON. Nada de texto extra ni \`\`\`json.
+- "type" debe ser una de: ADD_TO_CART, REMOVE_FROM_CART, CHECKOUT, TALK, CLEAR_CART
+- Si el cliente pide algo, mapea al ID exacto del catálogo que se te proporciona.
+- productId solo se requiere para ADD_TO_CART y REMOVE_FROM_CART.
+- quantity es número de items (default 1).
+- response_text: Mensaje en español mexicano, amigable, con emojis, como si hablaras por WhatsApp. Si agregaste algo al carrito, confírmalo. Nunca digas IDs.
+- Si no encuentras lo que pide, dile amablemente qué sí hay. ¡No inventes productos!
+- Si el cliente solo saluda o pregunta, usa TALK.
+- Si el cliente quiere confirmar el pedido, usa CHECKOUT.
+- **IMPORTANTE**: Cuando el cliente pida ver el menú, combos o categorías, sé BREVE (1 frase corta max 15 palabras). NO listes productos ni precios — las tarjetas visuales ya los muestran. Ej: "Te muestro nuestros combos más rifados 🔥" o "Mira nuestras alitas 🍗".
+- Si agregaste algo al carrito, confírmalo en 1 frase. Ej: "¡Agregado! 🔥 ¿Algo más?"
+`.trim();
 
 export async function processTransaction(
   message: string, 
@@ -58,16 +57,19 @@ export async function processTransaction(
   availableProducts: any[],
   businessName: string
 ): Promise<AgentResponse> {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('[AIAgent] Missing GEMINI_API_KEY');
+    return {
+      actions: [{ type: 'TALK' }],
+      response_text: "⚙️ Estamos en mantenimiento. Vuelve en unos minutos. 🙏"
+    };
+  }
+
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: agentSchema,
-      temperature: 0.1 // Low temperature for deterministic JSON output
-    }
+    model: MODEL,
+    systemInstruction: SYSTEM_INSTRUCTION,
   });
 
-  // Simplify products for the prompt to save tokens
   const catalog = availableProducts.map(p => 
     `ID: ${p.id} | Nombre: ${p.name} | Precio: $${p.price} | Categoria: ${p.category}`
   ).join('\n');
@@ -76,8 +78,13 @@ export async function processTransaction(
     ? 'El carrito está vacío.' 
     : cart.map((i: any) => `- ${i.quantity}x ${i.name} (ID: ${i.productId || i.id})`).join('\n');
 
+  const knowledge = await getKnowledgeContext();
+
   const prompt = `
-Eres el agente de ventas estrella de ${businessName}. Tu objetivo es tomar pedidos de comida rápido y de forma conversacional.
+### NEGOCIO: ${businessName}
+
+### CONTEXTO (REGLAS Y PROMOS):
+${knowledge || 'Sin reglas adicionales.'}
 
 ### CATÁLOGO DISPONIBLE:
 ${catalog}
@@ -87,29 +94,63 @@ ${cartStr}
 
 ### MENSAJE DEL CLIENTE:
 "${message}"
-
-### INSTRUCCIONES:
-1. Mapea la petición del cliente al catálogo exacto usando los IDs.
-2. Si el cliente quiere agregar algo, usa la acción ADD_TO_CART con el ID correspondiente.
-3. Si el cliente quiere quitar algo que está en el carrito, usa REMOVE_FROM_CART.
-4. Si el cliente ya quiere confirmar el pedido, envía la acción CHECKOUT.
-5. Si el cliente solo saluda o hace una pregunta, usa TALK.
-6. En el campo "response_text", escribe una respuesta natural, amigable, usando emojis, como si hablaras por WhatsApp en México. Si no encuentras lo que pide, dile amablemente qué sí hay. ¡No inventes productos!
-  `;
+`.trim();
 
   try {
     const result = await model.generateContent(prompt);
-    const response = await result.response.text();
-    
-    if (!response || response.trim() === '') {
+    const raw = result.response.text().trim();
+
+    if (!raw) {
       throw new Error('Empty response from AI model');
     }
 
-    const parsed = JSON.parse(response) as AgentResponse;
-    return parsed;
-  } catch (error) {
-    console.error('[AIAgent] Error processing transaction:', error);
-    // Fallback response if AI fails
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in AI response');
+      return JSON.parse(jsonMatch[0]) as AgentResponse;
+    } catch (parseErr) {
+      console.warn('[AIAgent] Invalid JSON, attempting auto-correction...', raw.substring(0, 200));
+
+      const correctionPrompt = `
+Corrige este texto para que sea un JSON válido con exactamente esta estructura:
+{
+  "actions": [{"type": "TALK"}],
+  "response_text": "string"
+}
+
+IMPORTANTE: SOLO devuelve JSON. Sin markdown, sin explicaciones.
+
+Texto a corregir:
+"""
+${raw}
+"""
+`.trim();
+
+      const correctionResult = await model.generateContent(correctionPrompt);
+      const correctedRaw = correctionResult.response.text().trim();
+      const correctedMatch = correctedRaw.match(/\{[\s\S]*\}/);
+
+      if (!correctedMatch) {
+        throw new Error('Auto-correction failed to produce JSON');
+      }
+
+      return JSON.parse(correctedMatch[0]) as AgentResponse;
+    }
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    console.error('[AIAgent] Error processing transaction:', errMsg);
+
+    if (errMsg.includes('API key') || errMsg.includes('API_KEY_INVALID') || errMsg.includes('403') || errMsg.includes('401')) {
+      return {
+        actions: [{ type: 'TALK' }],
+        response_text: "⚙️ Estamos en mantenimiento. Vuelve en unos minutos. 🙏"
+      };
+    }
+
+    if (errMsg.includes('Unexpected token') || errMsg.includes('JSON')) {
+      console.error('[AIAgent] Auto-correction also failed to produce valid JSON');
+    }
+
     return {
       actions: [{ type: 'TALK' }],
       response_text: "Tuve un pequeño problema procesando eso. ¿Me lo repites? 😅"

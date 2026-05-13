@@ -137,127 +137,71 @@ function UpsellPopup({
 // ─── Homepage Bestsellers Section — shows combos FIRST, then top items ─────
 function BestsellersSection({ onAdd }: { onAdd: (product: Product) => void }) {
   const bestsellers = useMemo(() => {
-    // Top 3 items: 2 combos + 1 popular item
     const combos = products.filter(p => p.category === 'combos').slice(0, 2);
     const popular = products.filter(p => p.popular && p.category !== 'combos').slice(0, 1);
     return [...combos, ...popular];
   }, []);
 
   return (
-    <section style={{ padding: '3rem 1.5rem', maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+    <section style={{ padding: '2.5rem 1.5rem', maxWidth: '780px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
         <span style={{
-          display: 'block', fontSize: '0.65rem', fontWeight: 700,
-          color: 'var(--accent)', letterSpacing: '0.18em', textTransform: 'uppercase',
-          marginBottom: '0.5rem',
+          display: 'block', fontSize: '0.6rem', fontWeight: 700,
+          color: 'var(--accent)', letterSpacing: '0.15em', textTransform: 'uppercase',
+          marginBottom: '0.35rem',
         }}>Los mas pedidos</span>
         <h2 style={{
-          fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3rem)',
-          fontWeight: 400, color: 'var(--text-primary)', margin: 0, letterSpacing: '0.04em',
+          fontFamily: 'var(--font-display)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
+          fontWeight: 400, color: 'var(--text-primary)', margin: 0, letterSpacing: '0.03em',
         }}>
           FAVORITOS DEL <span style={{ color: 'var(--accent)' }}>MENU</span>
         </h2>
       </div>
 
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '1rem', marginBottom: '2rem',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: '0.75rem',
       }}>
         {bestsellers.map(item => (
           <div
             key={item.id}
             style={{
-              background: 'var(--bg-secondary)', backdropFilter: 'blur(16px)',
-              border: '1px solid var(--border-subtle)', borderRadius: '16px',
+              background: 'var(--bg-secondary)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: '14px',
               overflow: 'hidden',
-              transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
+              transition: 'border-color 0.2s, transform 0.2s',
+              cursor: 'pointer',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,69,0,0.2)';
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,69,0,0.15)';
             }}
             onMouseLeave={e => {
               (e.currentTarget as HTMLElement).style.transform = '';
-              (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.05)';
             }}
+            onClick={() => onAdd(item)}
           >
-            <div style={{ position: 'relative', height: '140px', background: '#1a1a1a', overflow: 'hidden' }}>
-              <Image src={getProductImage(item)} alt={item.name} fill sizes="(max-width: 640px) 100vw, 320px" style={{ objectFit: 'cover' }} loading="lazy" />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(14,14,14,0.6) 0%, transparent 50%)' }} />
-              {/* Badge Priority Logic */}
-              {(() => {
-                const isBest = item.popular || item.badges?.some(b => b.includes('vendido') || b.includes('pedido'));
-                const savings = item.originalPrice ? item.originalPrice - item.price : 0;
-                
-                let displayBadge = null;
-                if (isBest) displayBadge = "⭐ Más vendido";
-                else if (savings > 0) displayBadge = `💰 Ahorra $${savings}`;
-
-                if (!displayBadge) return null;
-
-                return (
-                  <span style={{
-                    position: 'absolute', top: '8px', left: '8px', zIndex: 10,
-                    background: isBest 
-                      ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
-                      : 'linear-gradient(135deg, var(--status-success), #16a34a)',
-                    borderRadius: '12px', padding: '0.2rem 0.5rem',
-                    fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-primary)',
-                    letterSpacing: '0.03em', textTransform: 'uppercase',
-                    boxShadow: isBest ? '0 2px 8px rgba(255,69,0,0.3)' : 'none',
-                  }}>
-                    {displayBadge}
-                  </span>
-                );
-              })()}
+            <div style={{ position: 'relative', height: '90px', background: '#1a1a1a', overflow: 'hidden' }}>
+              <Image src={getProductImage(item)} alt={item.name} fill sizes="(max-width: 640px) 100vw, 200px" style={{ objectFit: 'cover' }} loading="lazy" />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(14,14,14,0.5) 0%, transparent 40%)' }} />
             </div>
-            <div style={{ padding: '0.85rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.15rem' }}>{item.name}</div>
-              <div style={{ fontSize: '0.72rem', color: '#555', lineHeight: 1.4, marginBottom: '0.5rem' }}>{item.description}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--accent)' }}>${item.price}</span>
-                <button
-                  onClick={() => onAdd(item)}
-                  style={{
-                    fontSize: '0.72rem', fontWeight: 700, color: '#fff',
-                    background: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
-                      ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
-                      : 'var(--accent)',
-                    padding: '0.35rem 0.85rem',
-                    borderRadius: '12px', border: 'none',
-                    cursor: 'pointer', fontFamily: 'var(--font-body)',
-                    transition: 'transform 0.15s ease',
-                    boxShadow: item.category === 'combos' && item.badges?.some(b => b.includes('Más pedido'))
-                      ? '0 0 12px rgba(255,69,0,0.3)'
-                      : 'none',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                >
-                  🔥 Pedir ahora
-                </button>
+            <div style={{ padding: '0.65rem 0.75rem' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#fff', lineHeight: 1.2 }}>{item.name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.35rem' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent)' }}>${item.price}</span>
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700, color: 'var(--accent)',
+                  background: 'rgba(255,69,0,0.08)', padding: '0.2rem 0.55rem',
+                  borderRadius: '8px', border: '1px solid rgba(255,69,0,0.12)',
+                }}>
+                  + Agregar
+                </span>
               </div>
             </div>
           </div>
         ))}
-      </div>
-
-      <div style={{ textAlign: 'center' }}>
-        <Link
-          href="/menu"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-            color: 'var(--accent)', textDecoration: 'none',
-            fontWeight: 700, fontSize: '0.82rem',
-            transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-        >
-          Ver menu completo →
-        </Link>
       </div>
     </section>
   );

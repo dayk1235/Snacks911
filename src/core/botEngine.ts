@@ -2,6 +2,13 @@ import { getContext, updateContext } from "./context";
 import { processTransaction } from "./ai/aiAgent";
 import { addToCart, clearCartContext } from "./cartEngine";
 import { dbSaveOrder } from "@/lib/db.server";
+import { isGreetingOnly } from "./nluBaseline";
+import type { Action, UICard, UICart, BotUI } from "./types";
+import { getProductImage, products as staticProducts } from "@/data/products";
+
+function getProductImageUrl(product: any): string {
+  return product.image_url || product.imageUrl || product.image || getProductImage(product) || '';
+}
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
@@ -10,14 +17,19 @@ function normalizePhone(phone: string) {
 }
 
 async function dbGetProductsSafe() {
-  const fallback = [
-    { id: '1', name: 'Papas Loaded', price: 69, category: 'papas', imageUrl: '', available: true, description: '' },
-    { id: '2', name: 'Refresco 600ml', price: 25, category: 'bebidas', imageUrl: '', available: true, description: '' },
-    { id: '3', name: 'Brownie con Helado', price: 59, category: 'postres', imageUrl: '', available: true, description: '' },
-    { id: '4', name: 'Combo 911', price: 119, category: 'combos', imageUrl: '', available: true, description: '' },
-    { id: '5', name: 'Boneless', price: 129, category: 'boneless', imageUrl: '', available: true, description: '10 piezas' },
-    { id: '6', name: 'Combo Mixto', price: 189, category: 'combos', imageUrl: '', available: true, description: 'Boneless + Papas' },
-  ];
+  const fallback = staticProducts.map(p => ({
+    id: String(p.id),
+    name: p.name,
+    price: p.price,
+    category: p.category,
+    imageUrl: p.image,
+    image: p.image,
+    available: p.available !== false,
+    description: p.description || '',
+    originalPrice: p.originalPrice,
+    badges: p.badges,
+    popular: p.popular,
+  }));
 
   try {
     const res = await fetch(`${BASE}/api/products?all=true`);
@@ -29,9 +41,10 @@ async function dbGetProductsSafe() {
       if (Array.isArray(data.data)) return data.data;
     }
     
-    return Array.isArray(data) ? data : fallback;
+    const arr = Array.isArray(data) ? data : [];
+    return arr.length > 0 ? arr : fallback;
   } catch (err) {
-    console.error('[botEngine] dbGetProductsSafe failed:', err);
+    console.error('[botEngine] dbGetProductsSafe failed, using static fallback:', (err as Error)?.message);
     return fallback;
   }
 }
@@ -68,7 +81,31 @@ export async function getBotResponse({
   const allProducts = await dbGetProductsSafe();
   const availableProducts = allProducts.filter((p: any) => p.available !== false && p.stock !== 0);
 
-  // 4. Pass control to the Transactional AI Agent
+  // 4. Shortcut: respond instantly to simple greetings without calling the AI
+  if (isGreetingOnly(message)) {
+    const greetings = [
+      `¡Hola! 👋 Bienvenid@ a ${businessName}. ¿Qué se te antoja hoy?`,
+      `¡Qué onda! 🔥 Soy tu asistente de ${businessName}. ¿Qué se te antoja hoy?`,
+      `¡Hey! Bienvenid@ a ${businessName}. Dime qué te provoca y te lo preparo. 🍟`,
+    ];
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    const greetingActions: Action[] = [
+      { id: 'greet-combos', label: '🔥 Ver combos', type: 'show_category', value: 'ver combos' },
+      { id: 'greet-menu', label: '📋 Ver menú', type: 'show_category', value: 'ver menu' },
+      { id: 'greet-recommend', label: '🤔 Recomiéndame', type: 'recommend', value: 'recomiendame algo' },
+    ];
+
+    return {
+      text: greeting,
+      cart: context.cart,
+      type: 'buttons',
+      actions: greetingActions,
+      ui: null
+    };
+  }
+
+  // 5. Pass control to the Transactional AI Agent
   const aiResponse = await processTransaction(
     message,
     context.cart?.items || [],
@@ -76,7 +113,7 @@ export async function getBotResponse({
     businessName
   );
 
-  // 5. Execute AI Actions locally
+  // 6. Execute AI Actions locally
   for (const action of aiResponse.actions) {
     switch (action.type) {
       case 'ADD_TO_CART':
@@ -120,17 +157,140 @@ export async function getBotResponse({
     }
   }
 
-  // 6. Persist Context Updates
+  // 7. Persist Context Updates
   updateContext(cleanPhone, { 
     cart: context.cart, 
     state: context.state,
     lastUserMessage: message 
   });
 
+  // 8. Build UI elements for rich chat experience
+  const ui = buildChatUI(message, availableProducts, context, aiResponse);
+  const actions = buildChatActions(message, context, aiResponse, availableProducts);
+
   return {
     text: aiResponse.response_text,
     cart: context.cart,
-    type: 'text',
-    ui: null // Legacy UI cards can be migrated here if needed
+    type: actions.length > 0 ? 'buttons' : 'text',
+    actions,
+    ui
   };
+}
+
+function buildChatUI(
+  message: string,
+  availableProducts: any[],
+  context: any,
+  aiResponse: any
+): BotUI | null {
+  const ui: BotUI = {};
+  const nMsg = message.toLowerCase().trim();
+  const hasCart = context.cart?.items?.length > 0;
+
+  // Cart summary when items exist
+  if (hasCart) {
+    const items = context.cart.items.map((item: any) => ({
+      id: String(item.productId || item.id),
+      name: item.name || 'Producto',
+      price: item.price || 0,
+      quantity: item.quantity || 1,
+    }));
+    ui.cart = {
+      total: context.cart.total || 0,
+      itemCount: items.length,
+    };
+  }
+
+  // Product cards when user asks for menu/combos/categories
+  const isMenuQuery = /menu|carta|combos|que (hay|tienen|venden)|muestrame|enseñame|productos|alitas|boneless|papas|banderilla|bebida|refresco|postre/i.test(nMsg);
+  const isAddQuery = /quiero|dame|agrega|pon|añade|me das|pidamos|ordenar/i.test(nMsg);
+  const hasTalk = aiResponse.actions?.some((a: any) => a.type === 'TALK');
+
+  if (isMenuQuery && hasTalk) {
+    // Extract relevant category or show all
+    const combos = availableProducts.filter((p: any) => p.category === 'combos' && p.id).slice(0, 4);
+    if (combos.length > 0) {
+      ui.cards = combos.map((p: any) => ({
+        id: String(p.id),
+        title: p.name || '',
+        description: p.description || '',
+        price: p.price,
+        imageUrl: getProductImageUrl(p),
+      }));
+    }
+  }
+
+  // Also show combo cards when cart has items (upsell opportunity)
+  if (hasCart && !ui.cards && isAddQuery) {
+    const extras = availableProducts.filter((p: any) =>
+      ['papas', 'bebidas', 'postres', 'extras'].includes(p.category) && p.id
+    ).slice(0, 3);
+    if (extras.length > 0) {
+      ui.cards = extras.map((p: any) => ({
+        id: String(p.id),
+        title: p.name || '',
+        description: p.description || '',
+        price: p.price,
+        imageUrl: getProductImageUrl(p),
+      }));
+    }
+  }
+
+  return Object.keys(ui).length > 0 ? ui : null;
+}
+
+function buildChatActions(
+  message: string,
+  context: any,
+  aiResponse: any,
+  availableProducts: any[]
+): Action[] {
+  const actions: Action[] = [];
+  const nMsg = message.toLowerCase().trim();
+  const hasCart = context.cart?.items?.length > 0;
+  const aiAdded = aiResponse.actions?.some((a: any) => a.type === 'ADD_TO_CART');
+  const isMenuQuery = /menu|carta|combos|que (hay|tienen|venden)|muestrame/i.test(nMsg);
+  const isAddQuery = /quiero|dame|agrega|pon|añade|me das|pidamos/i.test(nMsg);
+
+  // If AI added items to cart, show cart actions
+  if (aiAdded || (hasCart && !isMenuQuery)) {
+    if (hasCart || aiAdded) {
+      actions.push({ id: 'view-cart', label: '🛒 Ver carrito', type: 'view_cart', value: 'ver carrito' });
+      actions.push({ id: 'checkout', label: '📦 Pedir ya', type: 'checkout', value: 'confirmar pedido' });
+    }
+  }
+
+  // Menu/combos quick browse actions
+  if (isMenuQuery) {
+    actions.push({ id: 'show-combos', label: '🔥 Combos', type: 'show_category', value: 'ver combos' });
+    actions.push({ id: 'show-menu', label: '📋 Todo el menú', type: 'show_category', value: 'ver menú' });
+  }
+
+  // Add quick product buttons when asking for recommendations
+  if (/recomiend|sugiere|que me recomiendas|que sugieres|no se/i.test(nMsg)) {
+    const popular = availableProducts
+      .filter((p: any) => p.category === 'combos' && p.id)
+      .slice(0, 3);
+    popular.forEach((p: any) => {
+      actions.push({
+        id: `add-${p.id}`,
+        label: `+ ${p.name} $${p.price}`,
+        type: 'add_to_cart',
+        value: `agrega ${p.name}`,
+        payload: { productId: String(p.id), name: p.name, price: p.price },
+        price: p.price,
+        image: getProductImageUrl(p),
+      } as Action);
+    });
+  }
+
+  // If cart has items but user didn't just add, show checkout  
+  if (hasCart && !aiAdded && !isMenuQuery && !isAddQuery) {
+    if (!actions.some(a => a.type === 'checkout')) {
+      actions.push({ id: 'checkout-end', label: '✅ Confirmar y pedir', type: 'checkout', value: 'confirmar pedido' });
+    }
+    actions.push({ id: 'clear-cart', label: '🗑️ Vaciar carrito', type: 'dismiss', value: 'vaciar carrito' });
+  }
+
+  return actions;
 }

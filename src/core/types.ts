@@ -185,6 +185,7 @@ export interface ChatMessage {
   type?: 'text' | 'buttons' | 'products';
   actions?: Action[];
   productCards?: CoreProduct[];
+  ui?: BotUI | null;
 }
 
 // ─── Product Types ───────────────────────────────────────────────────────────

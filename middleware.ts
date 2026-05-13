@@ -75,6 +75,9 @@ export async function middleware(req: NextRequest) {
     const subdomain = host.split('.')[0];
     if (subdomain && !['localhost', 'www', 'myapp', 'snacks911'].includes(subdomain)) {
       tenantId = subdomain; 
+    } else {
+      // Default flagship tenant for root domain
+      tenantId = 'snacks911';
     }
   }
 

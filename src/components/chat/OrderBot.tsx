@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
-import { products as allProducts } from '@/data/products';
+import { products as allProducts, getProductImage } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
 import { createUuid } from '@/lib/utils/core';
+import type { BotUI } from '@/core';
+import ImpulseShelf from './ImpulseShelf';
+import VitrinaModal from './VitrinaModal';
 
 import { trackEvent } from '@/lib/analytics';
 import { type Action } from '@/core';
@@ -17,6 +21,7 @@ interface Msg {
   sender: 'bot' | 'user';
   type?: 'text' | 'buttons' | 'products';
   actions?: Action[];
+  ui?: BotUI | null;
 }
 
 type EngineType = 'modular' | 'ai';
@@ -37,6 +42,8 @@ export default function OrderBot() {
     messages: [],
   });
   const [engine, setEngine] = useState<EngineType>('modular');
+  const [expanded, setExpanded] = useState(false);
+  const [vitrinaOpen, setVitrinaOpen] = useState(false);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +96,29 @@ export default function OrderBot() {
       }));
     }
   }, [open, state.messages.length, engine]);
+
+  // Auto-expand when showing cards or menu
+  useEffect(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    const hasCards = lastMsg?.type === 'products' || (lastMsg?.ui && (lastMsg.ui.cards || lastMsg.ui.cart));
+    setExpanded(!!hasCards);
+  }, [state.messages]);
+
+  // Impulse shelf data
+  const shelfData = useMemo(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (!lastMsg || lastMsg.sender !== 'bot') return [];
+    const cards = lastMsg.ui?.cards;
+    if (!cards || !cards.length) return [];
+    return cards.map((c: any) => ({
+      id: c.id,
+      name: c.title,
+      price: c.price || 0,
+      image: c.imageUrl || '',
+    }));
+  }, [state.messages]);
+
+  const shelfVisible = shelfData.length > 0 && open;
 
   // Track shown actions
   useEffect(() => {
@@ -175,13 +205,16 @@ export default function OrderBot() {
 
     setThinking(false);
     setState(prev => ({
-      ...output.nextState,
+      ...prev,
+      cart: output.cart || prev.cart,
+      cartTotal: output.cart?.total ?? prev.cartTotal,
       messages: [...prev.messages, {
         id: idRef.current++,
         text: output.text,
         sender: 'bot',
         type: output.type,
-        actions: output.actions
+        actions: output.actions,
+        ui: output.ui,
       }]
     }));
   }, [state, productRefs, engine]);
@@ -227,59 +260,89 @@ export default function OrderBot() {
       });
     }
 
+    // 3. Checkout: show confirmation card + WhatsApp link
+    if (action.type === 'checkout' && state.cart?.items?.length > 0) {
+      const cartItems = state.cart.items || [];
+      const total = state.cart.total || state.cartTotal || 0;
+      const itemsText = cartItems.map((item: any) =>
+        `• ${item.quantity || 1}x ${item.name} — $${item.price || 0}`
+      ).join('\n');
+
+      const waMessage = `🚨 *PEDIDO SNACKS 911*\n\n*Productos:*\n${itemsText}\n\n💰 *Total: $${total}*\n\n¡Quiero hacer este pedido!`;
+      const waUrl = `https://wa.me/525545295568?text=${encodeURIComponent(waMessage)}`;
+
+      setState(prev => ({
+        ...prev,
+        orderConfirmed: true,
+        deliveryStep: 'done',
+        whatsappUrl: waUrl,
+        messages: [
+          ...prev.messages,
+          { id: idRef.current++, text: label, sender: 'user' },
+          {
+            id: idRef.current++,
+            text: `✅ ¡Pedido listo!\n\n${itemsText}\n\n💰 Total: $${total}\n\nTe llevamos a WhatsApp para coordinar la entrega y el pago. 🛵🔥`,
+            sender: 'bot',
+            type: 'buttons',
+            actions: [{
+              id: 'wa-checkout',
+              label: '📱 Pedir por WhatsApp',
+              type: 'checkout',
+              value: waUrl,
+            }],
+          },
+        ],
+      }));
+
+      setTimeout(() => window.open(waUrl, '_blank'), 800);
+      return;
+    }
+
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, { id: idRef.current++, text: label, sender: 'user' }]
     }));
     
-    // Fallback: use value for legacy support, otherwise use label or type to trigger bot
     await processResponse(action.value || label);
-  }, [thinking, processResponse]);
+  }, [thinking, processResponse, state.cart, state.cartTotal]);
 
   return (
     <>
       <div
-        className="card-premium"
+        className="chat-container"
         style={{
           position: 'fixed', bottom: open ? '5.5rem' : '-600px', left: '1.25rem',
-          width: '380px', maxWidth: 'calc(100vw - 2.5rem)',
-          height: '520px', maxHeight: 'calc(100vh - 8rem)',
+          width: expanded ? '640px' : '540px', maxWidth: 'calc(100vw - 2.5rem)',
+          height: '540px', maxHeight: 'calc(100vh - 8rem)',
           zIndex: 9998,
-          borderRadius: 'var(--radius)',
+          borderRadius: 'var(--radius-lg)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column',
-          transition: 'bottom 0.5s var(--easing-premium), opacity 0.4s var(--easing-premium)',
+          transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s var(--easing-premium), opacity 0.4s var(--easing-premium)',
           opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none',
           fontFamily: 'var(--font-body), sans-serif',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+          boxShadow: '0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 0 60px rgba(255,69,0,0.06)',
         }}
       >
         {/* Header */}
         <div style={{
-          padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(255,69,0,0.06)',
+          padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(255,69,0,0.04)',
         }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', flexShrink: 0,
-          }}>🔥</div>
+          <div className="chat-header-avatar">🔥</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Snacks 911</div>
-            <div style={{ fontSize: '0.68rem', color: engine === 'ai' || engine === 'modular' ? 'var(--status-success)' : 'var(--accent-gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: engine === 'ai' || engine === 'modular' ? 'var(--status-success)' : 'var(--accent-gold)', display: 'inline-block', boxShadow: engine === 'ai' || engine === 'modular' ? '0 0 8px var(--status-success)' : 'none' }} />
-              {engine.toUpperCase() + " ENGINE"}
+            <div className="chat-header-title">Snacks 911</div>
+            <div style={{ fontSize: '0.62rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
+              <span className="chat-header-dot online" />
+              <span style={{ color: 'var(--status-success)' }}>En línea</span>
             </div>
           </div>
 
-
-          {/* 🟢 TOTAL EN VIVO */}
           {state.cartTotal > 0 && (
             <div style={{
-              padding: '0.4rem 0.75rem', borderRadius: '10px',
+              padding: '0.35rem 0.65rem', borderRadius: '10px',
               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              color: '#fff', fontWeight: 900, fontSize: '0.85rem',
+              color: '#fff', fontWeight: 900, fontSize: '0.82rem',
               boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
               animation: 'pulseTotal 1.5s ease-in-out infinite',
             }}>
@@ -288,134 +351,227 @@ export default function OrderBot() {
           )}
           <button onClick={() => setOpen(false)} style={{
             background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
-            cursor: 'pointer', padding: '4px', lineHeight: 1,
+            cursor: 'pointer', padding: '4px', lineHeight: 1, opacity: 0.6,
           }}>×</button>
         </div>
 
-        {/* PROGRESS BAR */}
-        {state.comboSelected && (
-          <div style={{
-            padding: '0.75rem 1rem 0.5rem',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-            background: 'rgba(0,0,0,0.2)',
-          }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              fontSize: '0.65rem', color: '#555', marginBottom: '0.5rem',
-            }}>
-              <span style={{ opacity: cartItems.some(i => typeof i === 'string' && i.includes(productRefs.comboName ?? 'Combo 911')) ? 1 : 0.4 }}>Combo</span>
-              <span style={{ opacity: productRefs.hasPapas ? 1 : 0.4 }}>Papas</span>
-              <span style={{ opacity: productRefs.hasBebida ? 1 : 0.4 }}>Bebida</span>
-              <span style={{ opacity: productRefs.hasPostre ? 1 : 0.4 }}>Postre</span>
-            </div>
-            <div style={{
-              height: '4px', borderRadius: '2px',
-              background: 'rgba(255,255,255,0.05)',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${(([state.comboSelected, productRefs.hasPapas, productRefs.hasBebida, productRefs.hasPostre].filter(Boolean).length / 4) * 100)}%`,
-                background: 'linear-gradient(90deg, var(--accent), var(--accent-gold))',
-                borderRadius: '2px',
-                transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-              }} />
-            </div>
-          </div>
-        )}
-
         {/* Messages */}
-        <div style={{
-          flex: 1, overflowY: 'auto', padding: '1rem',
-          display: 'flex', flexDirection: 'column', gap: '0.75rem',
-        }}>
-          {state.messages.map((m, i) => (
-            <div key={m.id} style={{
-              alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '85%',
-              animation: `msgSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${(i * 0.06)}s both`,
-              transformOrigin: m.sender === 'user' ? 'bottom right' : 'bottom left',
-            }}>
-              <div style={{
-                borderRadius: m.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                background: m.sender === 'user'
-                  ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
-                  : 'var(--bg-secondary)',
-                border: m.sender === 'bot' ? '1px solid var(--border-subtle)' : 'none',
-                color: 'var(--text-primary)',
-                fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-line',
-                boxShadow: m.sender === 'user' ? '0 4px 15px var(--accent-glow)' : 'none',
-              }}>{m.text}</div>
+        <div className="chat-messages">
+          {state.messages.length <= 1 && (
+            <div className="chat-empty-state">
+              <div className="chat-empty-icon">🍟</div>
+              <div className="chat-empty-title">¿Qué se te antoja?</div>
+              <div className="chat-empty-subtitle">Pide lo que quieras, yo te ayudo</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', marginTop: '4px' }}>
+                {[
+                  { label: '🔥 Ver combos', value: 'ver combos' },
+                  { label: '📋 Ver menú', value: 'ver menu' },
+                ].map(chip => (
+                  <button
+                    key={chip.value}
+                    className="chat-suggestion-chip"
+                    onClick={() => {
+                      setState(prev => ({
+                        ...prev,
+                        messages: [...prev.messages, { id: idRef.current++, text: chip.label, sender: 'user' }]
+                      }));
+                      processResponse(chip.value);
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-              {/* STEP 6: Render Product Cards if type is products */}
-              {m.type === 'products' && m.actions && (
-                <div style={{
-                  display: 'flex', gap: '12px', overflowX: 'auto', padding: '8px 0',
-                  msOverflowStyle: 'none', scrollbarWidth: 'none',
-                  animation: 'actionsFadeIn 0.3s ease 0.3s both'
-                }}>
-                  {m.actions.map((a: any) => (
-                    <div
-                      key={a.id || a.value}
-                      onClick={() => handleAction(a)}
-                      style={{
-                        minWidth: '160px', background: 'var(--bg-card)',
-                        borderRadius: '12px', border: '1px solid var(--border-subtle)',
-                        overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s var(--easing-premium)',
-                      }}
-                      className="hover:scale-105 hover:border-accent"
-                    >
-                      {a.image && <img src={a.image} alt={a.label} style={{ width: '100%', height: '90px', objectFit: 'cover', opacity: 0.9 }} />}
-                      <div style={{ padding: '10px' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>{a.label}</div>
-                        {a.price && <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 800, marginTop: '2px' }}>${a.price}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {state.messages.map((m, i) => {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return (
+            <div key={m.id} className={`msg-row ${m.sender === 'user' ? 'msg-row-user' : 'msg-row-bot'}`}>
+              {m.sender === 'bot' && (
+                <div className="msg-avatar" style={{ marginBottom: '2px' }}>🔥</div>
               )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className={`msg-bubble ${m.sender === 'user' ? 'msg-bubble-user' : 'msg-bubble-bot'}`}>
+                  {m.text}
+                </div>
+                <div className="msg-time" style={{ textAlign: m.sender === 'user' ? 'right' : 'left' }}>
+                  {time}
+                </div>
 
-              {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
-                <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
-                  justifyContent: 'center',
-                  animation: 'actionsFadeIn 0.3s ease 0.3s both'
-                }}>
-                  {m.actions.map((a: any, ai: number) => (
-                    <button
-                      key={a.id || a.value}
-                      onClick={() => handleAction(a)}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '10px',
-                        background: 'rgba(255,69,0,0.1)',
-                        border: '1px solid rgba(255,69,0,0.2)',
-                        color: 'var(--accent)',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
-                      }}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
+                {/* Cart summary card */}
+                {m.ui?.cart && m.sender === 'bot' && state.cart?.items?.length > 0 && (
+                  <div className="chat-cart-summary" style={{
+                    animation: 'cardSlideIn 0.35s ease 0.2s both',
+                  }}>
+                    {state.cart.items.map((item: any, idx: number) => (
+                      <div key={idx} className="chat-cart-item">
+                        <div className="chat-cart-item-info">
+                          <span className="chat-cart-item-name">
+                            {item.quantity || 1}x {item.name}
+                          </span>
+                        </div>
+                        <span className="chat-cart-item-price">${item.price || 0}</span>
+                        <button
+                          className="chat-cart-item-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const action: Action = {
+                              id: `remove-${item.productId || item.id}`,
+                              label: `Quitar ${item.name}`,
+                              type: 'dismiss',
+                              value: `quita ${item.name}`,
+                            };
+                            handleAction(action);
+                          }}
+                          title="Quitar"
+                        >✕</button>
+                      </div>
+                    ))}
+                    <div className="chat-cart-total">
+                      <span className="chat-cart-total-label">Total</span>
+                      <span className="chat-cart-total-price">${state.cart.total || state.cartTotal}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Product cards from ui */}
+                {m.ui?.cards && m.sender === 'bot' && (
+                  <div className="chat-cards-scroll" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
+                    {m.ui.cards.map((card: any, ci: number) => (
+                      <motion.div
+                        key={card.id}
+                        className="chat-product-card"
+                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.45, delay: 0.1 + ci * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -4, scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => {
+                          const action: Action = {
+                            id: `card-add-${card.id}`,
+                            label: `Agregar ${card.title}`,
+                            type: 'add_to_cart',
+                            value: `agrega ${card.title}`,
+                            payload: { productId: card.id, name: card.title, price: card.price },
+                            price: card.price,
+                            image: card.imageUrl,
+                          };
+                          handleAction(action);
+                        }}
+                      >
+                        {card.imageUrl && (
+                          <div className="chat-product-card-img-wrap">
+                            <motion.img
+                              src={card.imageUrl}
+                              alt={card.title}
+                              className="chat-product-card-img"
+                              whileHover={{ scale: 1.08 }}
+                              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                            />
+                          </div>
+                        )}
+                        <div className="chat-product-card-body">
+                          <div className="chat-product-card-name">{card.title}</div>
+                          {card.price > 0 && (
+                            <div className="chat-product-card-price">${card.price}</div>
+                          )}
+                          <motion.div
+                            className="chat-product-card-add"
+                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,69,0,0.25)' }}
+                          >
+                            + Agregar
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Legacy product cards */}
+                {m.type === 'products' && m.actions && (
+                  <div className="chat-cards-scroll" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
+                    {m.actions.map((a: any, ai: number) => (
+                      <motion.div
+                        key={a.id || a.value}
+                        className="chat-product-card"
+                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.45, delay: 0.1 + ai * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -4, scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleAction(a)}
+                      >
+                        {a.image && (
+                          <div className="chat-product-card-img-wrap">
+                            <motion.img
+                              src={a.image}
+                              alt={a.label}
+                              className="chat-product-card-img"
+                              whileHover={{ scale: 1.08 }}
+                              transition={{ duration: 0.5 }}
+                            />
+                          </div>
+                        )}
+                        <div className="chat-product-card-body">
+                          <div className="chat-product-card-name">{a.label}</div>
+                          {a.price && <div className="chat-product-card-price">${a.price}</div>}
+                          <motion.div
+                            className="chat-product-card-add"
+                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,69,0,0.25)' }}
+                          >
+                            + Agregar
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
+                  <div style={{
+                    display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
+                    justifyContent: 'flex-start',
+                    animation: 'actionsFadeIn 0.3s ease 0.3s both'
+                  }}>
+                    {m.actions.map((a: any, ai: number) => {
+                      const btnClass = a.type === 'checkout' ? 'checkout'
+                        : a.type === 'dismiss' ? 'danger'
+                        : a.type === 'view_cart' ? 'view'
+                        : a.type === 'add_to_cart' ? 'add'
+                        : a.type === 'show_category' || a.type === 'recommend' ? 'ghost'
+                        : 'add';
+                      return (
+                        <button
+                          key={a.id || a.value}
+                          onClick={() => handleAction(a)}
+                          className={`chat-action-btn ${btnClass}`}
+                          style={{
+                            animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
+                          }}
+                        >
+                          {a.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {m.sender === 'user' && (
+                <div className="msg-avatar" style={{ marginBottom: '2px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
+                  Tú
                 </div>
               )}
             </div>
-          ))}
+          )})}
           {thinking && (
-            <div style={{ alignSelf: 'flex-start' }}>
-              <div style={{
-                padding: '0.6rem 1rem', borderRadius: '14px 14px 14px 4px',
-                background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
-                display: 'flex', gap: '4px',
-              }}>
+            <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+              <div className="msg-avatar" style={{ marginBottom: '2px' }}>🔥</div>
+              <div className="chat-thinking">
                 {[0, 1, 2].map(i => (
-                  <span key={i} style={{
-                    width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)',
-                    animation: `dot 1.2s ease-in-out ${i * 0.15}s infinite`,
-                  }} />
+                  <span key={i} className="chat-thinking-dot" />
                 ))}
               </div>
             </div>
@@ -423,62 +579,187 @@ export default function OrderBot() {
           <div ref={endRef} />
         </div>
 
+        {/* AI Content Zone — dynamic suggestions, cards, upsells */}
+        <div className={`ai-content-zone ${shelfData.length === 0 ? 'empty' : ''}`}>
+          {shelfData.length > 0 ? (
+            <div className="ai-content-zone-inner h-scroll">
+              {shelfData.map((product, i) => (
+                <motion.div
+                  key={product.id}
+                  className="chat-product-card"
+                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.35, delay: 0.06 * i, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -4, scale: 1.04 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    const prod = allProducts.find(p => String(p.id) === String(product.id));
+                    if (prod) {
+                      handleAction({
+                        id: `zone-add-${product.id}`,
+                        label: `Agregar ${product.name}`,
+                        type: 'add_to_cart',
+                        value: `agrega ${product.name}`,
+                        payload: { productId: product.id, name: product.name, price: product.price },
+                        price: product.price,
+                      });
+                    }
+                  }}
+                >
+                  {product.image && (
+                    <div className="chat-product-card-img-wrap">
+                      <img src={product.image} alt={product.name} className="chat-product-card-img" />
+                    </div>
+                  )}
+                  <div className="chat-product-card-body">
+                    <div className="chat-product-card-name">{product.name}</div>
+                    {product.price > 0 && (
+                      <div className="chat-product-card-price">${product.price}</div>
+                    )}
+                    <div className="chat-product-card-add">+ Agregar</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <span className="ai-content-zone-placeholder">Sugerencias inteligentes aquí</span>
+          )}
+        </div>
+
+        {/* Suggestion chips */}
+        {state.messages.length > 1 && (
+          <div className="chat-suggestions">
+            {(() => {
+              const hasCart = state.cart?.items?.length > 0;
+              if (hasCart) {
+                return [
+                  { label: '🛒 Ver carrito', value: 'ver carrito', action: true },
+                  { label: '📦 Pedir', value: 'confirmar pedido', action: false },
+                ];
+              }
+              return [
+                { label: '🔥 Combos', value: 'ver combos', action: false },
+                { label: '🍗 Boneless', value: 'quiero boneless', action: false },
+              ];
+            })().map(chip => (
+              <button
+                key={chip.value}
+                className="chat-suggestion-chip"
+                onClick={() => {
+                  if (chip.action) {
+                    handleAction({
+                      id: 'chip-' + chip.value,
+                      label: chip.label,
+                      type: chip.value === 'ver carrito' ? 'view_cart' : 'checkout',
+                      value: chip.value,
+                    });
+                  } else {
+                    setState(prev => ({
+                      ...prev,
+                      messages: [...prev.messages, { id: idRef.current++, text: chip.label, sender: 'user' }]
+                    }));
+                    processResponse(chip.value);
+                  }
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Input */}
         <div style={{
-          padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex', gap: '0.5rem',
+          padding: '0 1rem 0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex', gap: '0.5rem', paddingTop: '0.75rem',
         }}>
           <input ref={inputRef} value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send()}
             placeholder="Escribe tu mensaje..."
-            style={{
-              flex: 1, padding: '0.75rem 1rem',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.88rem',
-              outline: 'none', fontFamily: 'inherit',
-            }}
+            className="chat-input"
           />
-          <Button onClick={send} disabled={!input.trim() || thinking} variant={input.trim() && !thinking ? 'primary' : 'secondary'} style={{
-            width: '38px', height: '38px', padding: 0, borderRadius: '12px', flexShrink: 0,
-          }}>↑</Button>
+          <Button onClick={send} disabled={!input.trim() || thinking}
+            variant={input.trim() && !thinking ? 'primary' : 'secondary'}
+            className="chat-send-btn"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5" />
+              <polyline points="5 12 12 5 19 12" />
+            </svg>
+          </Button>
         </div>
       </div>
 
       {/* FAB */}
-      <Button
-        onClick={() => setOpen(p => !p)}
-        aria-label={open ? 'Cerrar chat' : 'Abrir asistente'}
-        variant={open ? 'secondary' : 'primary'}
-        style={{
-          position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999,
-          width: open ? '48px' : '56px', height: open ? '48px' : '56px',
-          borderRadius: open ? '14px' : '16px',
-          padding: 0,
-          background: open ? 'var(--bg-secondary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent-gold) 100%)',
-          boxShadow: open ? '0 2px 12px rgba(0,0,0,0.4)' : '0 4px 20px rgba(255,69,0,0.45), 0 8px 40px rgba(255,69,0,0.2)',
-        }}
-      >
-        {open ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        ) : (
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95" />
-            <circle cx="12" cy="12" r="1.2" fill="#FF4500" />
-            <circle cx="8" cy="12" r="1.2" fill="#FF4500" />
-            <circle cx="16" cy="12" r="1.2" fill="#FF4500" />
-          </svg>
+      <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999 }}>
+        <Button
+          onClick={() => setOpen(p => !p)}
+          aria-label={open ? 'Cerrar chat' : 'Abrir asistente'}
+          variant={open ? 'secondary' : 'primary'}
+          style={{
+            width: open ? '48px' : '56px', height: open ? '48px' : '56px',
+            borderRadius: open ? '14px' : '16px',
+            padding: 0,
+            background: open ? 'var(--bg-secondary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent-gold) 100%)',
+            boxShadow: open ? '0 2px 12px rgba(0,0,0,0.4)' : '0 4px 20px rgba(255,69,0,0.45), 0 8px 40px rgba(255,69,0,0.2)',
+          }}
+        >
+          {open ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95" />
+              <circle cx="12" cy="12" r="1.2" fill="#FF4500" />
+              <circle cx="8" cy="12" r="1.2" fill="#FF4500" />
+              <circle cx="16" cy="12" r="1.2" fill="#FF4500" />
+            </svg>
+          )}
+        </Button>
+        {!open && state.cart?.items?.length > 0 && (
+          <span className="fab-badge">{state.cart.items.length}</span>
         )}
-      </Button>
+      </div>
+
+      <ImpulseShelf
+        visible={shelfVisible}
+        products={shelfData}
+        onAdd={(product) => {
+          const prod = allProducts.find(p => String(p.id) === String(product.id));
+          if (prod) {
+            handleAction({
+              id: `shelf-add-${product.id}`,
+              label: `Agregar ${product.name}`,
+              type: 'add_to_cart',
+              value: `agrega ${product.name}`,
+              payload: { productId: product.id, name: product.name, price: product.price },
+              price: product.price,
+            });
+          }
+        }}
+        onVerTodos={() => setVitrinaOpen(true)}
+        chatBottom={open ? 88 : 0}
+      />
+
+      <VitrinaModal
+        isOpen={vitrinaOpen}
+        onClose={() => setVitrinaOpen(false)}
+        products={allProducts}
+        onAdd={(product) => {
+          handleAction({
+            id: `vitrina-add-${product.id}`,
+            label: `Agregar ${product.name}`,
+            type: 'add_to_cart',
+            value: `agrega ${product.name}`,
+            payload: { productId: product.id, name: product.name, price: product.price },
+            price: product.price,
+          });
+        }}
+      />
 
       <style>{`
-         @keyframes dot {
-           0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
-           40% { transform: scale(1.2); opacity: 1; }
-         }
          @keyframes pulseTotal {
            0% { transform: scale(1); }
            50% { transform: scale(1.04); }
