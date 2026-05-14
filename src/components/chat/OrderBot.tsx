@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
@@ -138,6 +139,13 @@ export default function OrderBot({
     return () => clearInterval(interval);
   }, []);
   const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  
+  // Listen to external toggle event (e.g. from DispatchOrb)
+  useEffect(() => {
+    const handleToggle = () => setOpen(prev => !prev);
+    window.addEventListener('toggle-ai', handleToggle);
+    return () => window.removeEventListener('toggle-ai', handleToggle);
+  }, []);
 
   const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
   console.log("DEBUG switch:", { forceLegacy, env: process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY, engine });
@@ -467,8 +475,20 @@ export default function OrderBot({
   }, [thinking, processResponse, state.cart, state.cartTotal]);
 
   return (
-    <div className={inline ? 'chat-inline-wrapper' : undefined} style={inline ? { width: '100%', maxWidth: '680px', margin: '0 auto', padding: '1.5rem 1rem' } : undefined}>
+    <div className={inline ? 'chat-inline-wrapper' : undefined} style={inline ? { position: 'relative', width: '100%', maxWidth: '680px', margin: '0 auto', padding: '1.5rem 1rem' } : undefined}>
     <>
+      {inline && (
+        <motion.div
+          animate={{ scale: [1, 1.06, 1], opacity: [0.35, 0.6, 0.35] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: 'absolute', inset: 0, opacity: 0.55, borderRadius: '24px',
+            pointerEvents: 'none',
+            background: 'linear-gradient(137deg, #FF4500 0%, #FF6B35 45%, #FF8F00 100%)',
+            filter: 'blur(45px)',
+          }}
+        />
+      )}
       <div
         className={`chat-container${inline ? ' chat-inline' : ''}`}
         style={inline ? {
@@ -479,66 +499,105 @@ export default function OrderBot({
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column' as const,
           fontFamily: 'var(--font-chat), sans-serif',
+          border: '1px solid transparent',
+          background: 'linear-gradient(#1A1A1C, #1A1A1C) padding-box, linear-gradient(137deg, #FF4500 0%, #FF6B35 45%, #FF8F00 100%) border-box',
         } : {
-          position: 'fixed', bottom: isOpen ? '5.5rem' : '-600px', left: '1.25rem',
-          width: expanded ? '640px' : '540px', maxWidth: 'calc(100vw - 2.5rem)',
-          height: '540px', maxHeight: 'calc(100vh - 8rem)',
+          position: 'fixed', bottom: '6rem', right: '1.5rem',
+          width: expanded ? '640px' : '420px', maxWidth: 'calc(100vw - 3rem)',
+          height: '580px', maxHeight: 'calc(100vh - 8rem)',
           zIndex: 9998,
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: '24px',
           overflow: 'hidden', display: 'flex', flexDirection: 'column' as const,
-          transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s var(--easing-premium), opacity 0.4s var(--easing-premium)',
-          opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' as const,
+          transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          opacity: isOpen ? 1 : 0, 
+          transform: isOpen ? 'scale(1) translateY(0)' : 'scale(0.8) translateY(20px)',
+          transformOrigin: 'bottom right',
+          pointerEvents: isOpen ? 'auto' : 'none' as const,
           fontFamily: 'var(--font-chat), sans-serif',
-          boxShadow: '0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 0 60px rgba(255,69,0,0.06)',
+          boxShadow: '0 30px 100px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1), 0 0 60px rgba(255,69,0,0.1)',
         }}
       >
+        {/* Aurora blobs background */}
+        <motion.div
+          animate={{ x: [0, 40, -30, 0], y: [0, -30, 20, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: 'absolute', width: '380px', height: '380px',
+            borderRadius: '50%', filter: 'blur(90px)', opacity: 0.1,
+            pointerEvents: 'none', zIndex: 0,
+            background: '#FF4500',
+            top: '-15%', right: '-15%',
+          }}
+        />
+        <motion.div
+          animate={{ x: [0, -35, 25, 0], y: [0, 25, -35, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: 'absolute', width: '300px', height: '300px',
+            borderRadius: '50%', filter: 'blur(80px)', opacity: 0.08,
+            pointerEvents: 'none', zIndex: 0,
+            background: '#FF8C00',
+            bottom: '-10%', left: '-10%',
+          }}
+        />
+        <motion.div
+          animate={{ x: [0, 20, -25, 0], y: [0, -15, 20, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: 'absolute', width: '250px', height: '250px',
+            borderRadius: '50%', filter: 'blur(70px)', opacity: 0.07,
+            pointerEvents: 'none', zIndex: 0,
+            background: '#FFD700',
+            top: '40%', left: '50%',
+          }}
+        />
+
         {/* Header */}
-        <div style={{
-          padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'rgba(255,69,0,0.04)',
-        }}>
-          <div className="chat-header-avatar">🔥</div>
-          <div style={{ flex: 1 }}>
-            <div className="chat-header-title">Snacks 911</div>
-            <div style={{ fontSize: '0.62rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
-              <span className="chat-header-dot online" />
-              <span style={{ color: 'var(--status-success)' }}>En línea</span>
+        <div className="chat-header p-6 border-b border-[var(--glass-border)] flex justify-between items-center bg-white/2 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="chat-avatar w-10 h-10 bg-[var(--accent)] rounded-full flex items-center justify-center text-xl text-[var(--bg)] shadow-[0_0_20px_var(--accent)]">
+              🚨
+            </div>
+            <div>
+              <div className="font-black text-[0.85rem] tracking-[2px] text-[var(--fg)] uppercase">DISPATCHER 911</div>
+              <div className="text-[0.6rem] text-[var(--accent)] font-black tracking-widest flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]"></span>
+                SYSTEM ACTIVE • {rolloutSessionIdRef.current.slice(0, 8).toUpperCase()}
+              </div>
             </div>
           </div>
-
-          {state.cartTotal > 0 && (
-            <div style={{
-              padding: '0.35rem 0.65rem', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              color: '#fff', fontWeight: 900, fontSize: '0.82rem',
-              boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
-              animation: 'pulseTotal 1.5s ease-in-out infinite',
-            }}>
-              ${state.cartTotal}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">Status</span>
+              <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-tighter">Ready to dispatch</span>
             </div>
-          )}
-          <button onClick={() => setOpen(false)} style={{
-            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem',
-            cursor: 'pointer', padding: '4px', lineHeight: 1, opacity: 0.6,
-          }}>×</button>
+            <button 
+              onClick={() => setOpen(false)} 
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[var(--fg)] cursor-pointer hover:bg-white/10 transition-all"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
         <div className="chat-messages" ref={messagesRef}>
           {state.messages.length <= 1 && (
-            <div className="chat-empty-state">
-              <div className="chat-empty-icon">🍟</div>
-              <div className="chat-empty-title">¿Qué se te antoja?</div>
-              <div className="chat-empty-subtitle">Pide lo que quieras, yo te ayudo</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', marginTop: '4px' }}>
+            <div className="chat-empty-state py-12 px-8 flex flex-col items-center text-center">
+              <div className="chat-empty-icon w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-4xl mb-6 animate-[pulse-glow_4s_infinite]">🚨</div>
+              <div className="chat-empty-title font-black text-2xl uppercase tracking-tight mb-2">Dispatcher 911</div>
+              <div className="chat-empty-subtitle text-white/40 text-sm max-w-[240px] mb-8">Canal de emergencia para antojos críticos. ¿Cuál es tu situación?</div>
+              
+              <div className="grid grid-cols-2 gap-3 w-full max-w-[320px]">
                 {[
-                  { label: '🔥 Ver combos', value: 'ver combos' },
-                  { label: '📋 Ver menú', value: 'ver menu' },
+                  { label: '🔥 Ver combos', value: 'ver combos', icon: '📦' },
+                  { label: '🍗 Boneless', value: 'quiero boneless', icon: '🍗' },
+                  { label: '🍟 Papas', value: 'ver papas', icon: '🍟' },
+                  { label: '🥤 Bebidas', value: 'ver bebidas', icon: '🥤' },
                 ].map(chip => (
                   <button
                     key={chip.value}
-                    className="chat-suggestion-chip"
+                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-[0.75rem] font-bold transition-all text-left group"
                     onClick={() => {
                       setState(prev => ({
                         ...prev,
@@ -547,7 +606,8 @@ export default function OrderBot({
                       processResponse(chip.value);
                     }}
                   >
-                    {chip.label}
+                    <span className="text-lg group-hover:scale-125 transition-transform">{chip.icon}</span>
+                    <span>{chip.label}</span>
                   </button>
                 ))}
               </div>
@@ -557,68 +617,62 @@ export default function OrderBot({
           {state.messages.map((m, i) => {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return (
-            <div key={m.id} className={`msg-row ${m.sender === 'user' ? 'msg-row-user' : 'msg-row-bot'}`}>
-              {m.sender === 'bot' && (
-                <div className="msg-avatar" style={{ marginBottom: '2px' }}>🔥</div>
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className={`msg-bubble ${m.sender === 'user' ? 'msg-bubble-user' : 'msg-bubble-bot'}`}>
+              <div key={m.id} className={`msg-row-container flex flex-col gap-2 ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className={`message p-3.5 px-5 rounded-[20px] text-[0.95rem] max-w-[85%] relative opacity-0 translate-y-[15px] animate-[fadeInUp_0.5s_forwards] ${
+                  m.sender === 'bot' ? 'ai bg-white/6 self-start rounded-bl-[4px]' : 'user bg-[var(--accent)] text-[var(--bg)] self-end font-bold rounded-br-[4px] shadow-[0_6px_20px_rgba(0,0,0,0.3)]'
+                }`}>
                   {m.text}
-                </div>
-                <div className="msg-time" style={{ textAlign: m.sender === 'user' ? 'right' : 'left' }}>
-                  {time}
                 </div>
 
                 {/* Cart summary card */}
-                {m.ui?.cart && m.sender === 'bot' && state.cart?.items?.length > 0 && (
-                  <div className="chat-cart-summary" style={{
+                {m.ui?.cart && m.sender === 'bot' && (state.cart?.items?.length ?? 0) > 0 && (
+                  <div className="chat-cart-summary w-full max-w-[85%] bg-white/5 rounded-2xl p-4 border border-white/10 mt-2" style={{
                     animation: 'cardSlideIn 0.35s ease 0.2s both',
                   }}>
-                    {state.cart.items.map((item: any, idx: number) => (
-                      <div key={idx} className="chat-cart-item">
+                    {state.cart?.items?.map((item: any, idx: number) => (
+                      <div key={idx} className="chat-cart-item flex justify-between items-center mb-2 text-[0.85rem]">
                         <div className="chat-cart-item-info">
-                          <span className="chat-cart-item-name">
+                          <span className="chat-cart-item-name font-bold">
                             {item.quantity || 1}x {item.name}
                           </span>
                         </div>
-                        <span className="chat-cart-item-price">${item.price || 0}</span>
-                        <button
-                          className="chat-cart-item-remove"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const action: Action = {
-                              id: `remove-${item.productId || item.id}`,
-                              label: `Quitar ${item.name}`,
-                              type: 'dismiss',
-                              value: `quita ${item.name}`,
-                            };
-                            handleAction(action);
-                          }}
-                          title="Quitar"
-                        >✕</button>
+                        <div className="flex items-center gap-3">
+                          <span className="chat-cart-item-price font-mono text-[var(--accent)]">${item.price || 0}</span>
+                          <button
+                            className="text-white/40 hover:text-red-500 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAction({
+                                id: `remove-${item.productId || item.id}`,
+                                label: `Quitar ${item.name}`,
+                                type: 'dismiss',
+                                value: `quita ${item.name}`,
+                              });
+                            }}
+                          >✕</button>
+                        </div>
                       </div>
                     ))}
-                    <div className="chat-cart-total">
-                      <span className="chat-cart-total-label">Total</span>
-                      <span className="chat-cart-total-price">${state.cart.total || state.cartTotal}</span>
+                    <div className="chat-cart-total border-t border-white/10 pt-2 mt-2 flex justify-between font-black">
+                      <span>Total</span>
+                      <span className="text-[var(--accent)]">${state.cart?.total || state.cartTotal}</span>
                     </div>
                   </div>
                 )}
 
                 {/* Product cards from ui */}
                 {m.ui?.cards && m.sender === 'bot' && (
-                  <div className="chat-cards-scroll" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
+                  <div className="chat-cards-scroll flex gap-3 overflow-x-auto pb-4 mt-2 w-full no-scrollbar" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
                     {m.ui.cards.map((card: any, ci: number) => (
                       <motion.div
                         key={card.id}
-                        className="chat-product-card"
+                        className="chat-product-card glass min-w-[180px] p-3 cursor-pointer"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: 0.3 + ci * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ scale: 1.03, boxShadow: '0 0 20px rgba(255, 69, 0, 0.15)', borderColor: 'rgba(255, 69, 0, 0.3)' }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ scale: 1.03, rotate: 1 }}
                         onClick={() => {
-                          const action: Action = {
+                          handleAction({
                             id: `card-add-${card.id}`,
                             label: `Agregar ${card.title}`,
                             type: 'add_to_cart',
@@ -626,40 +680,23 @@ export default function OrderBot({
                             payload: { productId: card.id, name: card.title, price: card.price },
                             price: card.price,
                             image: card.imageUrl,
-                          };
-                          handleAction(action);
+                          });
                         }}
                       >
                         {card.imageUrl && (
-                          <div className="chat-product-card-img-wrap">
-                            <motion.img
+                          <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
+                            <Image
                               src={card.imageUrl}
                               alt={card.title}
-                              className="chat-product-card-img"
-                              whileHover={{ scale: 1.08 }}
-                              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                              fill
+                              className="object-cover"
                             />
                           </div>
                         )}
-                        <div className="chat-product-card-body">
-                          <div className="chat-product-card-name">{card.title}</div>
-                          {card.price > 0 && (
-                            <div className="chat-product-card-price">${card.price}</div>
-                          )}
-                          <AddFeedbackButton 
-                            onClick={() => {
-                              const action: Action = {
-                                id: `card-add-${card.id}`,
-                                label: `Agregar ${card.title}`,
-                                type: 'add_to_cart',
-                                value: `agrega ${card.title}`,
-                                payload: { productId: card.id, name: card.title, price: card.price },
-                                price: card.price,
-                                image: card.imageUrl,
-                              };
-                              handleAction(action);
-                            }} 
-                          />
+                        <div className="text-[0.8rem] font-black mb-1 truncate">{card.title}</div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[var(--accent)] font-mono font-bold">${card.price}</span>
+                          <AddFeedbackButton label="+" onClick={() => {}} />
                         </div>
                       </motion.div>
                     ))}
@@ -668,33 +705,25 @@ export default function OrderBot({
 
                 {/* Legacy product cards */}
                 {m.type === 'products' && m.actions && (
-                  <div className="chat-cards-scroll" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
+                  <div className="chat-cards-scroll flex gap-3 overflow-x-auto pb-4 mt-2 w-full no-scrollbar" style={{ animation: 'cardSlideIn 0.35s ease 0.2s both' }}>
                     {m.actions.map((a: any, ai: number) => (
                       <motion.div
                         key={a.id || a.value}
-                        className="chat-product-card"
+                        className="chat-product-card glass min-w-[180px] p-3 cursor-pointer"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: 0.3 + ai * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ scale: 1.03, boxShadow: '0 0 20px rgba(255, 69, 0, 0.15)', borderColor: 'rgba(255, 69, 0, 0.3)' }}
-                        whileTap={{ scale: 0.97 }}
                         onClick={() => handleAction(a)}
                       >
                         {a.image && (
-                          <div className="chat-product-card-img-wrap">
-                            <motion.img
-                              src={a.image}
-                              alt={a.label}
-                              className="chat-product-card-img"
-                              whileHover={{ scale: 1.08 }}
-                              transition={{ duration: 0.5 }}
-                            />
+                          <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
+                            <Image src={a.image} alt={a.label} fill className="object-cover" />
                           </div>
                         )}
-                        <div className="chat-product-card-body">
-                          <div className="chat-product-card-name">{a.label}</div>
-                          {a.price && <div className="chat-product-card-price">${a.price}</div>}
-                          <AddFeedbackButton onClick={() => handleAction(a)} />
+                        <div className="text-[0.8rem] font-black mb-1 truncate">{a.label}</div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[var(--accent)] font-mono font-bold">${a.price}</span>
+                          <AddFeedbackButton label="+" onClick={() => {}} />
                         </div>
                       </motion.div>
                     ))}
@@ -703,31 +732,19 @@ export default function OrderBot({
 
                 {/* Action buttons */}
                 {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
-                  <div style={{
-                    display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px',
-                    justifyContent: 'flex-start',
-                    animation: 'actionsFadeIn 0.3s ease 0.3s both'
-                  }}>
-                    {m.actions.map((a: any, ai: number) => {
-                      const btnClass = a.type === 'checkout' ? 'checkout'
-                        : a.type === 'dismiss' ? 'danger'
-                        : a.type === 'view_cart' ? 'view'
-                        : a.type === 'add_to_cart' ? 'add'
-                        : a.type === 'show_category' || a.type === 'recommend' ? 'ghost'
-                        : 'add';
-                      return (
-                        <button
-                          key={a.id || a.value}
-                          onClick={() => handleAction(a)}
-                          className={`chat-action-btn ${btnClass}`}
-                          style={{
-                            animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
-                          }}
-                        >
-                          {a.label}
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-wrap gap-2 mt-2" style={{ animation: 'actionsFadeIn 0.3s ease 0.3s both' }}>
+                    {m.actions.map((a: any, ai: number) => (
+                      <button
+                        key={a.id || a.value}
+                        onClick={() => handleAction(a)}
+                        className={`btn ${a.type === 'checkout' ? 'btn-primary' : 'btn-ghost'} !py-1.5 !px-4 !text-[0.7rem] !rounded-full`}
+                        style={{
+                          animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
+                        }}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
                   </div>
                 )}
 
@@ -737,34 +754,29 @@ export default function OrderBot({
                     cartTotal={safeTotal}
                     onVerTodos={() => onActiveViewChange?.('catalog')}
                     onAdd={(product) => {
-                      const action: Action = {
+                      handleAction({
                         id: `suggest-add-${product.id}`,
                         label: `Agregar ${product.name}`,
                         type: 'add_to_cart',
                         value: `agrega ${product.name}`,
                         payload: { productId: product.id, name: product.name, price: product.price },
                         price: product.price,
-                      };
-                      handleAction(action);
+                      });
                     }}
                   />
                 )}
-              </div>
-              {m.sender === 'user' && (
-                <div className="msg-avatar" style={{ marginBottom: '2px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
-                  Tú
+                
+                <div className="text-[0.6rem] text-white/20 mt-1 uppercase tracking-widest font-bold">
+                  {m.sender === 'user' ? 'AUTORIZADO' : 'SISTEMA'} • {time}
                 </div>
-              )}
-            </div>
-          )})}
-          {thinking && (
-            <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-              <div className="msg-avatar" style={{ marginBottom: '2px' }}>🔥</div>
-              <div className="chat-thinking">
-                {[0, 1, 2].map(i => (
-                  <span key={i} className="chat-thinking-dot" />
-                ))}
               </div>
+            );
+          })}
+          {thinking && (
+            <div id="typingIndicator" className="flex ml-5 gap-1.5 mb-2.5">
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-[pulse-glow_1s_infinite]"></span>
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-[pulse-glow_1s_infinite_0.2s]"></span>
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-[pulse-glow_1s_infinite_0.4s]"></span>
             </div>
           )}
         </div>
@@ -909,37 +921,8 @@ export default function OrderBot({
         </div>
       </div>
 
-      {/* FAB — hidden in inline mode */}
-      {!inline && <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999 }}>
-        <Button
-          onClick={() => setOpen(p => !p)}
-          aria-label={open ? 'Cerrar chat' : 'Abrir asistente'}
-          variant={open ? 'secondary' : 'primary'}
-          style={{
-            width: open ? '48px' : '56px', height: open ? '48px' : '56px',
-            borderRadius: open ? '14px' : '16px',
-            padding: 0,
-            background: open ? 'var(--bg-secondary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent-gold) 100%)',
-            boxShadow: open ? '0 2px 12px rgba(0,0,0,0.4)' : '0 4px 20px rgba(255,69,0,0.45), 0 8px 40px rgba(255,69,0,0.2)',
-          }}
-        >
-          {open ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          ) : (
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6-4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.95" />
-              <circle cx="12" cy="12" r="1.2" fill="#FF4500" />
-              <circle cx="8" cy="12" r="1.2" fill="#FF4500" />
-              <circle cx="16" cy="12" r="1.2" fill="#FF4500" />
-            </svg>
-          )}
-        </Button>
-        {!open && state.cart?.items?.length > 0 && (
-          <span className="fab-badge">{state.cart.items.length}</span>
-        )}
-      </div>}
+      {/* Expandable FAB */}
+      {/* FAB removed to use DispatchOrb as the trigger */}
 
       {activeView === 'chat' && shelfData.length === 0 && (
       <ImpulseShelf

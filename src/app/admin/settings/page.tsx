@@ -59,7 +59,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-white p-6 md:p-12 font-sans">
+    <div className="min-h-screen bg-[#050505] text-white p-6 md:p-12 font-sans">
       <div className="max-w-4xl mx-auto space-y-8">
         
         <div className="flex items-center justify-between border-b border-white/10 pb-6">

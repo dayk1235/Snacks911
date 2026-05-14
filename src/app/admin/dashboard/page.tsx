@@ -19,61 +19,65 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 
 // ─── Constants & Types ────────────────────────────────────────────────────────
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ['#ff5a00', '#00d1ff', '#ff0055', '#7000ff', '#00ffaa'];
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
   trend?: string;
-  color: string;
+  status?: string;
 }
 
 // ─── UI Components ────────────────────────────────────────────────────────────
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, color }) => (
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, status }) => (
   <motion.div 
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between"
+    whileHover={{ translateY: -5, borderColor: 'rgba(255, 90, 0, 0.4)' }}
+    className="glass p-6 rounded-2xl flex flex-col justify-between group transition-all"
   >
     <div className="flex justify-between items-start">
-      <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-${color.split('-')[1]}-600`}>
+      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-[var(--accent)] group-hover:shadow-[0_0_15px_var(--accent)] transition-all">
         {icon}
       </div>
       {trend && (
-        <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+        <span className="text-[10px] font-black text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-1 rounded-full uppercase tracking-widest">
           {trend}
         </span>
       )}
     </div>
-    <div className="mt-4">
-      <p className="text-sm text-gray-500 font-medium">{title}</p>
-      <h3 className="text-2xl font-bold text-gray-900 mt-1">{value}</h3>
+    <div className="mt-6">
+      <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">{title}</p>
+      <h3 className="text-3xl font-black text-white mt-1 tracking-tighter">
+        {typeof value === 'number' && value > 1000 ? value.toLocaleString() : value}
+      </h3>
+      {status && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+          <span className="text-[8px] text-green-500 font-black uppercase tracking-widest">{status}</span>
+        </div>
+      )}
     </div>
   </motion.div>
 );
 
-const AlertItem: React.FC<{ type: 'warning' | 'error' | 'success'; title: string; desc: string }> = ({ type, title, desc }) => {
-  const styles = {
-    warning: 'bg-amber-50 border-amber-200 text-amber-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-800'
-  };
+const ActivityItem: React.FC<{ type: 'order' | 'abandoned' | 'alert'; title: string; time: string; amount?: string }> = ({ type, title, time, amount }) => {
   const icons = {
-    warning: <AlertTriangle className="w-5 h-5 text-amber-500" />,
-    error: <Zap className="w-5 h-5 text-red-500" />,
-    success: <CheckCircle className="w-5 h-5 text-emerald-500" />
+    order: { emoji: '🔥', color: 'text-orange-500' },
+    abandoned: { emoji: '⚠️', color: 'text-yellow-500' },
+    alert: { emoji: '🚨', color: 'text-red-500' }
   };
 
   return (
-    <div className={`p-4 rounded-xl border flex items-start gap-3 ${styles[type]}`}>
-      {icons[type]}
-      <div>
-        <p className="text-sm font-bold">{title}</p>
-        <p className="text-xs opacity-80">{desc}</p>
+    <div className="p-4 bg-white/2 border border-white/5 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-all group">
+      <div className="text-xl">{icons[type].emoji}</div>
+      <div className="flex-1">
+        <p className="text-sm font-bold text-white/90">{title}</p>
+        <p className="text-[10px] text-white/20 uppercase font-black tracking-widest">{time}</p>
       </div>
+      {amount && <div className="text-[var(--accent)] font-mono font-bold">{amount}</div>}
     </div>
   );
 };
@@ -85,7 +89,6 @@ export default function AdminDashboard() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize Supabase Client (Using env vars)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -105,28 +108,17 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30s
-
-    // Realtime Subscription for Active Orders
+    const interval = setInterval(fetchMetrics, 15000); // 15s faster refresh
     const channel = supabase
       .channel('active-orders')
       .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'orders',
+        event: '*', schema: 'public', table: 'orders',
         filter: "status=in.(pending,confirmed,preparing,ready,awaiting_payment)" 
-      }, (payload) => {
-        // Refresh local list on any change
-        refreshActiveOrders();
-      })
+      }, () => refreshActiveOrders())
       .subscribe();
 
     refreshActiveOrders();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
+    return () => { clearInterval(interval); supabase.removeChannel(channel); };
   }, []);
 
   const refreshActiveOrders = async () => {
@@ -134,128 +126,134 @@ export default function AdminDashboard() {
       .from('orders')
       .select('id, customer_name, total, status, created_at')
       .in('status', ['pending', 'confirmed', 'preparing', 'ready', 'awaiting_payment'])
-      .order('created_at', { ascending: false })
-      .limit(10);
-    
+      .order('created_at', { ascending: false }).limit(10);
     if (data) setActiveOrders(data);
   };
 
   if (loading && !metrics) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-6">
+        <div className="w-16 h-16 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(255,90,0,0.3)]"></div>
+        <div className="text-[var(--accent)] font-black tracking-[0.3em] uppercase text-xs animate-pulse">Initializing Command Center...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-[#050505] text-white p-6 lg:p-10 selection:bg-[var(--accent)] selection:text-black">
+      {/* Tactical Header */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard de Control</h1>
-          <p className="text-gray-500 mt-1">Monitoreo en tiempo real de Snacks 911</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">Estado del Sistema</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-xs text-green-600 font-bold uppercase tracking-wider">Operativo</span>
-            </div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-[var(--accent)] text-black px-3 py-1 rounded font-black text-[0.6rem] tracking-widest uppercase">HQ-COMMAND</div>
+            <div className="text-white/20 font-mono text-[0.6rem] tracking-widest">v4.0.2 // EST: {new Date().toLocaleTimeString()}</div>
           </div>
+          <h1 className="text-4xl font-black tracking-tighter uppercase italic">Control <span className="text-[var(--accent)]">Center</span></h1>
+        </div>
+
+        <div className="flex gap-4 w-full md:w-auto">
+          <button className="flex-1 md:flex-none px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[0.7rem] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+            Settings
+          </button>
+          <button className="flex-1 md:flex-none px-6 py-3 bg-[var(--accent)] text-black rounded-xl text-[0.7rem] font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(255,90,0,0.4)] transition-all">
+            Broadcast Msg
+          </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+      {/* Grid Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <MetricCard 
-          title="Pedidos Hoy" 
+          title="Pedidos Despachados" 
           value={metrics?.today.orders || 0} 
           icon={<ShoppingBag className="w-6 h-6" />} 
-          color="bg-indigo-500"
+          status="Live"
         />
         <MetricCard 
-          title="Ventas Hoy" 
+          title="Ingresos Totales (24h)" 
           value={`$${metrics?.today.revenue.toLocaleString() || 0}`} 
           icon={<DollarSign className="w-6 h-6" />} 
-          color="bg-emerald-500"
-          trend="+12%"
+          trend="+18.4%"
         />
         <MetricCard 
-          title="Ticket Promedio" 
-          value={`$${Math.round(metrics?.today.avgTicket || 0)}`} 
-          icon={<TrendingUp className="w-6 h-6" />} 
-          color="bg-amber-500"
-        />
-        <MetricCard 
-          title="Conversión Bot" 
+          title="Eficiencia de IA" 
           value={`${Math.round(metrics?.today.conversionRate || 0)}%`} 
-          icon={<Users className="w-6 h-6" />} 
-          color="bg-rose-500"
+          icon={<Zap className="w-6 h-6" />} 
+          status="Optimized"
+        />
+        <MetricCard 
+          title="Tickets Activos" 
+          value={activeOrders.length} 
+          icon={<Clock className="w-6 h-6" />} 
+          status="In Queue"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Charts */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Revenue Hourly */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Ventas por Hora (Últimas 12h)</h3>
-            <div className="h-64">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-10">
+          {/* Main Chart Card */}
+          <div className="glass p-8 rounded-3xl">
+            <div className="flex justify-between items-center mb-10">
+              <h3 className="text-xl font-black tracking-tight uppercase italic">Flujo de <span className="text-[var(--accent)]">Ventas</span></h3>
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse"></div>
+                <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">Realtime Feed</div>
+              </div>
+            </div>
+            <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={metrics?.hourlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="hour" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.2} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{fill: 'rgba(255,255,255,0.3)', fontSize: 10}} />
                   <Tooltip 
-                    cursor={{ fill: '#f3f4f6' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                   />
-                  <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Realtime Active Orders */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-900">Pedidos Activos</h3>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">En Vivo</span>
+          {/* Table Card */}
+          <div className="glass rounded-3xl overflow-hidden">
+            <div className="p-8 border-b border-white/5 flex justify-between items-center">
+              <h3 className="text-xl font-black tracking-tight uppercase italic">Status de <span className="text-[var(--accent)]">Pedidos</span></h3>
+              <div className="bg-white/5 px-4 py-1 rounded-full text-[10px] font-black text-white/40 uppercase tracking-widest">Last Update: {new Date().toLocaleTimeString()}</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase">
+                <thead className="bg-white/2 text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
                   <tr>
-                    <th className="px-6 py-4">Cliente</th>
-                    <th className="px-6 py-4">Total</th>
-                    <th className="px-6 py-4">Estado</th>
-                    <th className="px-6 py-4">Hora</th>
+                    <th className="px-8 py-5">Dispatcher ID</th>
+                    <th className="px-8 py-5">Cliente</th>
+                    <th className="px-8 py-5">Monto</th>
+                    <th className="px-8 py-5">Estatus</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-white/5">
                   <AnimatePresence>
                     {activeOrders.map((order) => (
                       <motion.tr 
-                        key={order.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="hover:bg-gray-50 transition-colors"
+                        key={order.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="hover:bg-white/[0.02] transition-colors"
                       >
-                        <td className="px-6 py-4 font-medium text-gray-900">{order.customer_name}</td>
-                        <td className="px-6 py-4 text-gray-600">${order.total}</td>
-                        <td className="px-6 py-4">
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
-                            order.status === 'ready' ? 'bg-green-100 text-green-700' :
-                            order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
+                        <td className="px-8 py-6 font-mono text-xs text-white/40">#{order.id.slice(0, 8)}</td>
+                        <td className="px-8 py-6 font-bold text-sm">{order.customer_name}</td>
+                        <td className="px-8 py-6 text-[var(--accent)] font-mono font-bold">${order.total}</td>
+                        <td className="px-8 py-6">
+                          <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm ${
+                            order.status === 'ready' ? 'bg-green-500/20 text-green-500 border border-green-500/30' :
+                            order.status === 'preparing' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' :
+                            'bg-white/10 text-white/40 border border-white/10'
                           }`}>
                             {order.status}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-gray-400">
-                          {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
                       </motion.tr>
                     ))}
@@ -266,63 +264,60 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Sidebar Widgets */}
-        <div className="space-y-8">
-          {/* Top Products */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Top 5 Productos (Mes)</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={metrics?.topProducts}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="quantity"
-                  >
-                    {metrics?.topProducts.map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36}/>
-                </PieChart>
-              </ResponsiveContainer>
+        <div className="space-y-10">
+          {/* Quick Actions Console */}
+          <div className="glass p-8 rounded-3xl">
+            <h3 className="text-lg font-black tracking-tight uppercase italic mb-6">Quick <span className="text-[var(--accent)]">Actions</span></h3>
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { l: 'Activar Promo 🔥', c: 'bg-white/5 border-white/10' },
+                { l: 'Forzar Upsell 📈', c: 'bg-white/5 border-white/10' },
+                { l: 'Reiniciar IA 🤖', c: 'bg-red-500/10 border-red-500/20 text-red-500' },
+                { l: 'Cerrar Cocina 🚫', c: 'bg-white/5 border-white/10 opacity-50' }
+              ].map(act => (
+                <button key={act.l} className={`w-full p-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all hover:scale-[1.02] active:scale-95 ${act.c}`}>
+                  {act.l}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Critical Alerts */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Alertas Críticas</h3>
+          {/* Live Activity Feed */}
+          <div className="glass p-8 rounded-3xl">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-lg font-black tracking-tight uppercase italic">Live <span className="text-[var(--accent)]">Activity</span></h3>
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+            </div>
             <div className="space-y-4">
-              {metrics?.alerts.unpaidOld > 0 && (
-                <AlertItem 
-                  type="warning" 
-                  title="Pagos Pendientes" 
-                  desc={`${metrics.alerts.unpaidOld} pedidos llevan >25min esperando pago.`} 
-                />
-              )}
-              {metrics?.alerts.unresolvedReviews > 0 && (
-                <AlertItem 
-                  type="error" 
-                  title="Baja Calificación" 
-                  desc={`${metrics.alerts.unresolvedReviews} reseñas negativas requieren atención.`} 
-                />
-              )}
-              {metrics?.alerts.circuitBreakerActive ? (
-                <AlertItem 
-                  type="error" 
-                  title="Circuit Breaker Activo" 
-                  desc="El bot ha bloqueado respuestas por seguridad." 
-                />
-              ) : (
-                <AlertItem 
-                  type="success" 
-                  title="IA Estable" 
-                  desc="El sistema está procesando pedidos sin anomalías." 
-                />
-              )}
+              <ActivityItem type="order" title="Nueva Orden: Carlos G." time="Hace 2 min" amount="$340" />
+              <ActivityItem type="order" title="Nueva Orden: Sofía M." time="Hace 5 min" amount="$1,200" />
+              <ActivityItem type="abandoned" title="Carrito Abandonado" time="Hace 12 min" />
+              <ActivityItem type="alert" title="Pago Fallido: ID-4592" time="Hace 20 min" />
+            </div>
+          </div>
+
+          {/* Inventory Health */}
+          <div className="glass p-8 rounded-3xl">
+            <h3 className="text-lg font-black tracking-tight uppercase italic mb-6">Inventory <span className="text-[var(--accent)]">Health</span></h3>
+            <div className="space-y-6">
+              {[
+                { l: 'Boneless HQ', p: 85, c: 'bg-[var(--accent)]' },
+                { l: 'Papas Sazonadas', p: 42, c: 'bg-yellow-500' },
+                { l: 'Salsa Fuego', p: 12, c: 'bg-red-500' }
+              ].map(inv => (
+                <div key={inv.l}>
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
+                    <span className="text-white/60">{inv.l}</span>
+                    <span className={inv.p < 20 ? 'text-red-500' : 'text-white'}>{inv.p}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }} animate={{ width: `${inv.p}%` }}
+                      className={`h-full ${inv.c} shadow-[0_0_10px_rgba(255,255,255,0.1)]`}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

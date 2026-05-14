@@ -20,9 +20,9 @@ const getBaseUrl = () => {
   return base.replace(/\/$/, ''); // Remove trailing slash
 };
 
-// Safety check: AdminStore should only be used in the browser.
-if (isServer && process.env.NODE_ENV !== 'test') {
-  console.warn('[AdminStore] Warning: AdminStore is being accessed in a server environment. Relative fetch calls will likely fail.');
+// Safety check: AdminStore is primarily for browser use, but absolute URLs are supported for SSR.
+if (isServer && !process.env.NEXT_PUBLIC_BASE_URL && process.env.NODE_ENV !== 'test') {
+  console.log('[AdminStore] SSR Mode: No NEXT_PUBLIC_BASE_URL found, defaulting to localhost:3000');
 }
 
 // ─── In-memory TTL cache ──────────────────────────────────────

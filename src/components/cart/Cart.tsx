@@ -1114,26 +1114,17 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
               id="checkout-whatsapp"
               onClick={handleWhatsApp}
               fullWidth
-              style={{
-                background: 'linear-gradient(135deg,#25D366,#128C7E)',
-                padding: '1rem',
-                fontSize: '1.05rem',
-                boxShadow: '0 4px 20px rgba(37,211,102,0.2)',
-              }}
+              className="!py-5 !text-[1.1rem] !bg-[#25D366] !shadow-[0_0_30px_rgba(37,211,102,0.3)] animate-none"
             >
               Pedir por WhatsApp
             </Button>
-            <div style={{ marginTop: '0.6rem' }}>
+            <div style={{ marginTop: '0.75rem' }}>
               <Button
                 id="checkout-card"
                 onClick={handleCardPayment}
                 fullWidth
-                style={{
-                  background: 'linear-gradient(135deg,#FF4500,#FF6000)',
-                  padding: '1rem',
-                  fontSize: '1.05rem',
-                  boxShadow: '0 4px 20px rgba(255,69,0,0.25)',
-                }}
+                variant="primary"
+                className="!py-5 !text-[1.1rem]"
               >
                 💳 Pagar con tarjeta
               </Button>

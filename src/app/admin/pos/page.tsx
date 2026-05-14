@@ -327,8 +327,8 @@ export default function POSPage() {
           onClick={() => setActiveView('MANAGEMENT')}
           style={{ 
             flex: 1, padding: '1rem', borderRadius: '14px', border: 'none',
-            background: activeView === 'MANAGEMENT' ? '#fff' : '#111',
-            color: activeView === 'MANAGEMENT' ? '#000' : '#888',
+            background: activeView === 'MANAGEMENT' ? 'rgba(255,255,255,0.1)' : '#111',
+            color: activeView === 'MANAGEMENT' ? '#fff' : '#888',
             fontWeight: 900, fontSize: '0.9rem'
           }}
         >

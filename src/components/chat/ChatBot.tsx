@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { INITIAL_STATE, type ConversationState } from '@/core';
 import { products, getProductImage, type Product } from '@/data/products';
 import { useCartStore } from '@/lib/cartStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Msg { 
@@ -69,19 +70,17 @@ export default function ChatBot() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput]     = useState('');
   const [typing, setTyping]   = useState(false);
-  const [state, setState]     = useState<ConversationState>(INITIAL_STATE);
   
   const { addToCart } = useCartStore();
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const idCounter      = useRef(1);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typing]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || typing) return;
-    const text = input.trim();
-    setInput('');
+  const handleSend = useCallback(async (customText?: string) => {
+    const text = (customText || input).trim();
+    if (!text || typing) return;
+    if (!customText) setInput('');
     
     setMessages(prev => [...prev, { id: idCounter.current++, text, sender: 'user' }]);
     setTyping(true);
@@ -92,12 +91,8 @@ export default function ChatBot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, phone: 'web-user' })
       });
-      
       const output = await r.json();
-
-      setState(prev => ({ ...prev, cart: output.cart }));
       
-      // If a product was recommended, find it in data
       const recommendedProduct = products.find(p => 
         typeof output.text === 'string' && typeof p.name === 'string' && output.text.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
       );
@@ -112,71 +107,134 @@ export default function ChatBot() {
         }
       ]);
     } catch (error) {
-      console.error('ChatBot Error:', error);
-      setMessages(prev => [...prev, { id: idCounter.current++, text: "Ups, algo salió mal. Intenta de nuevo.", sender: 'bot' }]);
+      setMessages(prev => [...prev, { id: idCounter.current++, text: "🚨 Error de conexión con la central.", sender: 'bot' }]);
     } finally {
       setTyping(false);
     }
-  }, [input, state, typing]);
+  }, [input, typing]);
 
   return (
     <>
-      {isOpen && (
-        <div style={{
-          position: 'fixed', bottom: '5.5rem', left: '1.5rem', width: '360px', maxWidth: 'calc(100vw - 3rem)',
-          height: '520px', maxHeight: 'calc(100vh - 8rem)', zIndex: 9999, borderRadius: '24px',
-          display: 'flex', flexDirection: 'column', background: '#000', border: '1px solid #222',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.8)'
-        }}>
-          {/* Header */}
-          <div style={{ padding: '1.25rem', borderBottom: '1px solid #111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: '1rem' }}>🔥 SNACKS 911</div>
-              <div style={{ fontSize: '0.7rem', color: '#22c55e' }}>● EN LÍNEA</div>
-            </div>
-            <button onClick={() => setIsOpen(false)} style={{ background: '#111', border: 'none', color: '#666', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
-          </div>
-
-          {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {messages.map(msg => (
-              <div key={msg.id} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <div style={{ 
-                  padding: '0.8rem 1.1rem', 
-                  borderRadius: msg.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', 
-                  background: msg.sender === 'user' ? '#FF4500' : '#111', 
-                  fontSize: '0.88rem', lineHeight: 1.5 
-                }}>
-                  {msg.text}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-[6rem] right-6 w-[380px] max-w-[calc(100vw-3rem)] h-[580px] max-h-[calc(100vh-8rem)] z-[9999] rounded-[24px] flex flex-col bg-[#050505] border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden origin-bottom-right"
+          >
+            {/* Command Header */}
+            <div className="p-5 border-b border-white/5 bg-white/2 backdrop-blur-xl flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[var(--accent)] rounded-full flex items-center justify-center text-xl shadow-[0_0_20px_var(--accent)]">🚨</div>
+                <div>
+                  <div className="font-black text-[0.8rem] tracking-widest text-white uppercase">DISPATCHER 911</div>
+                  <div className="text-[0.6rem] text-[var(--accent)] font-bold tracking-widest flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]"></span>
+                    SYSTEM ACTIVE
+                  </div>
                 </div>
-                {msg.product && <ProductCard product={msg.product} onAdd={addToCart} />}
               </div>
-            ))}
-            {typing && <div style={{ fontSize: '0.8rem', color: '#444' }}>Escribiendo...</div>}
-            <div ref={messagesEndRef} />
-          </div>
+              <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">✕</button>
+            </div>
 
-          {/* Input */}
-          <div style={{ padding: '1rem', borderTop: '1px solid #111', display: 'flex', gap: '0.5rem' }}>
-            <input 
-              value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()}
-              placeholder="Pregunta por un combo..."
-              style={{ flex: 1, padding: '0.8rem 1.1rem', background: '#111', border: '1px solid #222', borderRadius: '14px', color: '#fff', outline: 'none' }} 
-            />
-            <button onClick={handleSend} style={{ width: '42px', background: '#FF4500', border: 'none', borderRadius: '14px', color: '#fff', fontWeight: 900 }}>↑</button>
-          </div>
-        </div>
-      )}
+            {/* Tactical Feed */}
+            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 no-scrollbar">
+              {messages.length === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-0 animate-[fadeInUp_0.5s_forwards]">
+                  <div className="text-4xl mb-4">🍟</div>
+                  <div className="font-bold text-white mb-2 uppercase tracking-tight">¿Cuál es tu emergencia?</div>
+                  <div className="text-white/40 text-xs max-w-[200px] mb-8">Nuestros agentes están listos para despachar tu antojo.</div>
+                  
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    {[
+                      { l: '🔥 Combos', v: 'ver combos' },
+                      { l: '🍗 Boneless', v: 'quiero boneless' },
+                      { l: '🍟 Papas', v: 'ver papas' },
+                      { l: '🥤 Bebidas', v: 'ver bebidas' }
+                    ].map(btn => (
+                      <button 
+                        key={btn.v}
+                        onClick={() => handleSend(btn.v)}
+                        className="bg-white/5 border border-white/10 p-3 rounded-xl text-[0.7rem] font-bold text-white/60 hover:bg-white/10 hover:text-[var(--accent)] transition-all"
+                      >
+                        {btn.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`p-4 rounded-[20px] text-[0.9rem] max-w-[85%] leading-relaxed ${
+                    msg.sender === 'user' ? 'bg-[var(--accent)] text-black font-bold rounded-br-none' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10'
+                  }`}>
+                    {msg.text}
+                  </div>
+                  {msg.product && <ProductCard product={msg.product} onAdd={addToCart} />}
+                  <div className="text-[0.6rem] text-white/20 mt-1 uppercase font-bold tracking-tighter">
+                    {msg.sender === 'user' ? 'AUTHORIZED' : 'DISPATCH'} • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              ))}
+              {typing && (
+                <div className="flex gap-1.5 ml-2">
+                  <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-      {/* FAB */}
-      <button onClick={() => setIsOpen(!isOpen)} style={{
-        position: 'fixed', bottom: '1.5rem', left: '1.5rem', zIndex: 9999,
-        width: '56px', height: '56px', borderRadius: '50%', background: '#FF4500',
-        border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer',
-        boxShadow: '0 8px 30px rgba(255,69,0,0.4)'
-      }}>
-        {isOpen ? '✕' : '🔥'}
-      </button>
+            {/* Input Console */}
+            <div className="p-4 border-t border-white/5 bg-white/2 backdrop-blur-xl">
+              <div className="relative flex gap-2">
+                <input 
+                  value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  placeholder="Solicitar despacho..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--accent)] transition-all"
+                />
+                <button 
+                  onClick={() => handleSend()}
+                  className="bg-[var(--accent)] text-black w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)]"
+                >
+                  ↑
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Expandable FAB */}
+      <div className="fixed bottom-6 right-6 z-[10000] flex items-center justify-center group">
+        {/* Tooltip */}
+        {!isOpen && (
+          <div className="absolute right-full mr-4 bg-black/80 backdrop-blur-md border border-white/10 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            🔥 Pide aquí
+          </div>
+        )}
+
+        <button 
+          onClick={() => setIsOpen(!isOpen)} 
+          className={`relative w-[64px] h-[64px] rounded-full flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 ${
+            isOpen ? 'bg-white/10 text-white rotate-90 scale-90' : 'bg-[var(--accent)] text-black hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(255,90,0,0.6)]'
+          }`}
+        >
+          {isOpen ? '✕' : <span className="text-3xl filter drop-shadow-md">🚨</span>}
+          
+          {/* Notification Dot */}
+          {!isOpen && (
+            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#050505] shadow-[0_0_10px_rgba(255,0,0,0.8)] animate-pulse"></span>
+          )}
+
+          {/* Idle Glow Pulse */}
+          {!isOpen && <div className="absolute inset-0 rounded-full bg-[var(--accent)] animate-ping opacity-30"></div>}
+        </button>
+      </div>
     </>
   );
 }

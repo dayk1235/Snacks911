@@ -1,6 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavbarProps {
   cartCount: number;
@@ -9,282 +11,122 @@ interface NavbarProps {
 }
 
 export default function Navbar({ cartCount, onCartOpen, minimal = false }: NavbarProps) {
-  const badgeRef  = useRef<HTMLSpanElement>(null);
-  const prevCount = useRef(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [menuOpen,  setMenuOpen]  = useState(false);
-  const [mounted,  setMounted]    = useState(false);
-  // 'entering' → play slide-down; 'visible' → show; 'hidden' → scroll-hide
-  const [navPhase, setNavPhase]   = useState<'entering' | 'visible' | 'hidden'>('entering');
-
-  /* ── Hydration fix ── */
-  useEffect(() => { setMounted(true); }, []);
-
-  /* ── Entrance: switch to transition mode after anim completes ── */
   useEffect(() => {
-    const t = setTimeout(() => setNavPhase('visible'), 650);
-    return () => clearTimeout(t);
-  }, []);
-
-  /* ── Smart scroll hide/show ── */
-  useEffect(() => {
-    let lastScroll = 0;
-    let ticking    = false;
-    const THRESHOLD = 80;
-
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const curr = window.scrollY;
-        if (curr < THRESHOLD || curr < lastScroll) {
-          setNavPhase('visible');
-        } else {
-          setNavPhase('hidden');
-        }
-        lastScroll = Math.max(0, curr);
-        ticking = false;
-      });
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
     };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  /* ── Badge pop via CSS animation reset trick ── */
-  useEffect(() => {
-    if (cartCount > 0 && badgeRef.current && cartCount !== prevCount.current) {
-      const badge = badgeRef.current;
-      badge.style.animation = 'none';
-      void badge.offsetWidth; // force reflow
-      badge.style.animation = 'badgePop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-    }
-    prevCount.current = cartCount;
-  }, [cartCount]);
-
-
-
-  /* nav style based on phase */
-  const navStyle: React.CSSProperties = navPhase === 'entering'
-    ? { animation: 'navSlideDown 0.6s cubic-bezier(0.22,1,0.36,1) forwards' }
-    : {
-        transform: navPhase === 'hidden' ? 'translateY(-90px)' : 'translateY(0)',
-        opacity:   navPhase === 'hidden' ? 0 : 1,
-        transition: 'transform 0.35s ease, opacity 0.35s ease',
-      };
 
   return (
-    <nav
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0,
-        zIndex: 100,
-        padding: minimal ? '0.35rem 1rem' : '0.6rem 1.5rem',
-        background: minimal ? 'rgba(2, 2, 3, 0.45)' : 'rgba(2, 2, 3, 0.7)',
-        backdropFilter: minimal ? 'blur(12px)' : 'blur(20px)',
-        WebkitBackdropFilter: minimal ? 'blur(12px)' : 'blur(20px)',
-        borderBottom: minimal ? '1px solid rgba(255, 255, 255, 0.02)' : '1px solid rgba(255, 255, 255, 0.04)',
-        boxShadow: minimal ? '0 1px 8px rgba(0,0,0,0.08)' : '0 1px 15px rgba(0,0,0,0.15)',
-        transition: 'padding 0.35s ease, background 0.35s ease, backdrop-filter 0.35s ease, box-shadow 0.35s ease',
-        ...navStyle,
-      }}
-    >
-      {/* ── Main row ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1200px', margin: '0 auto' }}>
+    <>
+      <nav 
+        id="navbar" 
+        className={`fixed z-[1500] left-1/2 -translate-x-1/2 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.2,1,0.3,1)] ${
+          scrolled 
+            ? 'top-0 w-full max-w-full h-[70px] bg-[#040404]/85 backdrop-blur-xl border-b border-white/10 rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
+            : 'top-5 w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
+        }`}
+      >
+        <div className="w-full max-w-[1400px] mx-auto px-8 sm:px-12 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 no-underline group shrink-0 ml-2">
+            <div className="font-mono font-black text-[1.3rem] tracking-[-1px] text-white uppercase">
+              SNACKS <span className="text-[var(--accent)]">911</span>
+            </div>
+          </Link>
 
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', cursor: 'default' }}>
-          <svg
-            width="248"
-            height="72"
-            viewBox="0 0 900 260"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-label="Snacks 911"
-            style={{ display: 'block', width: minimal ? 'clamp(100px, 18vw, 160px)' : 'clamp(120px, 20vw, 200px)', height: 'auto', overflow: 'visible' }}
-          >
-            {/* 🚨 Siren — CSS keyframe animation */}
-            <g style={{ willChange: 'filter', transformBox: 'fill-box', transformOrigin: 'center', animation: 'sirenFlash 1.8s ease-in-out infinite' }}>
-              <g transform="translate(430 28)">
-                <rect x="12" y="58" width="76" height="18" rx="9" fill="#2F2F2F"/>
-                <path d="M28 20C28 8.9543 36.9543 0 48 0H52C63.0457 0 72 8.95431 72 20V58H24L28 20Z" fill="#E53935"/>
-                <path d="M48 12C52 12 55 9 55 5" stroke="white" strokeWidth="7" strokeLinecap="round"/>
-                <path d="M48 12V42" stroke="white" strokeWidth="7" strokeLinecap="round"/>
-                <path d="M8 34L-10 24" stroke="white" strokeWidth="6" strokeLinecap="round"/>
-                <path d="M4 48L-18 48" stroke="white" strokeWidth="6" strokeLinecap="round"/>
-                <path d="M92 34L110 24" stroke="white" strokeWidth="6" strokeLinecap="round"/>
-                <path d="M96 48L118 48" stroke="white" strokeWidth="6" strokeLinecap="round"/>
-              </g>
-            </g>
-
-            <text x="160" y="170" fontFamily="Arial, Helvetica, sans-serif" fontSize="92" fontWeight="900" fill="#F5F5F5" letterSpacing="-2">SNACKS</text>
-            <text x="535" y="172" fontFamily="Arial, Helvetica, sans-serif" fontSize="102" fontWeight="900" fill="#FFC400">911</text>
-            <line x1="165" y1="210" x2="275" y2="210" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-            <line x1="625" y1="210" x2="735" y2="210" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-            <text x="450" y="220" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontSize="30" fontWeight="700" fill="white" letterSpacing="2">URGENCIA DE ANTOJO</text>
-          </svg>
-        </div>
-
-        {/* ── Desktop nav ── */}
-        <div className="hide-mobile" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', opacity: minimal ? 0.65 : 1, transition: 'opacity 0.35s ease' }}>
-          {/* Menú Completo */}
-          <a
-            href="/menu"
-            className="nav-link"
-            style={{
-              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
-              textDecoration: 'none', fontSize: '0.75rem',
-              fontWeight: 500, letterSpacing: '0.02em', position: 'relative',
-              transition: 'color 0.2s ease',
-              padding: '0.35rem 0.7rem',
-              borderRadius: '12px',
-              display: 'flex', alignItems: 'center', gap: '0.35rem',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(255,69,0,0.08)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            Menú Completo
-          </a>
-
-          {/* Contacto */}
-          <a
-            href="#contact"
-            className="nav-link"
-            style={{
-              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
-              textDecoration: 'none', fontSize: '0.75rem',
-              fontWeight: 500, letterSpacing: '0.02em', position: 'relative',
-              transition: 'color 0.2s ease',
-              padding: '0.35rem 0.7rem',
-              borderRadius: '12px',
-              display: 'flex', alignItems: 'center', gap: '0.35rem',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Contacto
-          </a>
-
-          <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 0.3rem' }} />
-
-          {/* Cart button */}
-          <button
-            id="cart-button"
-            onClick={() => onCartOpen()}
-            style={{
-              fontFamily: 'var(--font-body)', position: 'relative',
-              background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-              border: 'none', borderRadius: '10px', padding: '0.4rem 1rem',
-              color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              boxShadow: '0 0 16px rgba(255,69,0,0.2)', letterSpacing: '0.02em',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.06)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(255,69,0,0.35)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(255,69,0,0.2)'; }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-            </svg>
-            Carrito
-            {mounted && cartCount > 0 && (
-              <span
-                ref={badgeRef}
-                suppressHydrationWarning
-                style={{
-                  position: 'absolute', top: '-9px', right: '-9px',
-                  background: '#FFB800', color: '#000',
-                  borderRadius: '50%', width: '22px', height: '22px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.7rem', fontWeight: 900, boxShadow: '0 0 12px rgba(255,184,0,0.6)',
-                }}
+          {/* Desktop Links - Centered */}
+          <div className="hidden md:flex gap-[40px] items-center absolute left-1/2 -translate-x-1/2">
+            {['Inicio', 'Combos', 'Menú', 'Estado'].map((item) => (
+              <Link 
+                key={item}
+                href={item === 'Menú' ? '/menu' : `/#${item.toLowerCase()}`} 
+                className="text-[0.85rem] font-bold uppercase tracking-[1.5px] text-white opacity-50 hover:opacity-100 hover:text-[var(--accent)] transition-all no-underline"
               >
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* ── Mobile: Cart icon + Hamburger ── */}
-        <div className="show-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button
-            onClick={onCartOpen}
-            style={{
-              position: 'relative', background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-              border: 'none', borderRadius: '12px', padding: '0.5rem 0.75rem',
-              color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '0.3rem',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-            </svg>
-            {mounted && cartCount > 0 && (
-              <span suppressHydrationWarning style={{
-                position: 'absolute', top: '-7px', right: '-7px',
-                background: '#FFB800', color: '#000', borderRadius: '50%',
-                width: '18px', height: '18px', fontSize: '0.6rem', fontWeight: 900,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {cartCount}
-              </span>
-            )}
-          </button>
-
-          {/* Hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{
-              background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
-              borderRadius: '12px', padding: '0.5rem 0.7rem',
-              cursor: 'pointer', display: 'flex', flexDirection: 'column',
-              gap: '4px', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {[0,1,2].map((i) => (
-              <span key={i} style={{
-                width: '20px', height: '2px',
-                background: menuOpen && i === 1 ? 'transparent' : (menuOpen ? '#FF4500' : '#ccc'),
-                borderRadius: '2px',
-                transition: 'all 0.2s ease',
-                transform: menuOpen
-                  ? i === 0 ? 'rotate(45deg) translate(4px, 4px)'
-                  : i === 2 ? 'rotate(-45deg) translate(4px, -4px)'
-                  : 'none'
-                  : 'none',
-                display: 'block',
-              }} />
+                {item}
+              </Link>
             ))}
-          </button>
-        </div>
-      </div>
+          </div>
 
-      {/* ── Mobile dropdown ── */}
-      {menuOpen && (
-        <div
-          className="show-mobile"
-          style={{
-            display: 'flex', flexDirection: 'column', gap: '0.25rem',
-            padding: '1rem 0 0.5rem',
-            borderTop: '1px solid rgba(255,255,255,0.07)',
-            marginTop: '0.75rem',
-            animation: 'navSlideDown 0.28s cubic-bezier(0.22,1,0.36,1) forwards',
-          }}
-        >
-          <a href="/menu" onClick={() => setMenuOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#FF7040', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            Menú Completo
-          </a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 0.5rem', color: '#ccc', textDecoration: 'none', fontWeight: 600, fontSize: '1.05rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Contacto
-          </a>
+          {/* Actions */}
+          <div className="flex items-center gap-[25px] shrink-0 mr-2">
+            <div 
+              className="relative cursor-pointer hover:scale-110 transition-transform flex items-center justify-center w-12 h-12 bg-white/5 rounded-full border border-white/10" 
+              onClick={onCartOpen}
+            >
+              <span className="text-2xl">🛒</span>
+              <span className="absolute -top-1 -right-1 bg-[var(--accent)] text-black text-[0.7rem] w-[20px] h-[20px] rounded-full flex items-center justify-center font-black shadow-[0_0_15px_rgba(255,90,0,0.6)]">
+                {cartCount}
+              </span>
+            </div>
+            
+            <button 
+              className="md:hidden text-white text-2xl p-1 leading-none hover:text-[var(--accent)] transition-colors"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              ☰
+            </button>
+          </div>
         </div>
-      )}
-    </nav>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-[2000] flex justify-end">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-[80%] max-w-[300px] h-full bg-[#050505]/95 backdrop-blur-2xl border-l border-white/10 p-10 flex flex-col gap-8 shadow-[-20px_0_60px_rgba(0,0,0,0.5)]"
+            >
+              <button 
+                className="self-end text-white/40 hover:text-white text-2xl"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ✕
+              </button>
+              
+              <div className="flex flex-col gap-8 mt-4">
+                {['Inicio', 'Combos', 'Menú', 'Estado'].map((item) => (
+                  <Link 
+                    key={item}
+                    href={item === 'Menú' ? '/menu' : `/#${item.toLowerCase()}`} 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-white text-2xl font-black uppercase tracking-tighter hover:text-[var(--accent)] transition-colors"
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </div>
+              
+              <div className="mt-auto pt-10 border-t border-white/5 flex flex-col items-center">
+                <div className="text-[0.6rem] text-white/20 font-black uppercase tracking-[0.3em]">Snacks 911 Dispatch</div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <style jsx global>{`
+        @keyframes flicker {
+          0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; }
+          20%, 21.9%, 63%, 63.9%, 65%, 69.9% { opacity: 0.8; filter: brightness(1.3); }
+        }
+      `}</style>
+    </>
   );
 }

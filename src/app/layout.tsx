@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Bebas_Neue, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import BackgroundSystem from '@/components/layout/BackgroundSystem';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -42,6 +43,7 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/images/hero.webp" fetchPriority="high" />
       </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col">
+        <BackgroundSystem />
         {children}
       </body>
     </html>

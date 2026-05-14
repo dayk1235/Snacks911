@@ -21,15 +21,15 @@ export const PremiumButton = ({
   variant?: 'primary' | 'secondary' | 'glass';
 }) => {
   const variants = {
-    primary: 'btn-premium',
+    primary: 'btn-primary',
     secondary: 'btn-secondary',
-    glass: 'glass glass-hover px-6 py-3 rounded-xl font-semibold'
+    glass: 'glass px-6 py-3 rounded-xl font-black text-[0.75rem] tracking-widest uppercase hover:border-[var(--accent)]/40 transition-all'
   };
 
   return (
     <motion.button
-      whileHover={{ scale: 1.02, translateY: -2 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       className={cn(variants[variant], className)}
       onClick={onClick}
       disabled={disabled}

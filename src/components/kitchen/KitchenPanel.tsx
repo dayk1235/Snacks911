@@ -75,25 +75,26 @@ export default function KitchenPanel() {
       <div
         key={o?.id ?? `${o?.created_at ?? ''}-${Math.random()}`}
         style={{
-          background: '#fff',
-          border: isDelayed ? '2px solid #ef4444' : '1px solid #e5e7eb',
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '12px',
-          boxShadow: isDelayed ? '0 0 12px rgba(239,68,68,0.4)' : '0 2px 8px rgba(0,0,0,0.05)',
-          color: '#111827',
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: isDelayed ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '16px',
+          boxShadow: isDelayed ? '0 0 20px rgba(239,68,68,0.2)' : '0 4px 12px rgba(0,0,0,0.2)',
+          color: '#fff',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          gap: '10px',
+          backdropFilter: 'blur(10px)',
           animation: isDelayed ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{o?.customer_name || 'Cliente'}</span>
-          <span style={{ fontWeight: 800, color: '#FF4500' }}>${o?.total ?? 0}</span>
+          <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>{o?.customer_name || 'Cliente'}</span>
+          <span style={{ fontWeight: 900, color: '#FF4500', fontSize: '1.1rem' }}>${o?.total ?? 0}</span>
         </div>
-        <div style={{ fontSize: '0.9rem', color: isDelayed ? '#ef4444' : '#6b7280', fontWeight: 600 }}>
-          {time} {isDelayed && ' (Retrasado)'}
+        <div style={{ fontSize: '0.85rem', color: isDelayed ? '#ef4444' : 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {time} {isDelayed && ' • RETRASADO'}
         </div>
         
         {label && (
@@ -105,13 +106,18 @@ export default function KitchenPanel() {
               marginTop: '12px',
               padding: '14px 16px',
               borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              background: '#111827',
-              color: '#fff',
+              border: 'none',
+              background: isDelayed ? '#ef4444' : '#FF4500',
+              color: '#000',
               fontWeight: 900,
-              fontSize: '1rem',
+              fontSize: '0.9rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
               cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
+            onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+            onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             {label}
           </button>
@@ -121,28 +127,52 @@ export default function KitchenPanel() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '24px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+    <div style={{ minHeight: '100vh', background: '#050505', padding: '32px', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', height: 'calc(100vh - 64px)' }}>
         
         {/* Pending Column */}
-        <div style={{ background: '#fef08a', padding: '20px', borderRadius: '16px' }}>
-          <h2 style={{ color: '#854d0e', fontWeight: 800, marginBottom: '16px', fontSize: '1.25rem' }}>Pendientes ({pendingOrders.length})</h2>
-          {pendingOrders.map(renderOrder)}
+        <div style={{ background: 'rgba(254, 240, 138, 0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(254, 240, 138, 0.1)', display: 'flex', flexDirection: 'column' }}>
+          <h2 style={{ color: '#fef08a', fontWeight: 900, marginBottom: '20px', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Pendientes</span>
+            <span style={{ opacity: 0.5 }}>{pendingOrders.length}</span>
+          </h2>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }} className="no-scrollbar">
+            {pendingOrders.map(renderOrder)}
+          </div>
         </div>
 
         {/* Preparing Column */}
-        <div style={{ background: '#bae6fd', padding: '20px', borderRadius: '16px' }}>
-          <h2 style={{ color: '#075985', fontWeight: 800, marginBottom: '16px', fontSize: '1.25rem' }}>Preparando ({preparingOrders.length})</h2>
-          {preparingOrders.map(renderOrder)}
+        <div style={{ background: 'rgba(186, 230, 253, 0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(186, 230, 253, 0.1)', display: 'flex', flexDirection: 'column' }}>
+          <h2 style={{ color: '#bae6fd', fontWeight: 900, marginBottom: '20px', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Preparando</span>
+            <span style={{ opacity: 0.5 }}>{preparingOrders.length}</span>
+          </h2>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }} className="no-scrollbar">
+            {preparingOrders.map(renderOrder)}
+          </div>
         </div>
 
         {/* Ready Column */}
-        <div style={{ background: '#bbf7d0', padding: '20px', borderRadius: '16px' }}>
-          <h2 style={{ color: '#166534', fontWeight: 800, marginBottom: '16px', fontSize: '1.25rem' }}>Listos ({readyOrders.length})</h2>
-          {readyOrders.map(renderOrder)}
+        <div style={{ background: 'rgba(187, 247, 208, 0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(187, 247, 208, 0.1)', display: 'flex', flexDirection: 'column' }}>
+          <h2 style={{ color: '#bbf7d0', fontWeight: 900, marginBottom: '20px', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Listos</span>
+            <span style={{ opacity: 0.5 }}>{readyOrders.length}</span>
+          </h2>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }} className="no-scrollbar">
+            {readyOrders.map(renderOrder)}
+          </div>
         </div>
 
       </div>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.8; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

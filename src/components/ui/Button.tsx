@@ -10,7 +10,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`btn-${variant} ${fullWidth ? 'w-full' : ''} ${className}`}
+        className={`btn btn-${variant} ${fullWidth ? 'w-full' : ''} ${className}`}
         style={style}
         {...props}
       >

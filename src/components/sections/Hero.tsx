@@ -5,6 +5,7 @@ import { AdminStore } from '@/lib/adminStore';
 import type { BusinessSettings } from '@/lib/adminTypes';
 import { useStoreSettings } from '@/lib/storeSettingsStore';
 import type { Product } from '@/data/products';
+import Image from 'next/image';
 
 interface HeroProps {
   featuredProduct?: Product;
@@ -14,161 +15,162 @@ interface HeroProps {
 const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
   whatsappNumber: '525584507458',
   heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
-  heroStats: [
-    { value: '500+', label: 'Pedidos diarios' },
-    { value: '4.9★', label: 'Calificación' },
-    { value: '30min', label: 'Tiempo promedio' },
-  ],
 };
 
 function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
-  const { isOpen: storeOpen, closedMessage, heroTitle, heroSubtitle, fetchSettings } = useStoreSettings();
+  const { isOpen: storeOpen, heroSubtitle, fetchSettings } = useStoreSettings();
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     AdminStore.getSettings()
       .then(s => setSiteSettings(s))
-      .catch(() => { /* ignore, fallback to defaults */ });
+      .catch(() => { /* ignore */ });
     fetchSettings();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20,
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [fetchSettings]);
 
   return (
-    <section
-      style={{
-        position: 'relative',
-        minHeight: '28vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-primary)',
-        padding: 'clamp(80px, 10vh, 110px) 1.5rem 1.5rem',
-      }}
-    >
-      {/* Subtle atmosphere */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,69,0,0.04) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
+    <section id="hero" className="hero min-h-screen flex items-center relative overflow-hidden px-6 bg-[#050505]">
+      {/* Dynamic Background Parallax */}
+      <div 
+        className="hero-glow absolute w-[100vw] h-[100vw] top-[-10%] right-[-10%] z-[0] transition-transform duration-700 ease-out opacity-40"
+        style={{ 
+          background: 'radial-gradient(circle, var(--glow) 0%, transparent 70%)',
+          transform: `translate(${mousePos.x * -0.5}px, ${mousePos.y * -0.5}px)` 
+        }}
+      ></div>
 
-      <div style={{ textAlign: 'center', maxWidth: '640px', position: 'relative', zIndex: 2 }}>
-        {/* Store open/closed pill */}
-        <div
-          suppressHydrationWarning
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-            background: storeOpen ? 'rgba(255,69,0,0.06)' : 'rgba(239,68,68,0.08)',
-            border: storeOpen ? '1px solid rgba(255,69,0,0.12)' : '1px solid rgba(239,68,68,0.15)',
-            borderRadius: '50px',
-            padding: '0.35rem 1rem',
-            fontSize: '0.7rem',
-            fontFamily: 'var(--font-body)',
-            color: storeOpen ? 'var(--accent)' : 'var(--status-danger)',
-            fontWeight: 600,
-            marginBottom: '1rem',
-            letterSpacing: '0.04em',
-          }}
+      {/* Heat Particles Effect */}
+      <div className="absolute inset-0 pointer-events-none z-[1] overflow-hidden">
+        {[...Array(12)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute w-1 h-1 bg-[var(--accent)] rounded-full animate-[heat_4s_infinite_ease-in-out] opacity-20"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              transform: `scale(${Math.random() * 2})`
+            }}
+          />
+        ))}
+      </div>
+      
+      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-10 relative z-10">
+        <div 
+          className="hero-content transition-transform duration-300 ease-out flex flex-col items-center lg:items-start text-center lg:text-left"
+          style={{ transform: `translate(${mousePos.x * 0.2}px, ${mousePos.y * 0.2}px)` }}
         >
-          <span style={{
-            width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
-            background: storeOpen ? 'var(--accent)' : 'var(--status-danger)',
-            boxShadow: storeOpen ? '0 0 5px var(--accent)' : '0 0 5px var(--status-danger)',
-            animation: storeOpen ? 'heroPulse 2s ease-in-out infinite' : 'none',
-          }} />
-          <span suppressHydrationWarning>
-            {storeOpen
-              ? (siteSettings.heroBadgeText ?? 'Abierto ahora · Entrega en ~30 min')
-              : (closedMessage || '🔴 Cerrado por ahora')}
-          </span>
+          {/* Urgency Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 animate-[fadeInUp_0.8s_ease_both]">
+            <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]"></span>
+            <span className="text-[0.65rem] font-bold tracking-widest text-white uppercase">🔥 EN COCINA AHORA MISMO</span>
+          </div>
+          
+          <h1 className="hero-title text-[clamp(3.5rem,12vw,9rem)] font-black leading-[0.8] uppercase tracking-[-0.06em] m-0">
+            <span className="block animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_both]">
+              EL ANTOJO
+            </span>
+            <span className="block fire-text drop-shadow-[0_0_30px_rgba(255,90,0,0.3)] animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.2s_both]">
+              NO ESPERA
+            </span>
+          </h1>
+
+          <p className="text-[var(--muted)] max-w-[500px] my-8 text-lg sm:text-xl leading-relaxed animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.4s_both]">
+            {heroSubtitle || "Tu rescate calórico de alta velocidad. Despacho inmediato para hambres críticas."}
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.6s_both]">
+            <button 
+              className="btn btn-primary min-w-[180px] sm:min-w-[200px]"
+              onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              🔥 VER MENÚ
+            </button>
+            
+            <button 
+              className="btn btn-ghost min-w-[180px] sm:min-w-[200px]"
+              onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              SOS DISPATCH
+            </button>
+          </div>
+
+          {/* Micro-copy - More spacing to avoid overlap */}
+          <div className="flex items-center gap-6 mt-14 opacity-60 text-[0.7rem] font-bold tracking-[0.1em] uppercase animate-[fadeInUp_0.8s_ease_1s_both]">
+            <span>Entrega rápida</span>
+            <span className="w-1 h-1 bg-white/30 rounded-full"></span>
+            <span>Caliente</span>
+            <span className="w-1 h-1 bg-white/30 rounded-full"></span>
+            <span>Sin esperas</span>
+          </div>
         </div>
 
-        {/* Dynamic headline — can later be controlled by chat */}
-        <h1
-          data-hero-headline
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(2.2rem, 6vw, 4.5rem)',
-            fontWeight: 400,
-            lineHeight: 0.95,
-            letterSpacing: '0.03em',
-            marginBottom: '0.6rem',
-            color: '#FFFFFF',
-          }}
-        >
-          {heroTitle ? (
-            <span style={{ whiteSpace: 'pre-line' }}>{heroTitle}</span>
-          ) : (
-            <>
-              <span style={{ display: 'block' }}>TU ANTOJO</span>
-              <span className="fire-text" style={{ display: 'block' }}>DE EMERGENCIA</span>
-            </>
-          )}
-        </h1>
-
-        {heroSubtitle && (
-          <p style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.9rem',
-            color: 'rgba(255,255,255,0.3)',
-            maxWidth: '400px',
-            margin: '0 auto 0',
-            lineHeight: 1.6,
-          }}>
-            {heroSubtitle}
-          </p>
-        )}
+        {/* Parallax Image */}
+        <div className="relative hidden lg:block perspective-[1000px]">
+          <div 
+            className="relative w-full aspect-square transition-transform duration-500 ease-out"
+            style={{ transform: `translate3d(${mousePos.x * -0.3}px, ${mousePos.y * -0.3}px, 50px) rotateY(${mousePos.x * 0.1}deg) rotateX(${mousePos.y * -0.1}deg)` }}
+          >
+            <div className="absolute inset-0 bg-[var(--accent)] opacity-10 blur-[120px] rounded-full animate-pulse"></div>
+            <Image 
+              src="/images/hero.webp"
+              alt="Snacks 911 Hero"
+              fill
+              className="object-contain drop-shadow-[0_30px_100px_rgba(0,0,0,0.9)] z-10"
+              priority
+            />
+          </div>
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(60px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes heat {
+          0%, 100% { transform: translateY(0) scale(1); opacity: 0.1; }
+          50% { transform: translateY(-40px) scale(1.5); opacity: 0.3; }
+        }
+      `}</style>
     </section>
   );
 }
 
 const Hero = memo(HeroSection);
-
 export default Hero;
 
-/* ── Fixed Ticker Bar ─────────────────────────────────────────────────────── */
 export const TickerBar = memo(function TickerBar() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  if (!ready) return null;
-
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 0, left: 0, right: 0,
-      zIndex: 90,
-      background: 'linear-gradient(90deg, var(--accent) 0%, var(--accent-gradient) 50%, var(--accent) 100%)',
-      backgroundSize: '200% 100%',
-      animation: 'moveGradient 4s linear infinite',
-      borderTop: '1px solid rgba(255,255,255,0.15)',
-      boxShadow: '0 -4px 20px rgba(255,69,0,0.35)',
-      overflow: 'hidden',
-      pointerEvents: 'none',
-    }}>
-      <div className="ticker-track" style={{ display: 'flex', alignItems: 'center', width: 'max-content' }}>
-        {[0, 1].map((copy) => (
-          <div key={copy} aria-hidden={copy === 1} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, padding: '0.45rem 0' }}>
-            {['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rapida', 'Sabor Extremo'].map((item) => (
-              <span key={item} style={{
-                display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em',
-                color: 'var(--text-primary)', textTransform: 'uppercase', padding: '0 2rem',
-                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-              }}>
+    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md py-4 border-t border-white/10 overflow-hidden pointer-events-none">
+      <div className="ticker-track flex whitespace-nowrap animate-[ticker_40s_linear_infinite]">
+        {[0, 1, 2].map((copy) => (
+          <div key={copy} className="flex items-center px-4">
+            {['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rapida', 'Sabor Extremo', 'Snacks 911 Dispatch'].map((item) => (
+              <span key={item} className="flex items-center text-[0.7rem] font-black tracking-[0.2em] text-[var(--accent)] uppercase px-12">
                 {item}
-                <span style={{ marginLeft: '2rem', opacity: 0.6, fontSize: '0.55rem' }}>◆</span>
+                <span className="ml-24 opacity-20 text-white">★</span>
               </span>
             ))}
           </div>
         ))}
       </div>
+      <style jsx>{`
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.33%); }
+        }
+      `}</style>
     </div>
   );
 });

@@ -1,0 +1,1159 @@
+
+<!doctype html>
+<html lang="es">
+<head><script data-od-sandbox-shim>(function(){
+  function makeStore(){
+    var data = {};
+    var api = {
+      getItem: function(k){ return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+      setItem: function(k, v){ data[k] = String(v); },
+      removeItem: function(k){ delete data[k]; },
+      clear: function(){ data = {}; },
+      key: function(i){ return Object.keys(data)[i] || null; }
+    };
+    Object.defineProperty(api, 'length', { get: function(){ return Object.keys(data).length; } });
+    return api;
+  }
+  function tryShim(name){
+    var works = false;
+    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
+    catch (_) { works = false; }
+    if (works) return;
+    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
+    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+  }
+  tryShim('localStorage');
+  tryShim('sessionStorage');
+  document.addEventListener('click', (e) => {
+    if (!e.target || !(e.target instanceof Element)) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (href === null) return;
+    var isAnchor = href.startsWith('#') || href === '';
+    if (isAnchor) {
+      e.preventDefault();
+      if (href === '' || href === '#') {
+        window.scrollTo({ top: 0 });
+        history.replaceState(null, '', ' ');
+      } else {
+        var targetId = href.slice(1);
+        var target = targetId ? document.getElementById(targetId) : null;
+        if (target) {
+          target.scrollIntoView();
+          location.hash === href && history.replaceState(null, '', ' ');
+          location.hash = href;
+        }
+      }
+    } else if (link.getAttribute('target') === '_blank') {
+      e.preventDefault();
+      let safe = false;
+      try {
+        var url = new URL(href, location.href);
+        safe =
+          url.protocol === 'http:' ||
+          url.protocol === 'https:' ||
+          url.protocol === 'mailto:';
+      } catch (_) {}
+      safe && window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  });
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snacks 911 | FULL APP EXPERIENCE</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Source+Code+Pro:wght@400;900&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* BRAND SPEC (OKLch) */
+            --bg:      oklch(4% 0.01 240);    /* Deeper blackout */
+            --surface: oklch(10% 0.02 240);   /* Deeper surface */
+            --fg:      oklch(99% 0.01 240);   /* Crisp white text */
+            --muted:   oklch(60% 0.01 240);   /* Silver-grey support */
+            --border:  oklch(22% 0.04 45);    /* Warm border */
+            --accent:  oklch(68% 0.22 45);    /* Siren Orange */
+            --glow:    oklch(55% 0.20 35);    /* Fire Glow */
+            
+            /* NEON SYSTEM EVOLUTION */
+            --accent-secondary: oklch(65% 0.25 255); /* Electric Cyan */
+            --success: oklch(65% 0.2 145);
+            --glass: rgba(255, 255, 255, 0.035);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(30px);
+            
+            /* TYPOGRAPHY */
+            --font-display: "Inter", sans-serif;
+            --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "Source Code Pro", monospace;
+            --font-serif: "STIX Two Text", serif;
+
+            /* UTILS */
+            --transition-fast: 0.25s cubic-bezier(0.2, 1, 0.3, 1);
+            --transition-smooth: 0.8s cubic-bezier(0.2, 1, 0.3, 1);
+            --mouse-x: 0;
+            --mouse-y: 0;
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* RESET & BASE */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body { 
+            background: var(--bg); 
+            color: var(--fg); 
+            font-family: var(--font-body); 
+            overflow-x: hidden; 
+            line-height: 1.5;
+            padding-bottom: calc(100px + var(--safe-area-bottom));
+            position: relative;
+        }
+
+        /* BACKGROUND SYSTEM */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(circle at calc(50% + (var(--mouse-x) * 15%)) calc(50% + (var(--mouse-y) * 15%)), oklch(15% 0.06 45 / 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 10% 10%, oklch(15% 0.05 255 / 0.05) 0%, transparent 40%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            mix-blend-mode: overlay;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 1px solid var(--bg); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* LIQUID GLASS SYSTEM */
+        .glass {
+            background: var(--glass);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 
+                inset 1px 1px 0 rgba(255,255,255,0.08), 
+                inset -1px -1px 0 rgba(0,0,0,0.15),
+                0 20px 60px rgba(0,0,0,0.5);
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at calc(var(--mouse-x) * 50% + 50%) calc(var(--mouse-y) * 50% + 50%), rgba(255,255,255,0.06) 0%, transparent 50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .glass:hover::before { opacity: 1; }
+        .glass:hover { border-color: rgba(255,255,255,0.18); box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+
+        /* LAYOUT */
+        .app-container { max-width: 1440px; margin: 0 auto; width: 100%; position: relative; }
+        section { padding: 80px 24px; opacity: 0; transform: translateY(50px); transition: var(--transition-smooth); }
+        section.visible { opacity: 1; transform: translateY(0); }
+
+        /* ANIMATIONS */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.4; filter: blur(40px); transform: scale(1); }
+            50% { opacity: 0.8; filter: blur(70px); transform: scale(1.15); }
+        }
+        
+        @keyframes flicker {
+            0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; }
+            20%, 21.9%, 63%, 63.9%, 65%, 69.9% { opacity: 0.8; filter: brightness(1.3); }
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes textSweep {
+            0% { background-position: -100%; }
+            100% { background-position: 200%; }
+        }
+
+        @keyframes ring-pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* COMPONENTS: BUTTONS */
+        .btn {
+            padding: 18px 36px;
+            border-radius: 50px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn-primary { 
+            background: var(--accent); 
+            color: var(--bg); 
+            box-shadow: 0 0 30px color-mix(in oklch, var(--accent), transparent 40%);
+            animation: flicker 8s infinite;
+        }
+        .btn-primary::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: translateX(-100%);
+            transition: 0.6s;
+            z-index: -1;
+        }
+        .btn-primary:hover { transform: translateY(-5px) scale(1.03); filter: brightness(1.15); box-shadow: 0 15px 45px var(--accent); }
+        .btn-primary:hover::after { transform: translateX(100%); }
+        .btn-primary:active { transform: translateY(0) scale(0.95); transition: 0.05s; }
+        
+        .btn-ghost { 
+            background: rgba(255,255,255,0.04); 
+            color: var(--fg); 
+            border: 1px solid var(--glass-border); 
+            backdrop-filter: blur(15px);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: var(--muted); transform: translateY(-3px); }
+
+        /* HERO SECTION */
+        .hero { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; }
+        .hero-content { z-index: 10; width: 100%; transition: transform 0.2s cubic-bezier(0.1, 0, 0, 1); }
+        .hero-glow {
+            position: absolute;
+            width: 80vw; height: 80vw;
+            background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+            top: -20%; right: -20%;
+            z-index: -1;
+            animation: pulse-glow 12s infinite alternate;
+        }
+        .hero-title { font-size: clamp(4rem, 14vw, 10rem); font-weight: 900; line-height: 0.8; text-transform: uppercase; letter-spacing: -0.06em; }
+        .hero-title .line { display: block; opacity: 0; transform: translateY(40px); animation: fadeInUp 1s cubic-bezier(0.2, 1, 0.3, 1) forwards; }
+        .hero-title .line:nth-child(2) { animation-delay: 0.3s; }
+        .hero-title .accent-text { 
+            color: var(--accent); 
+            -webkit-text-stroke: 2px var(--accent); 
+            -webkit-text-fill-color: transparent;
+            background: linear-gradient(90deg, var(--accent), var(--glow), var(--accent));
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: textSweep 5s linear infinite;
+        }
+        .hero-title .accent-text:hover { animation: glitch 0.3s infinite; -webkit-text-fill-color: var(--accent); }
+        
+        /* CATEGORY CAROUSEL */
+        .carousel-track { display: flex; gap: 32px; overflow-x: auto; padding: 40px 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
+        .carousel-track::-webkit-scrollbar { display: none; }
+        .combo-card { 
+            min-width: 340px; 
+            scroll-snap-align: start; 
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .combo-card .badge-urgency {
+            position: absolute;
+            top: 24px; right: 24px;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px var(--accent);
+        }
+
+        /* STICKY CART BAR */
+        .cart-bar {
+            position: fixed;
+            bottom: calc(40px + var(--safe-area-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 80px);
+            max-width: 700px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 1000;
+            transition: var(--transition-smooth);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .cart-bar.hidden { transform: translate(-50%, 250%); }
+
+        /* GRID SYSTEM */
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+        .product-card { padding: 20px; border-radius: 28px; position: relative; cursor: pointer; transition: var(--transition-smooth); }
+        .product-card:hover { transform: translateY(-12px) rotate(1.5deg) scale(1.04); }
+        .product-card .img-wrap { overflow: hidden; border-radius: 20px; margin-bottom: 20px; position: relative; }
+        .product-card img { width: 100%; aspect-ratio: 1; object-fit: cover; transition: 0.8s cubic-bezier(0.2, 1, 0.3, 1); }
+        .product-card:hover img { transform: scale(1.2); }
+        .product-card .price { font-family: var(--font-mono); font-weight: 900; color: var(--accent); font-size: 1.3rem; }
+        
+        .badge-popular {
+            position: absolute;
+            top: 15px; left: 15px;
+            background: var(--bg);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            z-index: 5;
+            text-transform: uppercase;
+        }
+
+        /* AI CHAT STYLES */
+        .ai-chat {
+            position: fixed;
+            bottom: 200px;
+            right: 40px;
+            width: 380px;
+            height: 550px;
+            z-index: 1200;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            transform-origin: bottom right;
+            border: 1px solid var(--glass-border);
+        }
+        .ai-chat.hidden { transform: scale(0.8); opacity: 0; pointer-events: none; }
+        .chat-header { padding: 24px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
+        .chat-avatar { width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--bg); box-shadow: 0 0 20px var(--accent); }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        .message { padding: 14px 20px; border-radius: 20px; font-size: 0.95rem; max-width: 85%; position: relative; opacity: 0; transform: translateY(15px); animation: fadeInUp 0.5s forwards; }
+        .message.ai { background: rgba(255,255,255,0.06); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .message.user { background: var(--accent); color: var(--bg); align-self: flex-end; font-weight: 700; border-bottom-right-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+        
+        /* FLOATING ORB */
+        .dispatch-orb { 
+            position: fixed; 
+            bottom: 130px; 
+            right: 40px; 
+            width: 70px; height: 70px; 
+            border-radius: 50%; 
+            background: var(--surface); 
+            border: 1px solid var(--border); 
+            display: flex; align-items: center; justify-content: center; 
+            z-index: 1100; cursor: pointer; 
+            transition: var(--transition-fast);
+            animation: float 5s infinite ease-in-out;
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
+        }
+        .dispatch-orb:hover { transform: scale(1.15) rotate(10deg); border-color: var(--accent); }
+        .dispatch-pulse-ring { 
+            position: absolute; 
+            inset: -8px;
+            border: 2px solid var(--accent); 
+            border-radius: 50%; 
+            opacity: 0;
+            animation: ring-pulse 2.5s infinite;
+        }
+        .dispatch-pulse-ring:nth-child(2) { animation-delay: 1.25s; }
+        .dispatch-orb .inner-core { width: 15px; height: 15px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 25px var(--accent); }
+
+        @media (max-width: 768px) { 
+            .hero-title { font-size: 4.5rem; } 
+            .menu-grid { grid-template-columns: 1fr 1fr; } 
+            .ai-chat { width: calc(100% - 40px); bottom: 120px; right: 20px; height: 70vh; } 
+            .dispatch-orb { bottom: 30px; right: 20px; z-index: 1300; }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block !important; }
+        }
+
+        /* NEW COMPONENTS */
+        .navbar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 1200px;
+            height: 70px;
+            z-index: 1500;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            transition: var(--transition-smooth);
+        }
+        .navbar.scrolled {
+            top: 0;
+            width: 100%;
+            max-width: 100%;
+            border-radius: 0;
+            background: rgba(4, 4, 4, 0.85);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { 
+            text-decoration: none; 
+            color: var(--fg); 
+            font-size: 0.85rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            opacity: 0.6;
+            transition: 0.3s;
+        }
+        .nav-links a:hover { opacity: 1; color: var(--accent); }
+
+        .hot-badge {
+            background: var(--accent);
+            color: var(--bg);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            position: absolute;
+            top: 15px; right: 15px;
+            z-index: 5;
+            box-shadow: 0 0 15px var(--accent);
+        }
+
+        /* CONFIGURATOR */
+        .config-steps { display: flex; gap: 20px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 10px; }
+        .step-pill { 
+            padding: 10px 20px; 
+            border-radius: 30px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--border); 
+            cursor: pointer; 
+            white-space: nowrap; 
+            font-size: 0.8rem;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+        .step-pill.active { background: var(--accent); color: var(--bg); border-color: var(--accent); box-shadow: 0 0 20px var(--accent); }
+
+        /* TESTIMONIALS */
+        .testimonial-card { padding: 30px; border-radius: 20px; min-width: 300px; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--border); overflow: hidden; }
+
+        /* ORDER TRACKER */
+        .tracker-line { position: relative; height: 4px; background: var(--border); margin: 40px 0; border-radius: 2px; }
+        .tracker-progress { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); width: 65%; border-radius: 2px; box-shadow: 0 0 10px var(--accent); }
+        .tracker-node { 
+            position: absolute; top: 50%; transform: translate(-50%, -50%); 
+            width: 16px; height: 16px; border-radius: 50%; 
+            background: var(--bg); border: 2px solid var(--border); 
+            z-index: 2;
+        }
+        .tracker-node.completed { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .tracker-node.active { border-color: var(--accent); background: var(--bg); box-shadow: 0 0 15px var(--accent); animation: pulse-glow 2s infinite; }
+
+        footer { padding: 80px 24px; border-top: 1px solid var(--border); margin-top: 100px; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav id="navbar" class="glass navbar">
+        <div style="font-family: var(--font-mono); font-weight: 900; font-size: 1.2rem; letter-spacing: -1px;">
+            SNACKS <span style="color: var(--accent);">911</span>
+        </div>
+        <div class="nav-links">
+            <a href="#hero">Inicio</a>
+            <a href="#combos">Combos</a>
+            <a href="#menu">Menú</a>
+            <a href="#order-status">Estado</a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="position: relative; cursor: pointer;" onclick="app.scrollTo('#menu')">
+                🛒 <span class="cart-count-nav" style="background: var(--accent); color: var(--bg); font-size: 0.6rem; width: 15px; height: 15px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: absolute; top: -5px; right: -8px; font-weight: 900;">0</span>
+            </div>
+            <button class="btn btn-primary" style="padding: 10px 20px; font-size: 0.7rem;" onclick="app.scrollTo('#menu')">PEDIR AHORA</button>
+            <button class="mobile-menu-btn" style="display: none; background: none; border: none; color: var(--fg); font-size: 1.5rem;" onclick="app.toggleMobileMenu()">☰</button>
+        </div>
+    </nav>
+
+    <!-- MOBILE MENU OVERLAY -->
+    <div id="mobileMenu" class="modal-overlay">
+        <div class="glass" style="width: 80%; max-width: 300px; padding: 40px; display: flex; flex-direction: column; gap: 30px;">
+            <button onclick="app.toggleMobileMenu()" style="align-self: flex-end; background: none; border: none; color: var(--fg); font-size: 1.5rem;">✕</button>
+            <a href="#hero" onclick="app.toggleMobileMenu()" style="color: var(--fg); text-decoration: none; font-weight: 900; font-size: 1.2rem;">INICIO</a>
+            <a href="#combos" onclick="app.toggleMobileMenu()" style="color: var(--fg); text-decoration: none; font-weight: 900; font-size: 1.2rem;">COMBOS</a>
+            <a href="#menu" onclick="app.toggleMobileMenu()" style="color: var(--fg); text-decoration: none; font-weight: 900; font-size: 1.2rem;">MENÚ</a>
+            <a href="#order-status" onclick="app.toggleMobileMenu()" style="color: var(--fg); text-decoration: none; font-weight: 900; font-size: 1.2rem;">ESTADO</a>
+        </div>
+    </div>
+
+    <div id="app" class="app-container">
+        <!-- HERO -->
+        <section id="hero" class="hero visible">
+            <div class="hero-glow"></div>
+            <div class="hero-content" id="heroContent">
+                <span style="font-family: var(--font-mono); color: var(--accent); letter-spacing: 5px; font-weight: 900; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 20px; display: block;">STATUS: EMERGENCY DISPATCH</span>
+                <h1 class="hero-title">
+                    <span class="line">EL ANTOJO</span>
+                    <span class="line accent-text">NO ESPERA</span>
+                </h1>
+                <p style="color: var(--muted); max-width: 550px; margin: 30px 0 50px; font-size: 1.1rem; line-height: 1.6;">
+                    Tu rescate calórico de alta velocidad. Despacho inmediato para hambres críticas, diseñado para el hambre más impulsiva.
+                </p>
+                <div style="display: flex; gap: 20px;">
+                    <button class="btn btn-primary" onclick="app.scrollTo('#top-ventas')">🔥 VER MENÚ</button>
+                    <button class="btn btn-ghost" onclick="app.toggleAI()">SOS DISPATCH</button>
+                </div>
+            </div>
+            <div style="position: absolute; right: -8%; top: 50%; transform: translateY(-50%); width: 55vw; z-index: 1;">
+                <img src="https://images.unsplash.com/photo-1573010334382-02942823b52d?q=80&w=2000&auto=format&fit=crop" style="width: 100%; filter: drop-shadow(0 30px 100px rgba(0,0,0,0.9)); animation: float 12s infinite ease-in-out;">
+            </div>
+        </section>
+
+        <!-- TOP VENTAS -->
+        <section id="top-ventas">
+            <h2 style="font-weight: 900; margin-bottom: 5px;">🔥 LO MÁS PEDIDO AHORA</h2>
+            <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 30px;">Más pedidos en los últimos 30 min</p>
+            <div class="carousel-track">
+                <div class="glass combo-card" style="min-width: 280px; padding: 20px;">
+                    <span class="hot-badge">HOT</span>
+                    <img src="https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=400" style="border-radius: 12px; height: 180px; object-fit: cover;">
+                    <h3 style="font-weight: 900; font-size: 1.1rem;">Hamburguesa 911</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price">$12.50</span>
+                        <button class="btn btn-primary" style="padding: 10px 15px;" onclick="app.addToCart('Hamburguesa 911', 12.50)">+</button>
+                    </div>
+                </div>
+                <div class="glass combo-card" style="min-width: 280px; padding: 20px;">
+                    <span class="hot-badge">HOT</span>
+                    <img src="https://images.unsplash.com/photo-1562608107-74077efd645e?q=80&w=400" style="border-radius: 12px; height: 180px; object-fit: cover;">
+                    <h3 style="font-weight: 900; font-size: 1.1rem;">Alitas Atómicas</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price">$15.00</span>
+                        <button class="btn btn-primary" style="padding: 10px 15px;" onclick="app.addToCart('Alitas Atómicas', 15.00)">+</button>
+                    </div>
+                </div>
+                <div class="glass combo-card" style="min-width: 280px; padding: 20px;">
+                    <span class="hot-badge">HOT</span>
+                    <img src="https://images.unsplash.com/photo-1623238913973-21e45cced554?q=80&w=400" style="border-radius: 12px; height: 180px; object-fit: cover;">
+                    <h3 style="font-weight: 900; font-size: 1.1rem;">Papas Napalm</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price">$8.50</span>
+                        <button class="btn btn-primary" style="padding: 10px 15px;" onclick="app.addToCart('Papas Napalm', 8.50)">+</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ARMA TU RESCATE -->
+        <section id="configurator">
+            <h2 style="font-weight: 900; margin-bottom: 30px;">⚡ ARMA TU RESCATE</h2>
+            <div class="glass" style="padding: 40px;">
+                <div class="config-steps">
+                    <div class="step-pill active" onclick="app.setStep(1)">1. BASE</div>
+                    <div class="step-pill" onclick="app.setStep(2)">2. EXTRAS</div>
+                    <div class="step-pill" onclick="app.setStep(3)">3. BEBIDA</div>
+                </div>
+                <div id="step-content" style="min-height: 200px;">
+                    <!-- Injected by JS -->
+                </div>
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">PRECIO ESTIMADO</div>
+                        <div id="config-price" style="font-family: var(--font-mono); font-weight: 900; font-size: 1.8rem; color: var(--accent);">$0.00</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="app.addCustomCombo()">AGREGAR COMBO 🔥</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMBOS (CAROUSEL) -->
+        <section id="combos">
+            <h2 style="font-family: var(--font-display); font-weight: 900; margin-bottom: 20px;">PACKS DE EMERGENCIA</h2>
+            <div class="carousel-track">
+                <!-- Combo 1 -->
+                <div class="glass combo-card">
+                    <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=400" style="border-radius: 12px;">
+                    <h3 style="font-weight: 900;">COMBO 911</h3>
+                    <p style="font-size: 0.9rem; color: var(--muted);">Doble carne, papas jumbo y soda.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price" style="font-family: var(--font-mono); color: var(--accent); font-weight: 900; font-size: 1.2rem;">$14.90</span>
+                        <button class="btn btn-primary" style="padding: 10px 15px;" onclick="app.addToCart('Combo 911', 14.90)">+</button>
+                    </div>
+                </div>
+                <!-- Combo 2 -->
+                <div class="glass combo-card">
+                    <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=400" style="border-radius: 12px;">
+                    <h3 style="font-weight: 900;">FIRE BOX</h3>
+                    <p style="font-size: 0.9rem; color: var(--muted);">12 Alitas Hot, 6 Boneless y Papas.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price" style="font-family: var(--font-mono); color: var(--accent); font-weight: 900; font-size: 1.2rem;">$22.50</span>
+                        <button class="btn btn-primary" style="padding: 10px 15px;" onclick="app.addToCart('Fire Box', 22.50)">+</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXTRAS IMPULSIVOS -->
+        <section id="extras">
+            <h2 style="font-weight: 900; margin-bottom: 30px;">💸 EXTRAS QUE NECESITAS</h2>
+            <div class="menu-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+                <div class="glass product-card" onclick="app.addToCart('Extra Queso', 1.50)">
+                    <img src="https://images.unsplash.com/photo-1551021216-0de3b5bd8f90?q=80&w=200" style="height: 100px;">
+                    <h4 style="font-size: 0.8rem; font-weight: 900;">Extra Queso</h4>
+                    <span class="price" style="font-size: 1rem;">$1.50</span>
+                </div>
+                <div class="glass product-card" onclick="app.addToCart('Tocino', 2.00)">
+                    <img src="https://images.unsplash.com/photo-1606851094655-b2593a9af63f?q=80&w=200" style="height: 100px;">
+                    <h4 style="font-size: 0.8rem; font-weight: 900;">Tocino</h4>
+                    <span class="price" style="font-size: 1rem;">$2.00</span>
+                </div>
+                <div class="glass product-card" onclick="app.addToCart('Salsa 911', 1.00)">
+                    <img src="https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=200" style="height: 100px;">
+                    <h4 style="font-size: 0.8rem; font-weight: 900;">Salsa 911</h4>
+                    <span class="price" style="font-size: 1rem;">$1.00</span>
+                </div>
+                <div class="glass product-card" onclick="app.addToCart('Papas Chicas', 3.00)">
+                    <img src="https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?q=80&w=200" style="height: 100px;">
+                    <h4 style="font-size: 0.8rem; font-weight: 900;">Papas Chicas</h4>
+                    <span class="price" style="font-size: 1rem;">$3.00</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CATEGORIES -->
+        <section id="categories" style="padding-top: 0;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                <button class="btn btn-ghost" style="border-radius: 12px; flex-direction: column; gap: 5px; height: 80px; font-size: 0.7rem;" onclick="app.scrollTo('#menu')">🍔 BURGERS</button>
+                <button class="btn btn-ghost" style="border-radius: 12px; flex-direction: column; gap: 5px; height: 80px; font-size: 0.7rem;" onclick="app.scrollTo('#menu')">🍗 CHICKEN</button>
+                <button class="btn btn-ghost" style="border-radius: 12px; flex-direction: column; gap: 5px; height: 80px; font-size: 0.7rem;" onclick="app.scrollTo('#menu')">🍟 SIDES</button>
+                <button class="btn btn-ghost" style="border-radius: 12px; flex-direction: column; gap: 5px; height: 80px; font-size: 0.7rem;" onclick="app.scrollTo('#menu')">🥤 DRINKS</button>
+            </div>
+        </section>
+
+        <!-- FULL MENU -->
+        <section id="menu">
+            <h2 style="font-family: var(--font-display); font-weight: 900; margin-bottom: 20px;">DESPACHO DIRECTO</h2>
+            <div class="menu-grid">
+                <!-- Products will be injected here -->
+            </div>
+        </section>
+
+        <!-- TESTIMONIALS -->
+        <section id="testimonials">
+            <h2 style="font-weight: 900; margin-bottom: 40px;">⭐ SOBREVIVIENTES</h2>
+            <div class="carousel-track">
+                <div class="glass testimonial-card">
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <div class="avatar">👨‍🚀</div>
+                        <div>
+                            <div style="font-weight: 900;">Alex G.</div>
+                            <div style="font-size: 0.7rem; color: var(--accent);">Gamer nocturno</div>
+                        </div>
+                    </div>
+                    <p style="font-style: italic; font-size: 0.9rem;">"Me salvó la noche. El Combo 911 llegó caliente y en menos de 20 min. 🔥"</p>
+                </div>
+                <div class="glass testimonial-card">
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <div class="avatar">🧛‍♂️</div>
+                        <div>
+                            <div style="font-weight: 900;">Sofia R.</div>
+                            <div style="font-size: 0.7rem; color: var(--accent);">Estudiante 24/7</div>
+                        </div>
+                    </div>
+                    <p style="font-style: italic; font-size: 0.9rem;">"Las Alitas Atómicas son de otro planeta. La mejor opción para estudiar de madrugada."</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ORDER STATUS -->
+        <section id="order-status">
+            <h2 style="font-weight: 900; margin-bottom: 10px;">🚑 ESTADO DEL RESCATE</h2>
+            <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 40px;">Seguimiento táctico en tiempo real</p>
+            <div class="glass" style="padding: 40px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-weight: 900; font-size: 0.8rem;">RESCATE #5829</span>
+                    <span style="color: var(--accent); font-weight: 900; font-size: 0.8rem;">EN CAMINO 🏍️</span>
+                </div>
+                <div class="tracker-line">
+                    <div class="tracker-progress"></div>
+                    <div class="tracker-node completed" style="left: 0;"></div>
+                    <div class="tracker-node completed" style="left: 33%;"></div>
+                    <div class="tracker-node active" style="left: 66%;"></div>
+                    <div class="tracker-node" style="left: 100%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 900; color: var(--muted); text-transform: uppercase;">
+                    <span>Recibido</span>
+                    <span>Cocina</span>
+                    <span style="color: var(--fg);">En camino</span>
+                    <span>Entregado</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="glass">
+        <div class="app-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px;">
+            <div>
+                <div style="font-family: var(--font-mono); font-weight: 900; font-size: 1.5rem; margin-bottom: 20px;">SNACKS <span style="color: var(--accent);">911</span></div>
+                <p style="color: var(--muted); font-size: 0.9rem;">Tu unidad de respuesta rápida para emergencias de hambre. Operando 24/7 en el corazón de la ciudad.</p>
+            </div>
+            <div>
+                <h4 style="font-weight: 900; margin-bottom: 20px;">LINKS RÁPIDOS</h4>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem;">
+                    <a href="#hero" style="color: var(--muted); text-decoration: none;">Inicio</a>
+                    <a href="#combos" style="color: var(--muted); text-decoration: none;">Combos</a>
+                    <a href="#menu" style="color: var(--muted); text-decoration: none;">Menú</a>
+                    <a href="#order-status" style="color: var(--muted); text-decoration: none;">Estado</a>
+                </div>
+            </div>
+            <div>
+                <h4 style="font-weight: 900; margin-bottom: 20px;">CONTACTO</h4>
+                <p style="color: var(--muted); font-size: 0.9rem;">📍 Av. Rescate 911, Sector Industrial</p>
+                <p style="color: var(--muted); font-size: 0.9rem;">📞 SOS: 800-SNACKS-911</p>
+                <div style="display: flex; gap: 15px; margin-top: 20px; font-size: 1.2rem;">
+                    <span>📸</span> <span>🐦</span> <span>📘</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+                <button class="btn btn-primary" style="width: 100%;" onclick="app.scrollTo('#hero')">ORDENA AHORA 🔥</button>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 60px; font-size: 0.7rem; color: var(--muted); opacity: 0.5;">
+            © 2026 SNACKS 911 - DESPACHO TÁCTICO DE CALORÍAS.
+        </div>
+    </footer>
+
+    <!-- STICKY CART BAR -->
+    <div id="cartBar" class="glass cart-bar hidden">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div id="cartIcon" style="position: relative;">
+                🛒
+                <span id="cartCount" style="position: absolute; top: -10px; right: -10px; background: var(--accent); color: var(--bg); font-size: 0.7rem; font-weight: 900; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">0</span>
+            </div>
+            <div>
+                <div id="cartTotal" style="font-family: var(--font-mono); font-weight: 900;">$0.00</div>
+                <div style="font-size: 0.7rem; color: var(--muted);">ESTATUS: LISTO</div>
+            </div>
+        </div>
+        <button class="btn btn-primary" style="padding: 10px 20px; font-size: 0.8rem;" onclick="app.checkout()">CHECKOUT 🔥</button>
+    </div>
+
+    <!-- DISPATCH ASSISTANT UI -->
+    <div id="aiChat" class="glass ai-chat hidden">
+        <div class="chat-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="chat-avatar">🚑</div>
+                <div>
+                    <div style="font-weight: 900; font-size: 0.85rem; letter-spacing: 1px;">DISPATCHER 911</div>
+                    <div style="font-size: 0.6rem; color: var(--accent); font-weight: 700;">● SYSTEM ACTIVE</div>
+                </div>
+            </div>
+            <button onclick="app.toggleAI()" style="background: none; border: none; color: var(--fg); cursor: pointer; opacity: 0.5;">✕</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="message ai">Detectando niveles de glucosa bajos... ¿Necesitas un rescate calórico inmediato?</div>
+        </div>
+        <div id="typingIndicator" class="typing-indicator" style="display: none; margin-left: 20px; gap: 5px; margin-bottom: 10px;">
+            <span style="width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse-glow 1s infinite;"></span>
+            <span style="width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse-glow 1s infinite 0.2s;"></span>
+            <span style="width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse-glow 1s infinite 0.4s;"></span>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Escribe tu emergencia..." onkeydown="if(event.key==='Enter') app.sendMessage()">
+            <button class="btn btn-primary" style="padding: 12px; border-radius: 50%; width: 44px; height: 44px;" onclick="app.sendMessage()">🚀</button>
+        </div>
+    </div>
+
+    <div class="dispatch-orb" onclick="app.toggleAI()">
+        <div class="dispatch-pulse-ring"></div>
+        <div class="dispatch-pulse-ring"></div>
+        <div class="inner-core"></div>
+        <span style="font-size: 1.5rem; z-index: 1;">🤖</span>
+    </div>
+
+    <!-- MODAL CUSTOMIZER -->
+    <div id="modal" class="modal-overlay">
+        <div class="glass modal-content">
+            <h2 id="modalTitle" style="font-weight: 900; margin-bottom: 12px; font-size: 2rem;">CUSTOMIZE</h2>
+            <p id="modalDesc" style="color: var(--muted); margin-bottom: 24px; font-size: 1rem;"></p>
+            <div style="display: flex; flex-direction: column; gap: 18px; margin-bottom: 40px;">
+                <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    Salsa Secreta 911 (Extra)
+                    <input type="checkbox" style="width: 20px; height: 20px; accent-color: var(--accent);">
+                </label>
+                <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    Tocino Ahumado
+                    <input type="checkbox" style="width: 20px; height: 20px; accent-color: var(--accent);">
+                </label>
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="app.closeModal()">AGREGAR AL RESCATE</button>
+        </div>
+    </div>
+
+    <script>
+        // CORE APP ENGINE
+        const app = {
+            state: {
+                cart: [],
+                total: 0,
+                currentStep: 1,
+                configCombo: { base: null, extras: [], drink: null, price: 0 },
+                menu: [
+                    { id: 1, name: 'Siren Burger', price: 9.50, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=400', popular: true },
+                    { id: 2, name: 'Flash Wings', price: 12.00, img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7bb7445?q=80&w=400', popular: true },
+                    { id: 3, name: 'Emergency Fries', price: 5.50, img: 'https://images.unsplash.com/photo-1573010334382-02942823b52d?q=80&w=400' },
+                    { id: 4, name: 'Cyan Soda', price: 2.50, img: 'https://images.unsplash.com/photo-1581006852262-e4307cf6283a?q=80&w=400' },
+                    { id: 5, name: 'Bacon SOS', price: 11.00, img: 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?q=80&w=400' },
+                    { id: 6, name: 'Boneless Napalm', price: 13.50, img: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?q=80&w=200' }
+                ],
+                configOptions: {
+                    bases: [
+                        { name: 'Papas Locas', price: 6.00 },
+                        { id: 10, name: 'Classic Burger', price: 8.50 },
+                        { name: 'Boneless (6pcs)', price: 9.00 }
+                    ],
+                    extras: [
+                        { name: 'Queso Extra', price: 1.50 },
+                        { name: 'Tocino', price: 2.00 },
+                        { name: 'Salsa 911', price: 1.00 }
+                    ],
+                    drinks: [
+                        { name: 'Coca-Cola', price: 2.50 },
+                        { name: 'Agua Mineral', price: 2.00 },
+                        { name: 'Malteada Fuego', price: 5.00 }
+                    ]
+                }
+            },
+
+            init() {
+                this.renderMenu();
+                this.setupParallax();
+                this.setupScrollReveal();
+                this.setupRipples();
+                this.setupNavbar();
+                this.setStep(1);
+                this.restoreSession();
+            },
+
+            renderMenu() {
+                const grid = document.querySelector('.menu-grid');
+                grid.innerHTML = this.state.menu.map(item => `
+                    <div class="glass product-card" onclick="app.openModal('${item.name}', '${item.price}')">
+                        ${item.popular ? '<span class="badge-popular">🔥 POPULAR</span>' : ''}
+                        <div class="img-wrap">
+                            <img src="${item.img}" alt="${item.name}">
+                        </div>
+                        <h4 style="font-size: 1rem; font-weight: 900; margin-bottom: 5px;">${item.name}</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                            <span class="price">$${item.price.toFixed(2)}</span>
+                            <span style="font-size: 0.7rem; font-weight: 900; color: var(--accent); letter-spacing: 1px;">+ RESCUE</span>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            addToCart(name, price) {
+                this.state.cart.push({ name, price });
+                this.updateCart();
+                this.showFeedback();
+            },
+
+            updateCart() {
+                this.state.total = this.state.cart.reduce((sum, item) => sum + item.price, 0);
+                document.querySelectorAll('.cart-count-nav, #cartCount').forEach(el => el.innerText = this.state.cart.length);
+                document.getElementById('cartTotal').innerText = `$${this.state.total.toFixed(2)}`;
+                
+                const bar = document.getElementById('cartBar');
+                if (this.state.cart.length > 0) {
+                    bar.classList.remove('hidden');
+                }
+                this.saveSession();
+            },
+
+            showFeedback() {
+                const orb = document.querySelector('.dispatch-orb');
+                orb.style.transform = 'scale(1.4) rotate(15deg)';
+                orb.style.borderColor = 'var(--accent)';
+                setTimeout(() => {
+                    orb.style.transform = '';
+                    orb.style.borderColor = '';
+                }, 300);
+            },
+
+            openModal(name, price) {
+                document.getElementById('modalTitle').innerText = name;
+                document.getElementById('modalDesc').innerText = `$${price} - Rescate inmediato listo para personalización prioritaria.`;
+                document.getElementById('modal').classList.add('active');
+            },
+
+            closeModal() {
+                const name = document.getElementById('modalTitle').innerText;
+                const priceText = document.getElementById('modalDesc').innerText.match(/\d+\.\d+/);
+                const price = priceText ? parseFloat(priceText[0]) : 0;
+                this.addToCart(name, price);
+                document.getElementById('modal').classList.remove('active');
+            },
+
+            setStep(step) {
+                this.state.currentStep = step;
+                document.querySelectorAll('.step-pill').forEach((p, i) => {
+                    p.classList.toggle('active', i + 1 === step);
+                });
+                this.renderStepContent();
+            },
+
+            renderStepContent() {
+                const container = document.getElementById('step-content');
+                let html = '';
+                const { currentStep, configOptions, configCombo } = this.state;
+
+                if (currentStep === 1) {
+                    html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        ${configOptions.bases.map(b => `
+                            <div class="step-pill ${configCombo.base?.name === b.name ? 'active' : ''}" style="text-align: center;" onclick="app.selectConfig('base', '${b.name}', ${b.price})">
+                                ${b.name}<br><small>$${b.price.toFixed(2)}</small>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                } else if (currentStep === 2) {
+                    html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        ${configOptions.extras.map(e => `
+                            <div class="step-pill ${configCombo.extras.some(ex => ex.name === e.name) ? 'active' : ''}" style="text-align: center;" onclick="app.toggleExtra('${e.name}', ${e.price})">
+                                ${e.name}<br><small>$${e.price.toFixed(2)}</small>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                } else {
+                    html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        ${configOptions.drinks.map(d => `
+                            <div class="step-pill ${configCombo.drink?.name === d.name ? 'active' : ''}" style="text-align: center;" onclick="app.selectConfig('drink', '${d.name}', ${d.price})">
+                                ${d.name}<br><small>$${d.price.toFixed(2)}</small>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                }
+                container.innerHTML = html;
+                this.updateConfigPrice();
+            },
+
+            selectConfig(type, name, price) {
+                this.state.configCombo[type] = { name, price };
+                this.renderStepContent();
+            },
+
+            toggleMobileMenu() {
+                const menu = document.getElementById('mobileMenu');
+                menu.classList.toggle('active');
+            },
+
+            toggleExtra(name, price) {
+                const index = this.state.configCombo.extras.findIndex(e => e.name === name);
+                if (index > -1) {
+                    this.state.configCombo.extras.splice(index, 1);
+                } else {
+                    this.state.configCombo.extras.push({ name, price });
+                }
+                this.renderStepContent();
+            },
+
+            updateConfigPrice() {
+                const { base, extras, drink } = this.state.configCombo;
+                let total = (base?.price || 0) + (drink?.price || 0);
+                extras.forEach(e => total += e.price);
+                this.state.configCombo.price = total;
+                document.getElementById('config-price').innerText = `$${total.toFixed(2)}`;
+            },
+
+            addCustomCombo() {
+                const { base, price } = this.state.configCombo;
+                if (!base) {
+                    alert('🚨 ERROR: Selecciona una base para el rescate.');
+                    return;
+                }
+                this.addToCart('Combo Personalizado', price);
+                this.state.configCombo = { base: null, extras: [], drink: null, price: 0 };
+                this.setStep(1);
+            },
+
+            setupNavbar() {
+                window.addEventListener('scroll', () => {
+                    const nav = document.getElementById('navbar');
+                    nav.classList.toggle('scrolled', window.scrollY > 50);
+                });
+            },
+
+            toggleAI() {
+                const chat = document.getElementById('aiChat');
+                chat.classList.toggle('hidden');
+                if (!chat.classList.contains('hidden')) {
+                    document.getElementById('chatInput').focus();
+                }
+            },
+
+            sendMessage() {
+                const input = document.getElementById('chatInput');
+                const text = input.value.trim();
+                if (!text) return;
+
+                this.addMessage(text, 'user');
+                input.value = '';
+
+                const typing = document.getElementById('typingIndicator');
+                typing.style.display = 'flex';
+                
+                setTimeout(() => {
+                    typing.style.display = 'none';
+                    this.aiRespond(text);
+                }, 1200);
+            },
+
+            addMessage(text, type) {
+                const container = document.getElementById('chatMessages');
+                const msg = document.createElement('div');
+                msg.className = `message ${type}`;
+                msg.innerText = text;
+                container.appendChild(msg);
+                container.scrollTop = container.scrollHeight;
+            },
+
+            aiRespond(input) {
+                const query = input.toLowerCase();
+                let response = "🚨 ESCUCHA: El sistema detecta niveles críticos de antojo. Recomiendo un despliegue táctico de SIREN BURGERS de inmediato.";
+
+                if (query.includes('hambre') || query.includes('recomienda')) {
+                    response = "🔥 ESTO ES LO QUE NECESITAS: El COMBO 911 es nuestro protocolo de respuesta más agresiva. Incluye doble carne y rescate garantizado. ¿Lo autorizas?";
+                } else if (query.includes('si') || query.includes('agrega') || query.includes('autorizo')) {
+                    this.addToCart('Combo 911', 14.90);
+                    response = "🚑 ¡AUTORIZADO! COMBO 911 en camino al despliegue. Tu hambre está bajo control táctico. ¿Algo más para asegurar el perímetro?";
+                } else if (query.includes('precio') || query.includes('cuanto')) {
+                    response = "🚨 RECOMENDACIÓN URGENTE: No dejes que el precio te detenga. Por solo " + document.getElementById('cartTotal').innerText + " aseguras tu supervivencia esta noche.";
+                }
+
+                this.addMessage(response, 'ai');
+            },
+
+            checkout() {
+                alert(`🚀 DESPLIEGUE INICIADO: $${this.state.total.toFixed(2)}. Unidades de rescate en camino...`);
+            },
+
+            scrollTo(id) {
+                document.querySelector(id).scrollIntoView({ behavior: 'smooth' });
+            },
+
+            setupParallax() {
+                document.addEventListener('mousemove', (e) => {
+                    const x = (e.clientX / window.innerWidth - 0.5) * 2;
+                    const y = (e.clientY / window.innerHeight - 0.5) * 2;
+                    document.documentElement.style.setProperty('--mouse-x', x);
+                    document.documentElement.style.setProperty('--mouse-y', y);
+                    
+                    const heroContent = document.getElementById('heroContent');
+                    if(heroContent) {
+                        heroContent.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
+                    }
+                });
+            },
+
+            setupRipples() {
+                document.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.btn');
+                    if (!btn) return;
+                    
+                    const ripple = document.createElement('span');
+                    ripple.style.position = 'absolute';
+                    ripple.style.width = '100px';
+                    ripple.style.height = '100px';
+                    ripple.style.background = 'rgba(255,255,255,0.3)';
+                    ripple.style.borderRadius = '50%';
+                    ripple.style.pointerEvents = 'none';
+                    ripple.style.left = (e.clientX - btn.getBoundingClientRect().left - 50) + 'px';
+                    ripple.style.top = (e.clientY - btn.getBoundingClientRect().top - 50) + 'px';
+                    ripple.style.transform = 'scale(0)';
+                    ripple.style.transition = '0.5s';
+                    btn.appendChild(ripple);
+                    
+                    requestAnimationFrame(() => {
+                        ripple.style.transform = 'scale(3)';
+                        ripple.style.opacity = '0';
+                    });
+                    
+                    setTimeout(() => ripple.remove(), 500);
+                });
+            },
+
+            setupScrollReveal() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach((entry, index) => {
+                        if (entry.isIntersecting) {
+                            setTimeout(() => {
+                                entry.target.classList.add('visible');
+                            }, index * 100);
+                        }
+                    });
+                }, { threshold: 0.1 });
+                document.querySelectorAll('section').forEach(s => observer.observe(s));
+            },
+
+            saveSession() {
+                localStorage.setItem('snacks_911_cart', JSON.stringify(this.state.cart));
+            },
+
+            restoreSession() {
+                const saved = localStorage.getItem('snacks_911_cart');
+                if (saved) {
+                    this.state.cart = JSON.parse(saved);
+                    this.updateCart();
+                }
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
+}
