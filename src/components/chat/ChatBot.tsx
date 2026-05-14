@@ -72,6 +72,8 @@ export default function ChatBot() {
   const [typing, setTyping]   = useState(false);
   const [isIdle, setIsIdle]   = useState(false);
   const [showIdleMessage, setShowIdleMessage] = useState(false);
+  const [activityIndex, setActivityIndex] = useState(0);
+  const [ctaIndex, setCtaIndex] = useState(0);
   
   const { items, addToCart } = useCartStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,32 @@ export default function ChatBot() {
     };
   }, [isOpen]);
 
+  const FAKE_ACTIVITIES = [
+    "🔥 Carlos pidió boneless",
+    "🔥 Ana pidió combo 911",
+    "🔥 Luis pidió papas",
+    "🔥 Sofía pidió alitas",
+    "🔥 Diego pidió combo mixto",
+  ];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      setActivityIndex(prev => (prev + 1) % FAKE_ACTIVITIES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  const CTAS = ["🔥 Pedir ahora", "🚨 Ordenar ya", "⚡ Activar pedido"];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      setCtaIndex(prev => (prev + 1) % CTAS.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
   // Handle open logic
   const toggleChat = () => {
     if (!isOpen) {
@@ -112,7 +140,7 @@ export default function ChatBot() {
           ...prev, 
           { 
             id: idCounter.current++, 
-            text: "🔥 Te recomiendo un combo 911 para empezar", 
+            text: "🔥 Detectando antojo… ¿qué se te antoja?", 
             sender: 'bot' 
           }
         ]);
@@ -126,7 +154,7 @@ export default function ChatBot() {
             }
             return prev;
           });
-        }, 5000);
+        }, 6000);
       }, 500);
     } else {
       setIsOpen(false);
@@ -182,7 +210,7 @@ export default function ChatBot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-[6rem] right-6 w-[380px] max-w-[calc(100vw-3rem)] h-[580px] max-h-[calc(100vh-8rem)] z-[9999] rounded-[24px] flex flex-col bg-[#050505] border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden origin-bottom-right"
+            className="fixed bottom-[7rem] right-6 w-[430px] max-w-[calc(100vw-3rem)] h-[650px] max-h-[calc(100vh-8rem)] z-[9999] rounded-[24px] flex flex-col bg-[#050505] border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.8),0_0_60px_rgba(255,90,0,0.12),0_0_120px_rgba(255,90,0,0.06)] overflow-hidden origin-bottom-right"
           >
             {/* Command Header */}
             <div className="p-5 border-b border-white/5 bg-white/2 backdrop-blur-xl flex justify-between items-center">
@@ -197,6 +225,24 @@ export default function ChatBot() {
                 </div>
               </div>
               <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">✕</button>
+            </div>
+
+            {/* Live Activity Banner */}
+            <div className="bg-[var(--accent)]/5 border-b border-[var(--accent)]/10 px-4 py-2 overflow-hidden">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shrink-0 shadow-[0_0_6px_rgba(74,222,128,0.6)]"></span>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activityIndex}
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -10, opacity: 0 }}
+                    className="text-[0.65rem] font-bold text-white/70 tracking-wide"
+                  >
+                    {FAKE_ACTIVITIES[activityIndex]}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Tactical Feed */}
@@ -254,7 +300,7 @@ export default function ChatBot() {
               <div className="relative flex gap-2">
                 <input 
                   value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()}
-                  placeholder="Solicitar despacho..."
+                  placeholder={CTAS[ctaIndex]}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--accent)] transition-all"
                 />
                 <button 
@@ -263,6 +309,9 @@ export default function ChatBot() {
                 >
                   ↑
                 </button>
+              </div>
+              <div className="text-center mt-2">
+                <span className="text-[0.6rem] font-bold tracking-widest text-white/25 uppercase">⚡ Se cocina en minutos</span>
               </div>
             </div>
           </motion.div>
@@ -280,10 +329,10 @@ export default function ChatBot() {
 
         <button 
           onClick={toggleChat} 
-          className={`relative w-[64px] h-[64px] rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 ${
+          className={`relative w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(255,90,0,0.12)] border border-white/10 ${
             isOpen 
               ? 'bg-white/10 text-white rotate-90 scale-90' 
-              : 'bg-[var(--accent)] text-black hover:scale-110 active:scale-95 hover:shadow-[0_0_30px_rgba(255,90,0,0.6)] breathing'
+              : 'bg-[var(--accent)] text-black hover:scale-110 hover:rotate-[-2deg] active:scale-95 hover:shadow-[0_0_45px_rgba(255,90,0,0.8),0_0_90px_rgba(255,90,0,0.3)] dominant-pulse'
           }`}
         >
           {isOpen ? '✕' : <span className="text-3xl filter drop-shadow-md">🚨</span>}

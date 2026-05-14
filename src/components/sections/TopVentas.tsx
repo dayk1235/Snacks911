@@ -70,7 +70,7 @@ export default function TopVentas() {
 
               <button 
                 onClick={() => addToCart(product)}
-                className="w-full py-4 bg-[var(--accent)] text-black font-black text-[0.8rem] rounded-xl tracking-widest uppercase hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_40px_rgba(255,69,0,0.3)] group-hover:shadow-[0_0_60px_rgba(255,69,0,0.5)]"
+                className="w-full py-4 bg-[var(--accent)] text-black font-black text-[0.8rem] rounded-xl tracking-widest uppercase hover:scale-[1.03] active:scale-95 transition-all duration-200 shadow-[0_0_20px_rgba(255,69,0,0.3)] group-hover:shadow-[0_0_30px_rgba(255,69,0,0.5)]"
               >
                 + ACTIVAR PEDIDO
               </button>

@@ -28,7 +28,7 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
         <div className="flex whitespace-nowrap animate-[ticker_20s_linear_infinite] items-center">
           {[...Array(4)].map((_, i) => (
             <span key={i} className="text-black font-black text-[0.65rem] uppercase tracking-[0.2em] px-8">
-              🔥 ENTREGAS ACTIVAS • PEDIDOS EN CURSO • CALIENTE AHORA • ALTA DEMANDA ⚡
+              🔥 PEDIDOS ACTIVOS • CALIENTE AHORA • ENTREGA RÁPIDA ⚡
             </span>
           ))}
         </div>

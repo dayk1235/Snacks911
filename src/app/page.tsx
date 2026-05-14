@@ -178,8 +178,6 @@ export default function TiendaPage() {
       <CustomCursor />
       <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} minimal={activeView === 'chat'} />
 
-      <LiveFeed />
-
       <div className="relative z-10 bg-[var(--bg-primary)]">
         <Hero featuredProduct={featuredCombo} onOrderFeatured={handleOrderFeatured}>
           <OrderBot 
@@ -192,6 +190,10 @@ export default function TiendaPage() {
       </div>
 
       <TopVentas />
+      
+      <LiveFeed />
+      
+      <UpsellGrid />
       
       <QuickReviews />
 
@@ -212,7 +214,6 @@ export default function TiendaPage() {
       <RescueConfigurator />
       <CombosSection onAdd={addToCart} />
       <PromoBanner />
-      <UpsellGrid />
       <MenuSection onAdd={(p) => setCustomizingProduct(p)} />
       <ContactSection />
       <SiteFooter />

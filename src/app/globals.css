@@ -80,12 +80,12 @@
 
 .glass:hover { 
   border-color: rgba(255,255,255,0.3); 
-  box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow);
-  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 15px var(--accent-glow);
+  transform: translateY(-8px) scale(1.03);
 }
 
 .glow {
-  box-shadow: 0 0 20px var(--glow);
+  box-shadow: 0 0 12px var(--glow);
 }
 
 .neon-text {
@@ -95,7 +95,7 @@
 
 /* Global transitions */
 * {
-  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 
 /* ─── Standardized Buttons (Master Template Style) ────────────────────────── */
@@ -122,7 +122,7 @@
 .btn-primary { 
   background: var(--accent); 
   color: var(--bg); 
-  box-shadow: 0 0 30px color-mix(in oklch, var(--accent), transparent 40%);
+  box-shadow: 0 0 18px color-mix(in oklch, var(--accent), transparent 50%);
   animation: flicker 8s infinite;
 }
 
@@ -137,9 +137,9 @@
 }
 
 .btn-primary:hover { 
-  transform: translateY(-5px) scale(1.05); 
+  transform: translateY(-4px) scale(1.03); 
   filter: brightness(1.15); 
-  box-shadow: 0 15px 45px var(--accent); 
+  box-shadow: 0 10px 30px var(--accent); 
 }
 
 .btn-primary:hover::after { 
@@ -162,7 +162,7 @@
 .btn-ghost:hover { 
   background: rgba(255,255,255,0.1); 
   border-color: var(--muted); 
-  transform: translateY(-3px); 
+  transform: translateY(-2px) scale(1.03); 
 }
 
 .btn-secondary {
@@ -176,7 +176,7 @@
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-3px);
+  transform: translateY(-2px) scale(1.03);
 }
 
 /* ─── Section Animations ─────────────────────────────────────────────────── */
@@ -256,6 +256,16 @@ section {
   animation: breathing 3s ease-in-out infinite;
 }
 
+@keyframes dominant-pulse {
+  0%, 88%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 30px rgba(255,90,0,0.15); }
+  93% { transform: scale(1.12); box-shadow: 0 15px 60px rgba(255,90,0,0.6), 0 0 55px rgba(255,90,0,0.35); }
+  96% { transform: scale(1.05); box-shadow: 0 12px 50px rgba(255,90,0,0.4), 0 0 40px rgba(255,90,0,0.25); }
+}
+
+.dominant-pulse {
+  animation: dominant-pulse 4s ease-in-out infinite;
+}
+
 .hero-orb-1 {
   position: absolute;
   top: -10%;
@@ -321,6 +331,22 @@ body {
   max-width: 100vw;
 }
 
+h1, h2, h3, h4 {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 0.95; }
+h2 { font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1; }
+h3 { font-size: 1.25rem; line-height: 1.1; }
+h4 { font-size: 1rem; line-height: 1.2; }
+
+p {
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+}
+
 /* ─── Custom cursor on desktop ─────────────────────────────────────────────── */
 @media (pointer: fine) {
   body:not(:has([data-admin="true"])) *, 
@@ -343,13 +369,13 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: all 0.4s var(--easing-premium);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s var(--easing-premium);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .card-premium:hover {
-  transform: translateY(-4px) scale(1.01);
+  transform: translateY(-4px) scale(1.03);
   border-color: rgba(255, 69, 0, 0.4);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--accent-glow);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px var(--accent-glow);
 }
 
 /* ─── Bento Grid System ────────────────────────────────────────────────────── */
@@ -364,7 +390,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   padding: 1.5rem;
-  transition: all 0.3s var(--easing-premium);
+  transition: all 0.2s var(--easing-premium);
   display: flex;
   flex-direction: column;
 }
@@ -443,7 +469,7 @@ body {
   background: linear-gradient(90deg, #FF4500, #FFB800);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.28s ease;
+  transition: transform 0.2s ease;
 }
 .nav-link:hover::after {
   transform: scaleX(1);

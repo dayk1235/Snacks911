@@ -74,10 +74,10 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
 
       <style jsx>{`
         .product-card {
-          transition: var(--transition-smooth);
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
         }
         .product-card:hover {
-          transform: translateY(-12px) rotate(1.5deg) scale(1.04);
+          transform: translateY(-6px) scale(1.03);
         }
       `}</style>
     </div>
