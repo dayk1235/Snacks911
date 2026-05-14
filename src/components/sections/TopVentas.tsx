@@ -10,59 +10,70 @@ export default function TopVentas() {
   const { addToCart } = useCartStore();
   
   const topProducts = useMemo(() => {
-    // Return top 3 popular products or just the first 3 if none marked
-    return products.slice(0, 3);
+    // Return top popular products: Combo 911, Boneless, Papas
+    return products.filter(p => 
+      p.name.includes('Combo') || 
+      p.name.includes('Boneless') || 
+      p.name.includes('Papas')
+    ).slice(0, 3);
   }, []);
 
   return (
-    <section id="top-ventas" className="py-20 px-6 overflow-hidden">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="mb-10">
-          <h2 className="text-[2.5rem] font-black uppercase tracking-tighter text-white mb-1">
-            🔥 LO MÁS PEDIDO AHORA
-          </h2>
-          <p className="text-[var(--muted)] text-[0.85rem] uppercase tracking-widest font-bold">
-            Más pedidos en los últimos 30 min
-          </p>
+    <section id="top-ventas" className="py-24 px-6 overflow-hidden bg-black/20">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-6">
+          <div className="reveal-on-scroll">
+            <h2 className="text-[3rem] sm:text-[4.5rem] font-black uppercase tracking-tighter text-white leading-[0.85] mb-4">
+              🔥 LO MÁS <br /> <span className="fire-text">PEDIDO AHORA</span>
+            </h2>
+            <p className="text-[var(--accent)] text-[0.7rem] uppercase tracking-[0.3em] font-black flex items-center gap-2">
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse"></span>
+              SISTEMA DE DESPACHO EN TIEMPO REAL
+            </p>
+          </div>
+          <div className="hidden lg:block text-right opacity-30 text-[0.6rem] font-bold tracking-widest uppercase">
+            Actualizado hace 2 min • Basado en 142 pedidos recientes
+          </div>
         </div>
 
-        <div className="flex gap-8 overflow-x-auto pb-10 no-scrollbar snap-x snap-mandatory">
+        <div className="flex gap-6 overflow-x-auto pb-10 no-scrollbar snap-x snap-mandatory -mx-6 px-6">
           {topProducts.map((product, i) => (
             <motion.div 
               key={product.id}
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.1 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               viewport={{ once: true }}
-              className="glass min-w-[300px] sm:min-w-[340px] p-6 flex flex-col gap-6 snap-start relative group"
+              className="glass min-w-[320px] sm:min-w-[420px] p-8 flex flex-col gap-6 snap-start relative group border-white/5"
             >
-              <div className="absolute top-4 right-4 z-10 bg-[var(--accent)] text-[var(--bg)] px-3 py-1 rounded-md text-[0.7rem] font-black tracking-widest uppercase shadow-[0_0_15px_var(--accent)]">
-                HOT
+              <div className="absolute top-6 left-6 z-10 bg-red-600 text-white px-3 py-1 rounded-sm text-[0.6rem] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(220,38,38,0.5)] animate-pulse">
+                CRITICAL HIT
               </div>
               
-              <div className="relative h-[200px] rounded-xl overflow-hidden bg-black/40">
+              <div className="relative h-[240px] rounded-2xl overflow-hidden bg-black/60 shadow-inner">
                 <Image 
                   src={getProductImage(product)} 
                   alt={product.name}
                   fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="object-contain p-4 transition-transform duration-1000 group-hover:scale-110"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <h3 className="text-xl font-black text-white uppercase tracking-tight">{product.name}</h3>
-                <p className="text-[var(--muted)] text-sm line-clamp-1">{product.description}</p>
+              <div className="flex flex-col gap-2 relative z-10">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight leading-none">{product.name}</h3>
+                  <span className="font-mono text-2xl font-black text-[var(--accent)]">${product.price}</span>
+                </div>
+                <p className="text-white/40 text-[0.8rem] leading-relaxed line-clamp-2 pr-10">{product.description}</p>
               </div>
 
-              <div className="flex justify-between items-center mt-auto pt-4 border-t border-white/5">
-                <span className="font-mono text-2xl font-black text-[var(--accent)]">${product.price}</span>
-                <button 
-                  onClick={() => addToCart(product)}
-                  className="w-12 h-12 rounded-full bg-[var(--accent)] text-[var(--bg)] flex items-center justify-center font-black text-xl hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,90,0,0.4)]"
-                >
-                  +
-                </button>
-              </div>
+              <button 
+                onClick={() => addToCart(product)}
+                className="w-full py-4 bg-[var(--accent)] text-black font-black text-[0.8rem] rounded-xl tracking-widest uppercase hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_40px_rgba(255,69,0,0.3)] group-hover:shadow-[0_0_60px_rgba(255,69,0,0.5)]"
+              >
+                + ACTIVAR PEDIDO
+              </button>
             </motion.div>
           ))}
         </div>

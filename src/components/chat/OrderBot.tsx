@@ -79,11 +79,13 @@ type EngineType = 'modular' | 'ai';
 
 export default function OrderBot({
   inline = false,
+  hero = false,
   activeView = 'chat',
   onActiveViewChange,
   onProductsVisible,
 }: {
   inline?: boolean;
+  hero?: boolean;
   activeView?: string;
   onActiveViewChange?: (view: string) => void;
   onProductsVisible?: (visible: boolean) => void;
@@ -98,31 +100,13 @@ export default function OrderBot({
   });
   const [engine, setEngine] = useState<EngineType>('modular');
   const [expanded, setExpanded] = useState(false);
+  const [hasTriggered, setHasTriggered] = useState(false);
+  const [ctaText, setCtaText] = useState('Pedir ahora');
   const [vitrinaOpen, setVitrinaOpen] = useState(false);
   const [dbProducts, setDbProducts] = useState<any[]>([]);
-
-  // Fetch products from DB on mount
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch('/api/products?all=true');
-        if (!res.ok) throw new Error('DB fetch failed');
-        const data = await res.json();
-        const items = data.products || data.data || (Array.isArray(data) ? data : []);
-        setDbProducts(items);
-      } catch (err) {
-        console.error('[OrderBot] Failed to load DB products:', err);
-      }
-    };
-    fetchProducts();
-  }, []);
-
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const idRef = useRef(1);
   const [customer, setCustomer] = useState(getCustomerData());
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
-  // Dynamic Placeholder
   const placeholders = [
     "Escribe tu antojo...",
     "Ej: alitas, papas, algo dulce...",
@@ -130,26 +114,13 @@ export default function OrderBot({
     "Prueba con: un combo boneless",
     "¿Con qué salsa las quieres? 🌶️"
   ];
-  const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholderIdx((prev) => (prev + 1) % placeholders.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const idRef = useRef(1);
   const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
-  
-  // Listen to external toggle event (e.g. from DispatchOrb)
-  useEffect(() => {
-    const handleToggle = () => setOpen(prev => !prev);
-    window.addEventListener('toggle-ai', handleToggle);
-    return () => window.removeEventListener('toggle-ai', handleToggle);
-  }, []);
 
-  const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
-  console.log("DEBUG switch:", { forceLegacy, env: process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY, engine });
-
+  // Derived state
   const rawCart = state.cart;
   let cartItems: string[] = [];
   if (Array.isArray(rawCart)) {
@@ -184,176 +155,10 @@ export default function OrderBot({
     };
   }, [cartItems, safeTotal, dbProducts]);
 
-  // Improved scroll to bottom with multiple passes for dynamic content/images
-  useEffect(() => {
-    const scrollToBottom = () => {
-      const el = messagesRef.current;
-      if (el) {
-        el.scrollTo({ 
-          top: el.scrollHeight, 
-          behavior: 'smooth' 
-        });
-      }
-    };
-
-    scrollToBottom();
-    
-    // Additional passes to account for animating cards and images
-    const timers = [100, 300, 600, 1000].map(ms => setTimeout(scrollToBottom, ms));
-    
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [state.messages, thinking]);
-  useEffect(() => { if (isOpen) setTimeout(() => inputRef.current?.focus(), 350); }, [isOpen]);
-
-  // Greeting + Session Start
-  useEffect(() => {
-    if (isOpen && state.messages.length === 0) {
-      logEvent({
-        event_type: 'session_start',
-        payload_json: { engine_type: engine.toUpperCase(), customer_name: customer.name }
-      });
-      
-      let g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
-      
-      if (customer.name) {
-        const prefs = customer.preferences && customer.preferences.length > 0 
-          ? ` ¿lo de siempre o quieres probar algo nuevo?`
-          : ` ¿Qué se te antoja hoy?`;
-        g = `¡Qué onda ${customer.name}! 🔥${prefs}`;
-      }
-      
-      setState(prev => ({
-        ...prev,
-        messages: [{ id: idRef.current++, text: g, sender: 'bot' }]
-      }));
-    }
-  }, [isOpen, state.messages.length, engine, customer.name, customer.preferences]);
-
-  // Auto-expand when showing cards or menu
-  useEffect(() => {
-    const lastMsg = state.messages[state.messages.length - 1];
-    const hasCards = lastMsg?.type === 'products' || (lastMsg?.ui && (lastMsg.ui.cards || lastMsg.ui.cart));
-    setExpanded(!!hasCards);
-  }, [state.messages]);
-
-  // Impulse shelf data
-  const shelfData = useMemo(() => {
-    const lastMsg = state.messages[state.messages.length - 1];
-    
-    // If bot sent specific cards, use them
-    if (lastMsg?.sender === 'bot' && lastMsg.ui?.cards?.length) {
-      return lastMsg.ui.cards.map((c: any) => ({
-        id: c.id,
-        name: c.title,
-        price: c.price || 0,
-        image: c.imageUrl || '',
-        category: c.category || '',
-        label: c.label || ''
-      }));
-    }
-
-    // Default impulse shelf (Popular products from DB)
-    return dbProducts
-      .filter(p => p.popular || p.category === 'combos')
-      .slice(0, 4)
-      .map(p => ({
-        id: String(p.id),
-        name: p.name,
-        price: p.price,
-        image: p.image_url || p.imageUrl || '',
-        category: p.category,
-        label: p.popular ? '🔥 Popular' : ''
-      }));
-  }, [state.messages, dbProducts]);
-
-  const shelfVisible = shelfData.length > 0 && isOpen;
-
-  const productsShowing = useMemo(() => {
-    if (shelfVisible) return true;
-    const lastMsg = state.messages[state.messages.length - 1];
-    if (!lastMsg || lastMsg.sender !== 'bot') return false;
-    return lastMsg.type === 'products' || (lastMsg.ui?.cards?.length ?? 0) > 0;
-  }, [state.messages, shelfVisible]);
-
-  useEffect(() => {
-    onProductsVisible?.(productsShowing);
-    if (productsShowing) onActiveViewChange?.('chat');
-  }, [productsShowing, onProductsVisible, onActiveViewChange]);
-
-  // Track shown actions
-  useEffect(() => {
-    const lastMsg = state.messages[state.messages.length - 1];
-    if (lastMsg && lastMsg.sender === 'bot' && lastMsg.actions?.length) {
-      lastMsg.actions.forEach(a => {
-        trackEvent("ACTION_SHOWN", {
-          actionId: a.id,
-          actionType: a.type,
-          label: a.label,
-          ...(a.meta || {})
-        });
-      });
-    }
-  }, [state.messages]);
-
-  // WhatsApp confirmation + Checkout Completed
-  useEffect(() => {
-    if (state.whatsappUrl && state.deliveryStep === 'done' && state.orderConfirmed) {
-      logEvent({
-        event_type: 'checkout_completed',
-        payload_json: {
-          engine_type: engine.toUpperCase(),
-          cart_total: state.cartTotal,
-          items_count: cartItems.length
-        }
-      });
-
-      const itemsToSubmit = cartItems.map(name => {
-        const cleanName = name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-        const product = dbProducts.find(p =>
-          p.name === cleanName ||
-          (typeof p.name === 'string' && p.name.includes(cleanName)) ||
-          (typeof p.name === 'string' && cleanName.includes(p.name))
-        );
-        return {
-          id: product?.id ?? 0,
-          name: name,
-          price: product?.price ?? 0,
-          quantity: 1,
-        };
-      });
-
-      if (itemsToSubmit.length > 0) {
-        (async () => {
-          try {
-            await fetch('/api/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                id: createUuid(),
-                status: 'pending',
-                channel: 'WEB',
-                total: state.cartTotal,
-                createdAt: new Date().toISOString(),
-                customerName: state.customerName || 'Cliente',
-                customerPhone: 'web-user',
-                whatsappConfirmed: false,
-                items: itemsToSubmit
-              }),
-            });
-          } catch(err) {
-            console.error('[OrderBot] Error saving order:', (err as Error)?.message || err);
-          }
-        })();
-      }
-      window.open(state.whatsappUrl, '_blank');
-    }
-  }, [state.whatsappUrl, state.deliveryStep, state.orderConfirmed, state.cart, state.cartTotal, state.customerName, engine]);
-
+  // Helper Functions
   const processResponse = useCallback(async (text: string, action?: string) => {
     setThinking(true);
     await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
-
-    console.log("ENGINE:", engine);
 
     const r = await fetch("/api/ai/chat", {
       method: "POST",
@@ -402,8 +207,7 @@ export default function OrderBot({
     if (thinking) return;
 
     const label = action.label;
-    const actionValue = action.value || action.type;
-
+    
     // 1. Track Click
     trackEvent("ACTION_CLICKED", {
       actionId: action.id,
@@ -412,23 +216,7 @@ export default function OrderBot({
       ...(action.meta || {})
     });
 
-    // 2. Specialized Tracking
-    if (action.type === 'add_to_cart') {
-      trackEvent("ADD_TO_CART", {
-        productId: action.payload?.productId,
-        name: action.payload?.name,
-        actionId: action.id
-      });
-    }
-
-    if (action.type === 'upsell') {
-      trackEvent("UPSELL_ACCEPTED", {
-        productId: action.payload?.productId,
-        actionId: action.id
-      });
-    }
-
-    // 3. Checkout: show confirmation card + WhatsApp link
+    // 2. Checkout logic
     if (action.type === 'checkout' && state.cart?.items?.length > 0) {
       const cartItems = state.cart.items || [];
       const total = state.cart.total || state.cartTotal || 0;
@@ -454,7 +242,7 @@ export default function OrderBot({
             type: 'buttons',
             actions: [{
               id: 'wa-checkout',
-              label: '📱 Pedir por WhatsApp',
+              label: `📱 ${ctaText} por WhatsApp`,
               type: 'checkout',
               value: waUrl,
             }],
@@ -472,10 +260,207 @@ export default function OrderBot({
     }));
     
     await processResponse(action.value || label);
-  }, [thinking, processResponse, state.cart, state.cartTotal]);
+  }, [thinking, processResponse, state.cart, state.cartTotal, ctaText]);
+
+  // UseEffects
+  useEffect(() => {
+    const texts = ['Pedir ahora', '🔥 Ordenar ya', '🚨 Activar pedido'];
+    setCtaText(texts[Math.floor(Math.random() * texts.length)]);
+  }, []);
+
+  useEffect(() => {
+    if (!hero) return;
+    const interval = setInterval(() => {
+      const count = Math.floor(Math.random() * 8) + 3;
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, { 
+          id: idRef.current++, 
+          text: `🔥 ${count} personas están viendo combos ahora`, 
+          sender: 'bot' 
+        }]
+      }));
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [hero]);
+
+  useEffect(() => {
+    if (hero && !hasTriggered) {
+      const timer = setTimeout(() => {
+        setHasTriggered(true);
+        processResponse("🔥 Detectando antojo... ¿qué se te antoja?");
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [hero, hasTriggered, processResponse]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('/api/products?all=true');
+        if (!res.ok) throw new Error('DB fetch failed');
+        const data = await res.json();
+        const items = data.products || data.data || (Array.isArray(data) ? data : []);
+        setDbProducts(items);
+      } catch (err) {
+        console.error('[OrderBot] Failed to load DB products:', err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIdx((prev) => (prev + 1) % 5);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleToggle = () => setOpen(prev => !prev);
+    window.addEventListener('toggle-ai', handleToggle);
+    return () => window.removeEventListener('toggle-ai', handleToggle);
+  }, []);
+
+  useEffect(() => {
+    const scrollToBottom = () => {
+      const el = messagesRef.current;
+      if (el) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }
+    };
+    scrollToBottom();
+    const timers = [100, 300, 600, 1000].map(ms => setTimeout(scrollToBottom, ms));
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [state.messages, thinking]);
+
+  useEffect(() => { if (isOpen) setTimeout(() => inputRef.current?.focus(), 350); }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && state.messages.length === 0) {
+      logEvent({
+        event_type: 'session_start',
+        payload_json: { engine_type: engine.toUpperCase(), customer_name: customer.name }
+      });
+      let g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
+      if (customer.name) {
+        const prefs = customer.preferences && customer.preferences.length > 0 ? ' ¿lo de siempre o quieres probar algo nuevo?' : ' ¿Qué se te antoja hoy?';
+        g = `¡Qué onda ${customer.name}! 🔥${prefs}`;
+      }
+      setState(prev => ({
+        ...prev,
+        messages: [{ id: idRef.current++, text: g, sender: 'bot' }]
+      }));
+    }
+  }, [isOpen, state.messages.length, engine, customer.name, customer.preferences]);
+
+  useEffect(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    const hasCards = lastMsg?.type === 'products' || (lastMsg?.ui && (lastMsg.ui.cards || lastMsg.ui.cart));
+    setExpanded(!!hasCards);
+  }, [state.messages]);
+
+  // Impulse shelf data
+  const shelfData = useMemo(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    
+    // If bot sent specific cards, use them
+    if (lastMsg?.sender === 'bot' && lastMsg.ui?.cards?.length) {
+      return lastMsg.ui.cards.map((c: any) => ({
+        id: c.id,
+        name: c.title,
+        price: c.price || 0,
+        image: c.imageUrl || '',
+        category: c.category || '',
+        label: c.label || ''
+      }));
+    }
+
+    // Default impulse shelf (Popular products from DB)
+    return dbProducts
+      .filter(p => p.popular || p.category === 'combos')
+      .slice(0, 4)
+      .map(p => ({
+        id: String(p.id),
+        name: p.name,
+        price: p.price,
+        image: p.image_url || p.imageUrl || '',
+        category: p.category,
+        label: p.popular ? '🔥 Popular' : ''
+      }));
+  }, [state.messages, dbProducts]);
+
+  const shelfVisible = shelfData.length > 0 && isOpen;
+
+  const productsShowing = useMemo(() => {
+    if (shelfVisible) return true;
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (!lastMsg || lastMsg.sender !== 'bot') return false;
+    return lastMsg.type === 'products' || (lastMsg.ui?.cards?.length ?? 0) > 0;
+  }, [state.messages, shelfVisible]);
+
+  // Tracking and view logic
+  useEffect(() => {
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg && lastMsg.sender === 'bot' && lastMsg.actions?.length) {
+      lastMsg.actions.forEach(a => {
+        trackEvent("ACTION_SHOWN", { actionId: a.id, actionType: a.type, label: a.label });
+      });
+    }
+  }, [state.messages]);
+
+  useEffect(() => {
+    if (state.whatsappUrl && state.deliveryStep === 'done' && state.orderConfirmed) {
+      logEvent({
+        event_type: 'checkout_completed',
+        payload_json: { engine_type: engine.toUpperCase(), cart_total: state.cartTotal, items_count: cartItems.length }
+      });
+      const itemsToSubmit = cartItems.map(name => {
+        const cleanName = name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+        const product = dbProducts.find(p => p.name === cleanName || (typeof p.name === 'string' && p.name.includes(cleanName)));
+        return { id: product?.id ?? 0, name: name, price: product?.price ?? 0, quantity: 1 };
+      });
+      if (itemsToSubmit.length > 0) {
+        (async () => {
+          try {
+            await fetch('/api/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: createUuid(),
+                status: 'pending',
+                channel: 'WEB',
+                total: state.cartTotal,
+                createdAt: new Date().toISOString(),
+                customerName: state.customerName || 'Cliente',
+                customerPhone: 'web-user',
+                whatsappConfirmed: false,
+                items: itemsToSubmit
+              }),
+            });
+          } catch(err) {
+            console.error('[OrderBot] Error saving order:', err);
+          }
+        })();
+      }
+    }
+  }, [state.whatsappUrl, state.deliveryStep, state.orderConfirmed, state.cartTotal, cartItems.length, engine, dbProducts, state.customerName]);
+
+  useEffect(() => {
+    onProductsVisible?.(productsShowing);
+    if (productsShowing) onActiveViewChange?.('chat');
+  }, [productsShowing, onProductsVisible, onActiveViewChange]);
 
   return (
-    <div className={inline ? 'chat-inline-wrapper' : undefined} style={inline ? { position: 'relative', width: '100%', maxWidth: '680px', margin: '0 auto', padding: '1.5rem 1rem' } : undefined}>
+    <div 
+      className={inline || hero ? 'chat-inline-wrapper' : undefined} 
+      style={inline || hero ? { position: 'relative', width: '100%', maxWidth: '680px', margin: '0 auto', padding: '1.5rem 1rem' } : undefined}
+    >
+    <motion.div
+      initial={hero ? { opacity: 0, scale: 0.95 } : false}
+      animate={hero ? { opacity: 1, scale: 1 } : false}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
     <>
       {inline && (
         <motion.div
@@ -491,16 +476,18 @@ export default function OrderBot({
       )}
       <div
         className={`chat-container${inline ? ' chat-inline' : ''}`}
-        style={inline ? {
+        style={inline || hero ? {
           position: 'relative',
           width: '100%', maxWidth: '100%',
-          minHeight: '420px', height: 'auto',
+          minHeight: hero ? '520px' : '420px', height: 'auto',
           maxHeight: '70vh',
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column' as const,
           fontFamily: 'var(--font-chat), sans-serif',
           border: '1px solid transparent',
           background: 'linear-gradient(#1A1A1C, #1A1A1C) padding-box, linear-gradient(137deg, #FF4500 0%, #FF6B35 45%, #FF8F00 100%) border-box',
+          boxShadow: hero ? '0 0 40px rgba(255, 69, 0, 0.2), 0 30px 100px rgba(0,0,0,0.8)' : undefined,
+          animation: hero ? 'glowPulse 3s infinite' : undefined,
         } : {
           position: 'fixed', bottom: '6rem', right: '1.5rem',
           width: expanded ? '640px' : '420px', maxWidth: 'calc(100vw - 3rem)',
@@ -568,8 +555,8 @@ export default function OrderBot({
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">Status</span>
-              <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-tighter">Ready to dispatch</span>
+              <span className="text-[9px] text-[var(--accent)] font-black uppercase tracking-widest animate-pulse">⚡ Alta demanda en tu zona</span>
+              <span className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">⏱️ Entrega: 25–35 min</span>
             </div>
             <button 
               onClick={() => setOpen(false)} 
@@ -969,6 +956,10 @@ export default function OrderBot({
            50% { transform: scale(1.04); }
            100% { transform: scale(1); }
          }
+         @keyframes glowPulse {
+           0%, 100% { box-shadow: 0 0 40px rgba(255, 69, 0, 0.2), 0 30px 100px rgba(0,0,0,0.8); }
+           50% { box-shadow: 0 0 60px rgba(255, 69, 0, 0.4), 0 30px 100px rgba(0,0,0,0.8); }
+         }
          @keyframes msgSlideIn {
            from { opacity: 0; transform: translateY(20px) scale(0.98); }
            to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -984,6 +975,7 @@ export default function OrderBot({
          }
        `}</style>
     </>
+    </motion.div>
     </div>
   );
 }

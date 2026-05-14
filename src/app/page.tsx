@@ -30,7 +30,11 @@ const ContactSection     = dynamic(() => import('@/components/sections/ContactSe
 const MenuSection        = dynamic(() => import('@/components/sections/MenuSection'),        { ssr: false });
 const ProductCustomizerModal = dynamic(() => import('@/components/modals/ProductCustomizerModal'), { ssr: false });
 
+const ChatBot = dynamic(() => import('@/components/chat/ChatBot'), { ssr: false });
 const OrderBot = dynamic(() => import('@/components/chat/OrderBot'), { ssr: false });
+const LiveFeed = dynamic(() => import('@/components/sections/LiveFeed'), { ssr: false });
+const UpsellGrid = dynamic(() => import('@/components/sections/UpsellGrid'), { ssr: false });
+const QuickReviews = dynamic(() => import('@/components/sections/QuickReviews'), { ssr: false });
 const WelcomeModal = dynamic(() => import('@/components/modals/WelcomeModal'), { ssr: false });
 const CustomCursor = dynamic(() => import('@/components/layout/CustomCursor'), { ssr: false });
 
@@ -174,13 +178,22 @@ export default function TiendaPage() {
       <CustomCursor />
       <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} minimal={activeView === 'chat'} />
 
-      <OrderBot activeView={activeView} onActiveViewChange={setActiveView} onProductsVisible={() => {}} />
+      <LiveFeed />
 
       <div className="relative z-10 bg-[var(--bg-primary)]">
-        <Hero featuredProduct={featuredCombo} onOrderFeatured={handleOrderFeatured} />
+        <Hero featuredProduct={featuredCombo} onOrderFeatured={handleOrderFeatured}>
+          <OrderBot 
+            hero={true} 
+            activeView={activeView} 
+            onActiveViewChange={setActiveView} 
+            onProductsVisible={() => {}} 
+          />
+        </Hero>
       </div>
 
       <TopVentas />
+      
+      <QuickReviews />
 
       {lastOrder && cartItems.length === 0 && (
         <div className="relative z-11 bg-[var(--bg-primary)] px-6 py-5 border-t border-[var(--border-subtle)]">
@@ -199,14 +212,13 @@ export default function TiendaPage() {
       <RescueConfigurator />
       <CombosSection onAdd={addToCart} />
       <PromoBanner />
+      <UpsellGrid />
       <MenuSection onAdd={(p) => setCustomizingProduct(p)} />
-      <ReviewSection />
-      <OrderStatus />
       <ContactSection />
       <SiteFooter />
       <TickerBar />
 
-      <DispatchOrb />
+      <ChatBot />
       <CartBar />
 
       <Cart

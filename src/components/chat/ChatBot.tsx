@@ -70,14 +70,74 @@ export default function ChatBot() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput]     = useState('');
   const [typing, setTyping]   = useState(false);
+  const [isIdle, setIsIdle]   = useState(false);
+  const [showIdleMessage, setShowIdleMessage] = useState(false);
   
-  const { addToCart } = useCartStore();
+  const { items, addToCart } = useCartStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const idCounter      = useRef(1);
+  const idleTimerRef   = useRef<NodeJS.Timeout | null>(null);
+  const openIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const cartEmpty = items.length === 0;
+
+  // Global idle tracking for notification dot
+  useEffect(() => {
+    if (isOpen) return;
+    
+    const resetIdle = () => {
+      setIsIdle(false);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => setIsIdle(true), 5000);
+    };
+
+    window.addEventListener('mousemove', resetIdle);
+    window.addEventListener('keydown', resetIdle);
+    resetIdle();
+
+    return () => {
+      window.removeEventListener('mousemove', resetIdle);
+      window.removeEventListener('keydown', resetIdle);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [isOpen]);
+
+  // Handle open logic
+  const toggleChat = () => {
+    if (!isOpen) {
+      setIsOpen(true);
+      // Auto-inject recommendation
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev, 
+          { 
+            id: idCounter.current++, 
+            text: "🔥 Te recomiendo un combo 911 para empezar", 
+            sender: 'bot' 
+          }
+        ]);
+        
+        // Setup idle message timer after opening
+        if (openIdleTimerRef.current) clearTimeout(openIdleTimerRef.current);
+        openIdleTimerRef.current = setTimeout(() => {
+          setMessages(prev => {
+            if (prev.length <= 1) { // Only if they haven't interacted much
+              return [...prev, { id: idCounter.current++, text: "🚨 Se enfría tu antojo...", sender: 'bot' }];
+            }
+            return prev;
+          });
+        }, 5000);
+      }, 500);
+    } else {
+      setIsOpen(false);
+      if (openIdleTimerRef.current) clearTimeout(openIdleTimerRef.current);
+    }
+  };
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typing]);
 
   const handleSend = useCallback(async (customText?: string) => {
+    if (openIdleTimerRef.current) clearTimeout(openIdleTimerRef.current);
     const text = (customText || input).trim();
     if (!text || typing) return;
     if (!customText) setInput('');
@@ -149,7 +209,7 @@ export default function ChatBot() {
                   
                   <div className="grid grid-cols-2 gap-2 w-full">
                     {[
-                      { l: '🔥 Combos', v: 'ver combos' },
+                      { l: '🔥 Combo 911', v: 'ver combos' },
                       { l: '🍗 Boneless', v: 'quiero boneless' },
                       { l: '🍟 Papas', v: 'ver papas' },
                       { l: '🥤 Bebidas', v: 'ver bebidas' }
@@ -214,20 +274,22 @@ export default function ChatBot() {
         {/* Tooltip */}
         {!isOpen && (
           <div className="absolute right-full mr-4 bg-black/80 backdrop-blur-md border border-white/10 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            🔥 Pide aquí
+            🔥 Pide en segundos
           </div>
         )}
 
         <button 
-          onClick={() => setIsOpen(!isOpen)} 
-          className={`relative w-[64px] h-[64px] rounded-full flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 ${
-            isOpen ? 'bg-white/10 text-white rotate-90 scale-90' : 'bg-[var(--accent)] text-black hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(255,90,0,0.6)]'
+          onClick={toggleChat} 
+          className={`relative w-[64px] h-[64px] rounded-full flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 ${
+            isOpen 
+              ? 'bg-white/10 text-white rotate-90 scale-90' 
+              : 'bg-[var(--accent)] text-black hover:scale-110 active:scale-95 hover:shadow-[0_0_30px_rgba(255,90,0,0.6)] breathing'
           }`}
         >
           {isOpen ? '✕' : <span className="text-3xl filter drop-shadow-md">🚨</span>}
           
-          {/* Notification Dot */}
-          {!isOpen && (
+          {/* Notification Dot (Idle + Cart Empty) */}
+          {!isOpen && isIdle && cartEmpty && (
             <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#050505] shadow-[0_0_10px_rgba(255,0,0,0.8)] animate-pulse"></span>
           )}
 

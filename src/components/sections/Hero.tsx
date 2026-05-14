@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
   heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
 };
 
-function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
+function HeroSection({ featuredProduct, onOrderFeatured, children }: HeroProps & { children?: React.ReactNode }) {
   const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
   const { isOpen: storeOpen, heroSubtitle, fetchSettings } = useStoreSettings();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -40,9 +40,12 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
 
   return (
     <section id="hero" className="hero min-h-screen flex items-center relative overflow-hidden px-6 bg-[#050505]">
+      {/* Cinematic Vignette */}
+      <div className="absolute inset-0 z-[5] pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_70%,rgba(0,0,0,0.8)_100%)]"></div>
+
       {/* Dynamic Background Parallax */}
       <div 
-        className="hero-glow absolute w-[100vw] h-[100vw] top-[-10%] right-[-10%] z-[0] transition-transform duration-700 ease-out opacity-40"
+        className="hero-glow absolute w-[100vw] h-[100vw] top-[-10%] right-[-10%] z-[0] transition-transform duration-700 ease-out opacity-20"
         style={{ 
           background: 'radial-gradient(circle, var(--glow) 0%, transparent 70%)',
           transform: `translate(${mousePos.x * -0.5}px, ${mousePos.y * -0.5}px)` 
@@ -54,7 +57,7 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
         {[...Array(12)].map((_, i) => (
           <div 
             key={i}
-            className="absolute w-1 h-1 bg-[var(--accent)] rounded-full animate-[heat_4s_infinite_ease-in-out] opacity-20"
+            className="absolute w-1 h-1 bg-[var(--accent)] rounded-full animate-[heat_4s_infinite_ease-in-out] opacity-10"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -65,48 +68,41 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
         ))}
       </div>
       
-      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-10 relative z-10">
+      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-10 relative z-10">
         <div 
-          className="hero-content transition-transform duration-300 ease-out flex flex-col items-center lg:items-start text-center lg:text-left"
-          style={{ transform: `translate(${mousePos.x * 0.2}px, ${mousePos.y * 0.2}px)` }}
+          className="hero-content lg:col-span-5 transition-transform duration-300 ease-out flex flex-col items-center lg:items-start text-center lg:text-left"
+          style={{ transform: `translate(${mousePos.x * 0.1}px, ${mousePos.y * 0.1}px)` }}
         >
           {/* Urgency Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 animate-[fadeInUp_0.8s_ease_both]">
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 animate-[fadeInUp_0.8s_ease_both] opacity-50">
             <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]"></span>
-            <span className="text-[0.65rem] font-bold tracking-widest text-white uppercase">🔥 EN COCINA AHORA MISMO</span>
+            <span className="text-[0.6rem] font-bold tracking-widest text-white uppercase">🔥 EN COCINA AHORA MISMO</span>
           </div>
           
-          <h1 className="hero-title text-[clamp(3.5rem,12vw,9rem)] font-black leading-[0.8] uppercase tracking-[-0.06em] m-0">
+          <h1 className="hero-title text-[clamp(2.5rem,8vw,6rem)] font-black leading-[0.9] uppercase tracking-[-0.04em] m-0 opacity-70">
             <span className="block animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_both]">
               EL ANTOJO
             </span>
-            <span className="block fire-text drop-shadow-[0_0_30px_rgba(255,90,0,0.3)] animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.2s_both]">
+            <span className="block fire-text drop-shadow-[0_0_30px_rgba(255,90,0,0.2)] animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.2s_both]">
               NO ESPERA
             </span>
           </h1>
 
-          <p className="text-[var(--muted)] max-w-[500px] my-8 text-lg sm:text-xl leading-relaxed animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.4s_both]">
+          <p className="text-[var(--muted)] max-w-[400px] my-6 text-base sm:text-lg leading-relaxed animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.4s_both] opacity-60">
             {heroSubtitle || "Tu rescate calórico de alta velocidad. Despacho inmediato para hambres críticas."}
           </p>
 
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.6s_both]">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.6s_both] scale-90 origin-left">
             <button 
-              className="btn btn-primary min-w-[180px] sm:min-w-[200px]"
+              className="btn btn-primary min-w-[160px] sm:min-w-[180px]"
               onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}
             >
               🔥 VER MENÚ
             </button>
-            
-            <button 
-              className="btn btn-ghost min-w-[180px] sm:min-w-[200px]"
-              onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              SOS DISPATCH
-            </button>
           </div>
 
-          {/* Micro-copy - More spacing to avoid overlap */}
-          <div className="flex items-center gap-6 mt-14 opacity-60 text-[0.7rem] font-bold tracking-[0.1em] uppercase animate-[fadeInUp_0.8s_ease_1s_both]">
+          {/* Micro-copy */}
+          <div className="flex items-center gap-6 mt-14 opacity-30 text-[0.6rem] font-bold tracking-[0.1em] uppercase animate-[fadeInUp_0.8s_ease_1s_both]">
             <span>Entrega rápida</span>
             <span className="w-1 h-1 bg-white/30 rounded-full"></span>
             <span>Caliente</span>
@@ -115,20 +111,10 @@ function HeroSection({ featuredProduct, onOrderFeatured }: HeroProps = {}) {
           </div>
         </div>
 
-        {/* Parallax Image */}
-        <div className="relative hidden lg:block perspective-[1000px]">
-          <div 
-            className="relative w-full aspect-square transition-transform duration-500 ease-out"
-            style={{ transform: `translate3d(${mousePos.x * -0.3}px, ${mousePos.y * -0.3}px, 50px) rotateY(${mousePos.x * 0.1}deg) rotateX(${mousePos.y * -0.1}deg)` }}
-          >
-            <div className="absolute inset-0 bg-[var(--accent)] opacity-10 blur-[120px] rounded-full animate-pulse"></div>
-            <Image 
-              src="/images/hero.webp"
-              alt="Snacks 911 Hero"
-              fill
-              className="object-contain drop-shadow-[0_30px_100px_rgba(0,0,0,0.9)] z-10"
-              priority
-            />
+        {/* ChatBot Main Interaction Area */}
+        <div className="lg:col-span-7 flex justify-center items-center relative z-20">
+          <div className="w-full max-w-[640px] transform translate-y-[-20px]">
+            {children}
           </div>
         </div>
       </div>

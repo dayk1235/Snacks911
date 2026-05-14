@@ -24,12 +24,22 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
 
   return (
     <>
+      <div className="fixed top-0 left-0 w-full h-[32px] bg-[var(--accent)] z-[2000] flex items-center overflow-hidden">
+        <div className="flex whitespace-nowrap animate-[ticker_20s_linear_infinite] items-center">
+          {[...Array(4)].map((_, i) => (
+            <span key={i} className="text-black font-black text-[0.65rem] uppercase tracking-[0.2em] px-8">
+              🔥 ENTREGAS ACTIVAS • PEDIDOS EN CURSO • CALIENTE AHORA • ALTA DEMANDA ⚡
+            </span>
+          ))}
+        </div>
+      </div>
+
       <nav 
         id="navbar" 
         className={`fixed z-[1500] left-1/2 -translate-x-1/2 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.2,1,0.3,1)] ${
           scrolled 
-            ? 'top-0 w-full max-w-full h-[70px] bg-[#040404]/85 backdrop-blur-xl border-b border-white/10 rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
-            : 'top-5 w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
+            ? 'top-[32px] w-full max-w-full h-[70px] bg-[#040404]/85 backdrop-blur-xl border-b border-white/10 rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
+            : 'top-[42px] w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
         }`}
       >
         <div className="w-full max-w-[1400px] mx-auto px-8 sm:px-12 flex items-center justify-between">
@@ -122,6 +132,10 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
       </AnimatePresence>
 
       <style jsx global>{`
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-25%); }
+        }
         @keyframes flicker {
           0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; }
           20%, 21.9%, 63%, 63.9%, 65%, 69.9% { opacity: 0.8; filter: brightness(1.3); }
