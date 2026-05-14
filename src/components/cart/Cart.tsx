@@ -329,6 +329,155 @@ function OrderConfirmModal({
   );
 }
 
+/* ── Step 3: Payment Pending Modal ─────────────────────────────────────────── */
+function PaymentPendingModal({
+  paymentUrl,
+  customerName,
+  onPaid,
+  onRetry,
+  onCancel,
+}: {
+  paymentUrl: string;
+  customerName: string;
+  onPaid: () => void;
+  onRetry: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    document.body.style.setProperty('cursor', 'auto', 'important');
+    document.documentElement.setAttribute('data-cursor-restore', 'true');
+    return () => {
+      document.body.style.removeProperty('cursor');
+      document.documentElement.removeAttribute('data-cursor-restore');
+    };
+  }, []);
+
+  const handleOpenPayment = () => {
+    window.open(paymentUrl, '_blank');
+  };
+
+  return (
+    <div
+      data-order-modal="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.5rem',
+        animation: 'cartFadeIn 0.25s ease',
+        cursor: 'default',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: '400px',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px',
+          padding: '2rem',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)',
+          animation: 'cartSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+          textAlign: 'center',
+          cursor: 'default',
+        }}
+      >
+        <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>💳</div>
+
+        <h3 style={{ margin: '0 0 0.6rem', fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
+          {customerName ? `¡${customerName}, tu pedido está listo!` : '¡Tu pedido está listo!'}
+        </h3>
+        <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#888', lineHeight: 1.6 }}>
+          Completa tu pago con tarjeta en la pestaña que se abrió.
+          Si no se abrió, usa el botón de abajo.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <button
+            onClick={handleOpenPayment}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#FF5500,#FF7000)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(255,69,0,0.35)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#FF4500,#FF6000)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(255,69,0,0.25)';
+            }}
+            style={{
+              background: 'linear-gradient(135deg,#FF4500,#FF6000)',
+              border: 'none', borderRadius: '14px',
+              padding: '0.85rem', color: '#fff',
+              fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(255,69,0,0.25)',
+              transition: 'all 0.2s ease',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            }}
+          >
+            💳 Ir a pagar
+          </button>
+
+          <button
+            onClick={onPaid}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#1EB854,#15a347)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(30,184,84,0.35)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#25D366,#1EB854)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(37,211,102,0.25)';
+            }}
+            style={{
+              background: 'linear-gradient(135deg,#25D366,#1EB854)',
+              border: 'none', borderRadius: '14px',
+              padding: '0.85rem', color: '#fff',
+              fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(37,211,102,0.25)',
+              transition: 'all 0.2s ease',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            }}
+          >
+            ✅ Ya pagué
+          </button>
+
+          <button
+            onClick={onCancel}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
+              (e.currentTarget as HTMLElement).style.color = '#aaa';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+              (e.currentTarget as HTMLElement).style.color = '#666';
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '14px',
+              padding: '0.8rem', color: '#666',
+              fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes cartFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes cartSlideUp { from { opacity:0; transform:translateY(20px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
+        [data-order-modal="true"],
+        [data-order-modal="true"] * { cursor: default !important; }
+        html[data-cursor-restore="true"] body *  { cursor: default !important; }
+        html[data-cursor-restore="true"] .custom-cursor-el { display: none !important; }
+      `}</style>
+    </div>
+  );
+}
+
 /* ── Compact Extra Row (inside cart) ─────────────────────────────────────── */
 function CartExtras({
   items,
@@ -454,10 +603,13 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
   const [whatsappNumber, setWhatsappNumber] = useState('525584507458');
   const [showCapture, setShowCapture]       = useState(false);
   const [showConfirm, setShowConfirm]       = useState(false);
+  const [showPaymentPending, setShowPaymentPending] = useState(false);
   const [lastOrderId, setLastOrderId]       = useState<string>('');
   const [waUrl, setWaUrl]                   = useState('');
+  const [paymentUrl, setPaymentUrl]         = useState('');
   const [customerName, setCustomerName]     = useState('');
   const [customerPhone, setCustomerPhone]   = useState('');
+  const [paymentMode, setPaymentMode]       = useState<'whatsapp' | 'card' | null>(null);
 
   /* ── Load WhatsApp number ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -546,7 +698,12 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
   }, [items, total, whatsappNumber]);
 
   const handleWhatsApp = async () => {
-    // Step 1: Show customer capture modal
+    setPaymentMode('whatsapp');
+    setShowCapture(true);
+  };
+
+  const handleCardPayment = async () => {
+    setPaymentMode('card');
     setShowCapture(true);
   };
 
@@ -554,46 +711,38 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
     setCustomerName(name);
     setCustomerPhone(phone);
     setShowCapture(false);
-    await submitOrderAndOpenWhatsApp();
+    await submitOrder();
   };
 
   const handleCustomerSkip = async () => {
     setShowCapture(false);
-    await submitOrderAndOpenWhatsApp();
+    await submitOrder();
   };
 
-  const submitOrderAndOpenWhatsApp = async () => {
-    track('whatsapp_click', { items: items.length, total });
-    
-    console.log('[Frontend] Initiating order submission...', { items: items.length, total });
+  const submitOrder = async () => {
+    track('checkout_start', { items: items.length, total, mode: paymentMode });
+
     const response = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items, total, customerName, customerPhone, channel: 'WEB' }),
     });
     const result = await response.json();
-    console.log('Order submission result:', result);
-    
+
     const orderId = result.orderId;
     setLastOrderId(orderId);
-    track('order_placed', { value: total, currency: 'MXN', orderId, customerPhone: !!customerPhone });
+    track('order_placed', { value: total, currency: 'MXN', orderId, mode: paymentMode, customerPhone: !!customerPhone });
 
-    // Track customer stats for CRM
     if (customerPhone && customerPhone.length >= 10) {
       const topItem = items.reduce<{ name: string; qty: number }>(
         (best, i) => (i.quantity ?? 1) > best.qty ? { name: i.name, qty: i.quantity ?? 1 } : best,
         { name: '', qty: 0 }
       );
       AdminStore.trackCustomerOrder(
-        customerPhone,
-        customerName,
-        total,
-        new Date().toISOString(),
-        topItem.name || '',
+        customerPhone, customerName, total, new Date().toISOString(), topItem.name || ''
       ).catch(() => {});
     }
 
-    // Save for reorder flow
     try {
       const orderSummary = {
         name: `Pedido ${orderId?.slice(-4) || ''}`,
@@ -604,23 +753,63 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
       localStorage.setItem('snacks911_last_order', JSON.stringify(orderSummary));
     } catch {}
 
-    const url = buildWaUrl();
-    setWaUrl(url);
-    
-    // Log Order Created Event
     logEvent({
       event_type: 'order_created',
       cart_id: cartStore.getCartId(),
       order_id: orderId,
       customer_phone: customerPhone,
-      payload_json: {
-        total: total,
-        item_count: items.length
-      }
+      payload_json: { total: total, item_count: items.length, payment_mode: paymentMode }
     });
 
-    window.open(url, '_blank');
-    setTimeout(() => setShowConfirm(true), 1200);
+    if (paymentMode === 'card') {
+      await handleCardPaymentFlow(orderId);
+    } else {
+      const url = buildWaUrl();
+      setWaUrl(url);
+      await generatePaymentLinkForWhatsApp(orderId);
+      window.open(url, '_blank');
+      setTimeout(() => setShowConfirm(true), 1200);
+    }
+  };
+
+  const generatePaymentLinkForWhatsApp = async (orderId: string) => {
+    try {
+      const res = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        setPaymentUrl(data.paymentUrl);
+      }
+    } catch {}
+  };
+
+  const handleCardPaymentFlow = async (orderId: string) => {
+    try {
+      const res = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        setPaymentUrl(data.paymentUrl);
+        window.open(data.paymentUrl, '_blank');
+        setShowPaymentPending(true);
+      } else {
+        const url = buildWaUrl();
+        setWaUrl(url);
+        window.open(url, '_blank');
+        setTimeout(() => setShowConfirm(true), 1200);
+      }
+    } catch {
+      const url = buildWaUrl();
+      setWaUrl(url);
+      window.open(url, '_blank');
+      setTimeout(() => setShowConfirm(true), 1200);
+    }
   };
 
   const handleConfirm = async () => {
@@ -628,16 +817,31 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
       await AdminStore.updateOrderWhatsAppConfirmed(lastOrderId, true).catch(() => {});
     }
     setShowConfirm(false);
-    // Note: cart_abandoned won't trigger because items will be cleared before onClose
     onClearCart();
     onClose();
   };
-  const handleRetry   = () => {
+
+  const handleRetry = () => {
     window.open(waUrl, '_blank');
     setShowConfirm(false);
     setTimeout(() => setShowConfirm(true), 1500);
   };
-  const handleCancel  = () => setShowConfirm(false);
+
+  const handleCancel = () => setShowConfirm(false);
+
+  const handlePaymentPaid = () => {
+    setShowPaymentPending(false);
+    onClearCart();
+    onClose();
+  };
+
+  const handlePaymentRetry = () => {
+    window.open(paymentUrl, '_blank');
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentPending(false);
+  };
   
   const handleClose = () => {
     if (items.length > 0) {
@@ -678,6 +882,17 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
           onConfirm={handleConfirm}
           onRetry={handleRetry}
           onCancel={handleCancel}
+        />
+      )}
+
+      {/* Step 3: Payment pending */}
+      {showPaymentPending && (
+        <PaymentPendingModal
+          paymentUrl={paymentUrl}
+          customerName={customerName}
+          onPaid={handlePaymentPaid}
+          onRetry={handlePaymentRetry}
+          onCancel={handlePaymentCancel}
         />
       )}
 
@@ -908,6 +1123,21 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
             >
               Pedir por WhatsApp
             </Button>
+            <div style={{ marginTop: '0.6rem' }}>
+              <Button
+                id="checkout-card"
+                onClick={handleCardPayment}
+                fullWidth
+                style={{
+                  background: 'linear-gradient(135deg,#FF4500,#FF6000)',
+                  padding: '1rem',
+                  fontSize: '1.05rem',
+                  boxShadow: '0 4px 20px rgba(255,69,0,0.25)',
+                }}
+              >
+                💳 Pagar con tarjeta
+              </Button>
+            </div>
           </div>
         )}
       </div>

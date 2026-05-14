@@ -6,6 +6,19 @@
 import { getBotResponse } from '../../core/botEngine';
 import { getContext, deleteContext } from '../../core/context';
 
+jest.mock('../../core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('../../core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(async (message: string) => {
+      const msg = message.toLowerCase();
+      if (msg.includes('boneless')) return { response: { actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }], response_text: 'Boneless agregados.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'ORDER' };
+      if (msg.includes('agrega 2')) return { response: { actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 2 }, { type: 'TALK' }], response_text: 'Agregué 2 más.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'ORDER' };
+      if (msg.includes('confirmar')) return { response: { actions: [{ type: 'CHECKOUT' }, { type: 'TALK' }], response_text: 'Tu pedido está listo. Total $129' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'CHECKOUT' };
+      return { response: { actions: [{ type: 'TALK' }], response_text: 'Hola' }, modelUsed: 'rule-based', confidence: 0.9, detectedIntent: 'GREETING' };
+    })
+  };
+});
 // --- Mocks ---
 // We mock the database and external services at the module level or by overriding global behaviors.
 // For this simple test, we assume the environment is set up to point to local/test data.

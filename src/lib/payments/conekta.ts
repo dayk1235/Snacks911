@@ -26,6 +26,8 @@ export interface PaymentLinkParams {
   total: number;
   items: Array<{ productName: string; quantity: number; price: number }>;
   currency?: string;
+  successUrl?: string;
+  failureUrl?: string;
 }
 
 export async function createPaymentLink(params: PaymentLinkParams): Promise<PaymentLink> {
@@ -48,6 +50,8 @@ export async function createPaymentLink(params: PaymentLinkParams): Promise<Paym
       type: 'HostedPayment',
       allowed_payment_methods: ['cash', 'card', 'bank_transfer'],
       expires_at: expiresAt,
+      ...(params.successUrl ? { success_url: params.successUrl } : {}),
+      ...(params.failureUrl ? { failure_url: params.failureUrl } : {}),
     },
     metadata: {
       order_id: params.orderId,
@@ -108,19 +112,18 @@ export async function getPaymentStatus(conektaOrderId: string): Promise<{
 }
 
 export function verifyWebhookSignature(payload: string, signature: string): boolean {
-  const secret = process.env.CONEKTA_WEBHOOK_SECRET;
-  if (!secret) {
-    console.warn('[conekta] CONEKTA_WEBHOOK_SECRET not set, skipping signature verification');
+  const publicKey = process.env.CONEKTA_WEBHOOK_PUBLIC_KEY;
+  if (!publicKey) {
+    console.warn('[conekta] CONEKTA_WEBHOOK_PUBLIC_KEY not set, skipping signature verification');
     return true;
   }
 
-  const computed = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-
   try {
-    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(signature));
+    const sigBuffer = Buffer.from(signature, 'base64');
+    const verify = crypto.createVerify('RSA-SHA256');
+    verify.update(payload);
+    verify.end();
+    return verify.verify(publicKey, sigBuffer);
   } catch {
     return false;
   }

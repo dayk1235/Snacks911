@@ -30,10 +30,13 @@ import type { AgentResponse } from '@/core/ai/aiAgent';
 
 // ─── Mock the multi-model router so tests don't depend on real AI ─────────
 
-jest.mock('@/core/ai/multiModelRouter', () => ({
-  __esModule: true,
-  processWithRouter: jest.fn(),
-}));
+jest.mock('@/core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('@/core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(),
+  };
+});
 
 const mockRouter = processWithRouter as jest.Mock;
 

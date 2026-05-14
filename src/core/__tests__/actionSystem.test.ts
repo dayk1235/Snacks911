@@ -2,6 +2,45 @@ import { getBotResponse } from '../botEngine';
 import { getContext, updateContext } from '../context';
 import { products } from '../../data/products';
 import { type Action } from '../types';
+import { type Action } from '../types';
+
+jest.mock('@/core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('@/core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(async (message: string) => {
+      const msg = message.toLowerCase();
+      if (msg.includes('boneless')) {
+        return {
+          response: {
+            actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }],
+            response_text: '¡Agregado!'
+          },
+          modelUsed: 'gemini-2.5-flash-lite',
+          confidence: 0.95,
+          detectedIntent: 'ORDER'
+        };
+      }
+      if (msg.includes('combo')) {
+        return {
+          response: {
+            actions: [{ type: 'ADD_TO_CART', productId: '1', quantity: 1 }, { type: 'TALK' }],
+            response_text: 'Combo agregado'
+          },
+          modelUsed: 'gemini-2.5-flash-lite',
+          confidence: 0.95,
+          detectedIntent: 'ORDER'
+        };
+      }
+      return {
+        response: { actions: [{ type: 'TALK' }], response_text: '...' },
+        modelUsed: 'rule-based',
+        confidence: 0.5,
+        detectedIntent: 'UNKNOWN'
+      };
+    })
+  };
+});
 
 describe('Action System Unit Tests', () => {
   const phone = '5512345678';

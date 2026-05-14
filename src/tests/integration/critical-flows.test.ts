@@ -15,6 +15,60 @@ import { getBotResponse } from '@/core/botEngine';
 import { getContext, deleteContext } from '@/core/context';
 import { getTenantBySlug } from '@/lib/tenant/tenantResolver';
 
+// Mock the AI router so tests pass without GEMINI_API_KEY
+jest.mock('@/core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('@/core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(async (message: string) => {
+      const msg = message.toLowerCase();
+      if (msg.includes('boneless')) {
+        return {
+          response: {
+            actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }],
+            response_text: '¡Claro! Agregué Boneless 250g ($139) a tu carrito. ¿Te ofrezco un refresco o combo?'
+          },
+          modelUsed: 'gemini-2.5-flash-lite',
+          confidence: 0.95,
+          detectedIntent: 'ORDER'
+        };
+      }
+      if (msg.includes('papas')) {
+        return {
+          response: {
+            actions: [{ type: 'ADD_TO_CART', productId: '7', quantity: 1 }, { type: 'TALK' }],
+            response_text: '¡Listas las papas! ($149) agregadas.'
+          },
+          modelUsed: 'gemini-2.5-flash-lite',
+          confidence: 0.95,
+          detectedIntent: 'ORDER'
+        };
+      }
+      if (msg.includes('confirmar')) {
+        return {
+          response: {
+            actions: [{ type: 'CHECKOUT' }, { type: 'TALK' }],
+            response_text: '¡Perfecto! Tu pedido está en camino. Total a pagar: $288.'
+          },
+          modelUsed: 'gemini-2.5-flash-lite',
+          confidence: 0.95,
+          detectedIntent: 'CHECKOUT'
+        };
+      }
+      return {
+        response: {
+          actions: [{ type: 'TALK' }],
+          response_text: 'Tuve un pequeño problema procesando eso. ¿Me lo repites? 😅'
+        },
+        modelUsed: 'rule-based',
+        confidence: 0.3,
+        detectedIntent: 'UNKNOWN',
+        isError: true
+      };
+    }),
+  };
+});
+
 describe('Critical Business Flows', () => {
 
   // ─── 0. Tenant resolution ──────────────────────────────────────────────────

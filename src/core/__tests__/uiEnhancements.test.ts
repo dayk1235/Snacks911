@@ -2,6 +2,25 @@ import { getBotResponse } from '../botEngine';
 import { getContext, updateContext, deleteContext } from '../context';
 import type { Action, UICard, UICart } from '../types';
 
+jest.mock('@/core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('@/core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(async (message: string) => {
+      const msg = message.toLowerCase();
+      if (msg.includes('boneless')) {
+        return { response: { actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }], response_text: 'Boneless agregados.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'ORDER' };
+      }
+      if (msg.includes('no')) {
+        return { response: { actions: [{ type: 'TALK' }], response_text: 'Entendido.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'GREETING' };
+      }
+      if (msg.includes('gracias')) {
+        return { response: { actions: [{ type: 'TALK' }], response_text: 'De nada.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'GREETING' };
+      }
+      return { response: { actions: [{ type: 'TALK' }], response_text: 'Hola' }, modelUsed: 'rule-based', confidence: 0.9, detectedIntent: 'GREETING' };
+    })
+  };
+});
 describe('UI Enhancements', () => {
   const phone = 'ui-test-5599888811';
 

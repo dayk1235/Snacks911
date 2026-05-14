@@ -7,6 +7,21 @@ import { getBotResponse } from '../../core/botEngine';
 import { getContext, deleteContext, updateContext, isValidCart } from '../../core/context';
 import { registerErrorEvent, getSystemMode, resetSystemHealth } from '../../core/selfHealingEngine';
 
+jest.mock('../../core/ai/multiModelRouter', () => {
+  const original = jest.requireActual('../../core/ai/multiModelRouter');
+  return {
+    ...original,
+    processWithRouter: jest.fn(async (message: string) => {
+      const msg = message.toLowerCase();
+      if (msg.includes('dragon') || msg.includes('agotado')) return { response: { actions: [{ type: 'TALK' }], response_text: 'No tengo ese producto, ¿te ofrezco otra cosa?' }, modelUsed: 'gemini', confidence: 0.9, detectedIntent: 'ORDER' };
+      if (msg.includes('boneless')) return { response: { actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }], response_text: 'Boneless agregados.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'ORDER' };
+      if (msg.includes('agrega otro') || msg.includes('uno mas')) return { response: { actions: [{ type: 'ADD_TO_CART', productId: '8', quantity: 1 }, { type: 'TALK' }], response_text: 'Agregado.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'ORDER' };
+      if (msg.includes('confirmar')) return { response: { actions: [{ type: 'CHECKOUT' }, { type: 'TALK' }], response_text: 'El carrito está vacío.' }, modelUsed: 'gemini', confidence: 0.95, detectedIntent: 'CHECKOUT' };
+      return { response: { actions: [{ type: 'TALK' }], response_text: 'Hola' }, modelUsed: 'rule-based', confidence: 0.9, detectedIntent: 'GREETING' };
+    })
+  };
+});
+
 function assert(condition: boolean, message: string) {
   if (!condition) {
     throw new Error(`❌ Edge Case Failed: ${message}`);

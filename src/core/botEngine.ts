@@ -20,14 +20,14 @@ function normalizePhone(phone: string) {
 }
 
 async function dbGetProductsSafe() {
-  // ── Test Environment Mock ──────────────────────────────────────────────────
   if (process.env.NODE_ENV === 'test') {
     return [
-      { id: '1', name: "Boneless", category: "main", price: 99, available: true, stock: -1 },
-      { id: '2', name: "Papas", category: "side", price: 49, available: true, stock: -1 },
-      { id: '3', name: "Dip BBQ", category: "sauce", price: 12, available: true, stock: -1 },
-      { id: '4', name: "Refresco", category: "drink", price: 25, available: true, stock: -1 },
-      { id: '5', name: "Combo 911", category: "combo", price: 149, available: true, stock: -1 }
+      { id: '1', name: "Combo Mixto 911", category: "combos", price: 249, available: true, stock: -1 },
+      { id: '2', name: "Refresco", category: "bebidas", price: 25, available: true, stock: -1 },
+      { id: '3', name: "Dip BBQ", category: "extras", price: 12, available: true, stock: -1 },
+      { id: '7', name: "Papas 911 Loaded", category: "papas", price: 149, available: true, stock: -1 },
+      { id: '8', name: "Boneless 250g", category: "proteina", price: 139, available: true, stock: -1 },
+      { id: '9', name: "Alitas 6 piezas", category: "proteina", price: 125, available: true, stock: -1 }
     ];
   }
 
@@ -294,7 +294,7 @@ export async function getBotResponse({
 
   // When router falls back to generic logic or returns low confidence, use layered fallback
   // Note: we trust 'rule-based' if confidence is high (preloaded hits)
-  if (routerResult.confidence < 0.7 && routerResult.modelUsed !== 'rule-based') {
+  if (routerResult.confidence < 0.7) {
     // Layer 1: Keyword-based local fallback (explicit product/category mentions)
     const keywordFallback = getLocalFallbackResponse(message, availableProducts);
     if (keywordFallback) {
@@ -427,12 +427,9 @@ function getSmartComplements(cartItems: any[], availableProducts: any[]): any[] 
   // Map cart categories → complementary categories (ordered by relevance)
   let complementCategories: string[];
 
-  if (cartCategories.has('boneless')) {
-    // boneless: suggest papas, dips (extras), bebida
+  if (cartCategories.has('proteina')) {
+    // proteina: suggest papas, dips (extras), bebida
     complementCategories = ['papas', 'extras', 'bebidas'];
-  } else if (cartCategories.has('alitas')) {
-    // alitas: suggest papas, bebida
-    complementCategories = ['papas', 'bebidas'];
   } else if (cartCategories.has('combos')) {
     // combo: suggest extra dip, postre
     complementCategories = ['extras', 'postres'];

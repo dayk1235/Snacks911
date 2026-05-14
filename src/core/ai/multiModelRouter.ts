@@ -537,13 +537,18 @@ export async function processWithRouter(
   // ── Tier 1: Race Gemini against fallback deadline ────────────────────
   // Start the fallback timer immediately — it fires at 2s if Gemini hasn't won
   const deadlineTimer = sleep(FALLBACK_DEADLINE_MS).then(() => 'DEADLINE' as const);
-  const geminiCall = callGemini(prompt).then(r => ({ type: 'gemini' as const, response: r }));
+  const geminiCall = callGemini(prompt)
+    .then(r => ({ type: 'gemini' as const, response: r }))
+    .catch(err => {
+      console.warn(`[MultiModelRouter] Gemini API call failed: ${err.message}`);
+      return { type: 'error' as const, error: err };
+    });
 
   const raceResult = await Promise.race([geminiCall, deadlineTimer]);
 
-  // ── Gemini won the race (responded before 2s) ────────────────────────
-  if (raceResult !== 'DEADLINE') {
-    const geminiResponse = (raceResult as { type: 'gemini'; response: AgentResponse }).response;
+  // ── Gemini won the race (responded before 2s and didn't throw) ────────────────────────
+  if (raceResult !== 'DEADLINE' && raceResult.type === 'gemini') {
+    const geminiResponse = raceResult.response;
     const confidence = evaluateConfidence(geminiResponse, message, availableProducts);
 
     if (confidence >= LOW_CONFIDENCE_THRESHOLD) {
