@@ -28,7 +28,7 @@ function reducer(state: UIState, action: Action): UIState {
   return state;
 }
 
-const EASING = [0.23, 1, 0.32, 1];
+const EASING = [0.23, 1, 0.32, 1] as const;
 
 export default function SaaSPage() {
   const [state, dispatch] = useReducer(reducer, "BOOT");
