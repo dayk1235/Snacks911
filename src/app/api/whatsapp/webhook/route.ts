@@ -171,8 +171,13 @@ export async function POST(req: NextRequest) {
             console.error('[WA] Insight error:', e)
           );
 
-          // 6. Send Response
-          await sendWhatsAppMessage(from, output.text, tenant.whatsapp_token, metadata.phone_number_id);
+          // 6. Send Response — use interactive buttons if available
+          await sendBotResponse(
+            from,
+            output,
+            tenant.whatsapp_token,
+            metadata.phone_number_id
+          );
 
           // Emit bot response event
           eventBus.emit('BOT_RESPONSE', {
@@ -293,8 +298,118 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
 }
 
 /* =========================
+    Send Bot Response — smart routing
+================================ */
+
+interface BotAction {
+  id?: string;
+  label: string;
+  type: string;
+  value?: string;
+}
+
+interface BotOutput {
+  text: string;
+  type?: string;
+  actions?: BotAction[];
+  ui?: { cards?: { id: string; title: string; price?: number; imageUrl?: string }[] } | null;
+}
+
+async function sendBotResponse(
+  phone: string,
+  output: BotOutput,
+  token?: string,
+  phoneNumberId?: string
+): Promise<void> {
+  const activeToken = token || WHATSAPP_TOKEN;
+  const activeId = phoneNumberId || PHONE_NUMBER_ID;
+  if (!activeToken || !activeId) return;
+
+  const hasActions = output.actions && output.actions.length > 0;
+  const hasCards = output.ui?.cards && output.ui.cards.length > 0;
+
+  // ── Interactive buttons (up to 3) ──
+  if (hasActions && output.type === 'buttons') {
+    const buttons = output.actions!
+      .slice(0, 3)
+      .map((a) => ({
+        type: 'reply' as const,
+        reply: {         id: a.value || a.id || a.label.slice(0, 20), title: a.label.slice(0, 20) },
+      }));
+
+    await waFetch(activeToken, activeId, {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: output.text },
+        action: { buttons },
+      },
+    });
+    return;
+  }
+
+  // ── Product list (cards → interactive list) ──
+  if (hasCards && output.type === 'products') {
+    const cards = output.ui!.cards!;
+    await waFetch(activeToken, activeId, {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'interactive',
+      interactive: {
+        type: 'list',
+        header: { type: 'text', text: '🔥 Snacks 911' },
+        body: { text: output.text },
+        action: {
+          button: 'Ver opciones',
+          sections: [
+            {
+              title: 'Productos',
+              rows: cards.slice(0, 10).map((c) => ({
+                id: c.id || '',
+                title: `${c.title} — $${c.price || 0}`,
+              })),
+            },
+          ],
+        },
+      },
+    });
+    return;
+  }
+
+  // ── Plain text fallback ──
+  await waFetch(activeToken, activeId, {
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'text',
+    text: { body: output.text, preview_url: false },
+  });
+}
+
+async function waFetch(token: string, phoneId: string, payload: Record<string, unknown>): Promise<void> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/${API_VERSION}/${phoneId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.error('[WA] Send failed:', { status: res.status, body: await res.text() });
+    }
+  } catch (error) {
+    console.error('[WA] Send error:', error);
+  }
+}
+
+/* =========================
     Send WhatsApp Message
-========================= */
+================================ */
 
 async function sendWhatsAppMessage(phone: string, text: string, token?: string, phoneNumberId?: string): Promise<boolean> {
   const activeToken = token || WHATSAPP_TOKEN;

@@ -85,86 +85,83 @@ export async function getBestUpsell(
   if (!currentCart || currentCart.length === 0) return null;
   if (!safeProducts || safeProducts.length === 0) return null;
 
-  // Use safeProducts directly - already filtered by allergies
-  // 1. Identify missing categories (from safeProducts)
-  const cartProductIds = currentCart.map(i => i.id);
-  const cartProducts = safeProducts.filter(p => cartProductIds.includes(p.id));
-  const cartCategories = new Set(cartProducts.map(p => p.category));
+  const cartProductIds = currentCart.map(i => String(i.productId || i.id));
+  const cartNames = currentCart.map(i => i.name.toLowerCase());
+  const cartCategories = new Set(currentCart.map(i => i.category));
 
-  const hasCombos = cartCategories.has('combos');
-  const hasProteins = cartCategories.has('proteina');
-  const hasSides = cartCategories.has('papas');
-  const hasDrinks = cartCategories.has('bebidas') || currentCart.some(i => i.name.toLowerCase().includes('refresco'));
+  // Determine what we already have
+  const hasAlitas = cartNames.some(n => n.includes('alitas'));
+  const hasBoneless = cartNames.some(n => n.includes('boneless'));
+  const hasCombo = cartCategories.has('combos');
+  
+  const hasPapas = cartCategories.has('papas') || cartNames.some(n => n.includes('papas'));
+  const hasDrinks = cartCategories.has('bebidas') || cartNames.some(n => n.includes('refresco') || n.includes('bebida'));
+  const hasDips = cartCategories.has('extras') || cartNames.some(n => n.includes('dip') || n.includes('salsa') || n.includes('aderezo'));
+  const hasDessert = cartCategories.has('postres') || cartNames.some(n => n.includes('brownie') || n.includes('postre'));
 
   let targetCategory: string | null = null;
-  let type: 'value' | 'premium' | 'bundle' = 'value';
   let message = '';
   let reason = '';
 
-  // 2. Decision Matrix (AOV Optimization) - Select from safeProducts only
-  const safeCombos = safeProducts.filter(p => p.category === 'combos').sort((a, b) => b.price - a.price);
-  const safeProteins = safeProducts.filter(p => p.category === 'proteina').sort((a, b) => b.price - a.price);
-  const safeSides = safeProducts.filter(p => p.category === 'papas').sort((a, b) => b.price - a.price);
-  const safeDrinks = safeProducts.filter(p => p.category === 'bebidas').sort((a, b) => b.price - a.price);
-  const safeExtras = safeProducts.filter(p => p.category === 'extras').sort((a, b) => b.price - a.price);
-
-  // Priority Override based on preferences
-  if (!hasDrinks && customerProfile?.preferences?.includes('bebidas') && safeDrinks.length > 0) {
-    targetCategory = 'bebidas';
-    type = 'value';
-    reason = 'preferred_drinks';
-    message = '¡Sabemos que te gustan las bebidas! 🥤 ¿Agregamos un refresco frío?';
-  } else if (hasProteins && !hasCombos && !hasSides && safeCombos.length > 0) {
-    targetCategory = 'combos';
-    type = 'premium';
-    reason = 'upgrade_to_combo';
-    message = '¿Lo hacemos combo? 🔥 Incluye papas y aderezo por un precio especial.';
-  } else if (!hasSides && safeSides.length > 0) {
-    targetCategory = 'papas';
-    type = 'value';
-    reason = 'missing_sides';
-    message = '¿Unas papas para acompañar? 🍟 Son el complemento perfecto.';
-  } else if (!hasDrinks && !(customerProfile?.restrictions?.includes('sin refresco')) && safeDrinks.length > 0) {
-    targetCategory = 'bebidas';
-    type = 'value';
-    reason = 'missing_drinks';
-    message = '¿Algo para la sed? 🥤 Un refresco frío no puede faltar.';
-  } else if (hasCombos && safeExtras.length > 0) {
-    targetCategory = 'extras';
-    type = 'bundle';
-    reason = 'add_extras';
-    message = '¿Un aderezo extra o postre para cerrar con broche de oro? 🍰';
+  // 1. Context-Aware Rules
+  if (hasAlitas) {
+    if (!hasPapas) {
+      targetCategory = 'papas';
+      message = '¿Unas papas crujientes para tus alitas? 🍟';
+      reason = 'complement_alitas_sides';
+    } else if (!hasDrinks) {
+      targetCategory = 'bebidas';
+      message = '¡No te quedes con la sed! 🥤 ¿Un refresco frío?';
+      reason = 'complement_alitas_drinks';
+    }
+  } else if (hasBoneless) {
+    if (!hasDips) {
+      targetCategory = 'extras';
+      message = '¿Un dip extra para tus boneless? 🧀';
+      reason = 'complement_boneless_dips';
+    } else if (!hasPapas) {
+      targetCategory = 'papas';
+      message = '¿Qué tal unas papas para completar tus boneless? 🍟';
+      reason = 'complement_boneless_sides';
+    }
+  } else if (hasCombo) {
+    if (!hasDips) {
+      targetCategory = 'extras';
+      message = '¿Quieres un aderezo extra para tu combo? 🔥';
+      reason = 'complement_combo_extras';
+    } else if (!hasDessert) {
+      targetCategory = 'postres';
+      message = '¿Cerramos con un brownie de postre? 🍰';
+      reason = 'complement_combo_dessert';
+    }
   }
 
-  // 3. Preferred Upsell Type Override
-  if (customerProfile?.preferredUpsellType && targetCategory) {
-    const prefType = customerProfile.preferredUpsellType;
-
-    if (prefType === 'premium' && hasProteins && !hasCombos && safeCombos.length > 0) {
-      targetCategory = 'combos';
-      type = 'premium';
-      reason = 'preferred_premium';
-      message = '¡Sube de nivel! 🔥 Hazlo combo para la experiencia completa.';
-    } else if (prefType === 'bundle' && hasCombos && safeExtras.length > 0) {
-      targetCategory = 'extras';
-      type = 'bundle';
-      reason = 'preferred_bundle';
-      message = '¡Completa tu festín! 🍰 Agrega un postre o aderezo extra.';
+  // 2. Generic fallback if no specific rule matched
+  if (!targetCategory) {
+    if (!hasDrinks) {
+      targetCategory = 'bebidas';
+      message = '¿Algo para tomar? 🥤';
+      reason = 'generic_drinks';
+    } else if (!hasDessert) {
+      targetCategory = 'postres';
+      message = '¿Un postre para endulzar el día? 🍰';
+      reason = 'generic_dessert';
     }
   }
 
   if (!targetCategory) return null;
 
-  // 4. Get best product from safeProducts (already filtered!)
-  const targetSafeProducts = safeProducts.filter(p => p.category === targetCategory);
-  if (targetSafeProducts.length === 0) return null;
-  
-  // Pick the most expensive one (bestseller logic)
-  const bestProduct = targetSafeProducts.sort((a, b) => b.price - a.price)[0];
+  // 3. Find the best product in target category that IS NOT in cart
+  const candidates = safeProducts.filter(p => 
+    p.category === targetCategory && 
+    !cartProductIds.includes(String(p.id)) &&
+    p.available
+  );
 
-  // 5. Final inventory check
-  const stock = await checkStock([bestProduct.id]);
-  if (stock.length === 0 || !stock[0].available) return null;
+  if (candidates.length === 0) return null;
+
+  // Pick the most popular/expensive one
+  const bestProduct = candidates.sort((a, b) => b.price - a.price)[0];
 
   return {
     productId: bestProduct.id,
@@ -172,7 +169,7 @@ export async function getBestUpsell(
     price: bestProduct.price,
     reason,
     message,
-    type
+    type: 'value'
   };
 }
 

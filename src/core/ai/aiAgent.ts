@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getKnowledgeContext } from "@/lib/ai/obsidianSync";
+import { logAIFailure } from "@/lib/aiFailureLogger";
 
 /**
  * core/ai/aiAgent.ts
@@ -96,13 +97,26 @@ ${cartStr}
 "${message}"
 `.trim();
 
-  try {
+  // ─── Retry Logic with Exponential Backoff ────────────────────────────────
+  const MAX_RETRIES = 3;
+  const BACKOFF_DELAYS = [500, 1000, 2000]; // ms
+
+  const isRetryableError = (err: any): boolean => {
+    const msg = String(err?.message || err || '');
+    return msg.includes('503') || 
+           msg.includes('overloaded') || 
+           msg.includes('UNAVAILABLE') ||
+           msg.includes('rate limit') ||
+           msg.includes('quota');
+  };
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const callAI = async (): Promise<AgentResponse> => {
     const result = await model.generateContent(prompt);
     const raw = result.response.text().trim();
 
-    if (!raw) {
-      throw new Error('Empty response from AI model');
-    }
+    if (!raw) throw new Error('Empty response from AI model');
 
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -130,30 +144,67 @@ ${raw}
       const correctedRaw = correctionResult.response.text().trim();
       const correctedMatch = correctedRaw.match(/\{[\s\S]*\}/);
 
-      if (!correctedMatch) {
-        throw new Error('Auto-correction failed to produce JSON');
-      }
+      if (!correctedMatch) throw new Error('Auto-correction failed to produce JSON');
 
       return JSON.parse(correctedMatch[0]) as AgentResponse;
     }
-  } catch (error: any) {
-    const errMsg = error?.message || String(error);
-    console.error('[AIAgent] Error processing transaction:', errMsg);
+  };
 
-    if (errMsg.includes('API key') || errMsg.includes('API_KEY_INVALID') || errMsg.includes('403') || errMsg.includes('401')) {
+  // ─── Execute with retries ─────────────────────────────────────────────────
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await callAI();
+    } catch (error: any) {
+      const errMsg = error?.message || String(error);
+      const isLast = attempt === MAX_RETRIES;
+
+      // Classify error type for logging
+      const errorType =
+        errMsg.includes('503') || errMsg.includes('UNAVAILABLE') ? '503_UNAVAILABLE' :
+        errMsg.includes('overloaded') ? '503_OVERLOADED' :
+        errMsg.includes('rate limit') || errMsg.includes('quota') ? 'RATE_LIMIT' :
+        errMsg.includes('API key') || errMsg.includes('401') || errMsg.includes('403') ? 'AUTH_ERROR' :
+        errMsg.includes('JSON') || errMsg.includes('Unexpected token') ? 'JSON_PARSE' :
+        errMsg.includes('Empty response') ? 'EMPTY_RESPONSE' :
+        'UNKNOWN';
+
+      if (isRetryableError(error) && !isLast) {
+        const delay = BACKOFF_DELAYS[attempt];
+        console.warn(`[AIAgent] Attempt ${attempt + 1} failed (retryable). Retrying in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+
+      // Final failure — log it
+      logAIFailure({
+        userInput: prompt.slice(prompt.indexOf('"MENSAJE DEL CLIENTE"') + 22, prompt.indexOf('"MENSAJE DEL CLIENTE"') + 100).replace(/["\n]/g, '').trim(),
+        errorType,
+        errorMessage: errMsg.slice(0, 200),
+        retryCount: attempt,
+        fallbackTriggered: false, // botEngine sets this after the fact
+        degradedMode: false,      // botEngine checks this
+      });
+
+      // Non-retryable or exhausted retries
+      console.error('[AIAgent] Error processing transaction:', errMsg);
+
+      if (errorType === 'AUTH_ERROR') {
+        return {
+          actions: [{ type: 'TALK' }],
+          response_text: "⚙️ Estamos en mantenimiento. Vuelve en unos minutos. 🙏"
+        };
+      }
+
       return {
         actions: [{ type: 'TALK' }],
-        response_text: "⚙️ Estamos en mantenimiento. Vuelve en unos minutos. 🙏"
+        response_text: "Tuve un pequeño problema procesando eso. ¿Me lo repites? 😅"
       };
     }
-
-    if (errMsg.includes('Unexpected token') || errMsg.includes('JSON')) {
-      console.error('[AIAgent] Auto-correction also failed to produce valid JSON');
-    }
-
-    return {
-      actions: [{ type: 'TALK' }],
-      response_text: "Tuve un pequeño problema procesando eso. ¿Me lo repites? 😅"
-    };
   }
+
+  // Fallback (should never reach here)
+  return {
+    actions: [{ type: 'TALK' }],
+    response_text: "Tuve un pequeño problema procesando eso. ¿Me lo repites? 😅"
+  };
 }

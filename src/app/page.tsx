@@ -331,6 +331,7 @@ export default function TiendaPage() {
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
   const [showProductUpsell, setShowProductUpsell] = useState<Product | null>(null);
   const [lastOrder, setLastOrder] = useState<{ name: string; items: string[]; total: number } | null>(null);
+  const [activeView, setActiveView] = useState('chat');
 
   const addToCart = useCallback((product: Product) => {
     track('add_to_cart', { product_name: product.name, price: product.price, category: product.category });
@@ -455,10 +456,12 @@ export default function TiendaPage() {
   }, []);
 
   return (
-    <main style={{ background: 'var(--bg-primary)', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
+    <main style={{ background: 'var(--bg-primary)', minHeight: '100vh', width: '100%', overflowX: 'hidden', paddingTop: '4.5rem' }}>
       <CustomCursor />
       <TickerBar />
-      <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} />
+      <Navbar cartCount={totalItems} onCartOpen={handleCartOpen} minimal={activeView === 'chat'} />
+
+      <OrderBot inline activeView={activeView} onActiveViewChange={setActiveView} onProductsVisible={() => {}} />
 
       <div className="gsap-panel" data-pin-panel="true" style={{ position: 'relative', zIndex: 10, background: 'var(--bg-primary)' }}>
         <Hero featuredProduct={featuredCombo} onOrderFeatured={handleOrderFeatured} />
@@ -508,15 +511,19 @@ export default function TiendaPage() {
         <PromoBanner />
       </div>
 
-      {/* Combos Section */}
+      {/* Combos Section — visible only in catalog view */}
+      {activeView === 'catalog' && (
       <div style={{ position: 'relative', zIndex: 11, background: 'var(--bg-primary)' }}>
         <CombosSection onAdd={addToCart} />
       </div>
+      )}
 
-      {/* Bestsellers */}
+      {/* Bestsellers — visible only in catalog view */}
+      {activeView === 'catalog' && (
       <div style={{ position: 'relative', zIndex: 12, background: 'var(--bg-primary)' }}>
         <BestsellersSection onAdd={(p) => { addToCart(p); setCartOpen(true); }} />
       </div>
+      )}
 
       {/* Menu CTA */}
       <div style={{ position: 'relative', zIndex: 13, background: 'var(--bg-primary)' }}>
@@ -602,7 +609,6 @@ export default function TiendaPage() {
 
       <WelcomeModal onClaim={() => {}} />
 
-      <OrderBot />
     </main>
   );
 }

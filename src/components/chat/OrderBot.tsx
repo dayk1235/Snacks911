@@ -4,15 +4,63 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { INITIAL_STATE, type ConversationState, type ResponseOutput } from '@/core';
-import { products as allProducts, getProductImage } from '@/data/products';
+import { getProductImage } from '@/data/products';
 import { logEvent } from '@/core/eventLogger';
 import { createUuid } from '@/lib/utils/core';
 import type { BotUI } from '@/core';
+import { getCustomerData, saveCustomerData, detectCustomerInfo } from '@/lib/customerMemory';
 import ImpulseShelf from './ImpulseShelf';
 import VitrinaModal from './VitrinaModal';
+import ChatSuggestions from './ChatSuggestions';
 
 import { trackEvent } from '@/lib/analytics';
 import { type Action } from '@/core';
+
+// ─── Instant Feedback Component ─────────────────────────────────────────────
+function AddFeedbackButton({ onClick, label = "+ Agregar" }: { onClick: () => void, label?: string }) {
+  const [added, setAdded] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (added) return;
+    setAdded(true);
+    onClick();
+    setTimeout(() => setAdded(false), 1000);
+  };
+
+  return (
+    <motion.div
+      className={`chat-product-card-add ${added ? 'added' : ''}`}
+      whileHover={{ scale: 1.05, backgroundColor: added ? 'rgba(34,197,94,0.2)' : 'rgba(255,69,0,0.25)' }}
+      whileTap={{ scale: 0.95 }}
+      onClick={handleClick}
+      initial={false}
+      animate={{ 
+        scale: added ? [1, 1.1, 1] : 1,
+        backgroundColor: added ? 'rgba(34,197,94,0.15)' : 'rgba(255,69,0,0.15)',
+        color: added ? '#22c55e' : 'var(--accent)'
+      }}
+      transition={{ duration: 0.2 }}
+      style={{ 
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
+        transition: 'all 0.3s ease'
+      }}
+    >
+      {added ? (
+        <>
+          <span style={{ fontSize: '0.7rem' }}>✓</span>
+          <span>Agregado 🔥</span>
+        </>
+      ) : (
+        label
+      )}
+    </motion.div>
+  );
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Msg {
@@ -26,15 +74,21 @@ interface Msg {
 
 type EngineType = 'modular' | 'ai';
 
-// ─── Product refs for the engine ─────────────────────────────────────────────
-const COMBO_911 = allProducts.find(p => p.name === '🔥 Combo 911') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
-const COMBO_BONELESS = allProducts.find(p => p.name === '🍗 Combo Boneless') ?? allProducts.find(p => p.category === 'combos') ?? allProducts[0];
-const PAPAS_LOADED = allProducts.find(p => p.name === 'Papas Loaded') ?? allProducts.find(p => p.category === 'extras') ?? { name: 'Papas Loaded', price: 49 };
-const BEBIDA = allProducts.find(p => p.name.includes('Refresco')) ?? { name: 'Refresco', price: 25 };
-const POSTRE = allProducts.find(p => p.name === 'Brownie con Helado') ?? { name: 'Brownie con Helado', price: 59 };
+// Product references will be derived from state
 
-export default function OrderBot() {
+export default function OrderBot({
+  inline = false,
+  activeView = 'chat',
+  onActiveViewChange,
+  onProductsVisible,
+}: {
+  inline?: boolean;
+  activeView?: string;
+  onActiveViewChange?: (view: string) => void;
+  onProductsVisible?: (visible: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const isOpen = inline ? true : open;
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [state, setState] = useState<ConversationState>({
@@ -44,10 +98,45 @@ export default function OrderBot() {
   const [engine, setEngine] = useState<EngineType>('modular');
   const [expanded, setExpanded] = useState(false);
   const [vitrinaOpen, setVitrinaOpen] = useState(false);
+  const [dbProducts, setDbProducts] = useState<any[]>([]);
 
-  const endRef = useRef<HTMLDivElement>(null);
+  // Fetch products from DB on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('/api/products?all=true');
+        if (!res.ok) throw new Error('DB fetch failed');
+        const data = await res.json();
+        const items = data.products || data.data || (Array.isArray(data) ? data : []);
+        setDbProducts(items);
+      } catch (err) {
+        console.error('[OrderBot] Failed to load DB products:', err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(1);
+  const [customer, setCustomer] = useState(getCustomerData());
+
+  // Dynamic Placeholder
+  const placeholders = [
+    "Escribe tu antojo...",
+    "Ej: alitas, papas, algo dulce...",
+    "¿Qué se te antoja hoy? 🔥",
+    "Prueba con: un combo boneless",
+    "¿Con qué salsa las quieres? 🌶️"
+  ];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIdx((prev) => (prev + 1) % placeholders.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
   const rolloutSessionIdRef = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   const forceLegacy = process.env.NEXT_PUBLIC_ENGINE_FORCE_LEGACY === 'true';
@@ -66,36 +155,71 @@ export default function OrderBot() {
   }
   const safeTotal = state?.cartTotal || 0;
 
-  const productRefs = useMemo(() => ({
-    comboName: COMBO_911?.name ?? 'Combo 911', comboPrice: COMBO_911?.price ?? 149,
-    papasName: PAPAS_LOADED?.name ?? 'Papas Loaded', papasPrice: PAPAS_LOADED?.price ?? 49,
-    bebidaName: BEBIDA?.name ?? 'Refresco', bebidaPrice: BEBIDA?.price ?? 25,
-    postreName: POSTRE?.name ?? 'Postre', postrePrice: POSTRE?.price ?? 59,
-    comboBonelessName: COMBO_BONELESS?.name ?? 'Combo Boneless', comboBonelessPrice: COMBO_BONELESS?.price ?? 179,
-    ahorroBoneless: COMBO_BONELESS.originalPrice ? COMBO_BONELESS.originalPrice - COMBO_BONELESS.price : 49,
-    currentTotal: safeTotal,
-    hasPapas: cartItems.some(i => typeof i === 'string' && i.includes('Papas Loaded')),
-    hasBebida: cartItems.some(i => typeof i === 'string' && i.includes('Refresco')),
-    hasPostre: cartItems.some(i => typeof i === 'string' && i.includes('Brownie')),
-  }), [cartItems, safeTotal]);
+  const productRefs = useMemo(() => {
+    const COMBO_911 = dbProducts.find(p => p.name === '🔥 Combo 911' || p.name === 'Combo Mixto 911') || dbProducts.find(p => p.category === 'combos') || { name: 'Combo 911', price: 149 };
+    const COMBO_BONELESS = dbProducts.find(p => p.name === '🍗 Combo Boneless' || p.name === 'Boneless Power 911') || dbProducts.find(p => p.category === 'combos') || { name: 'Combo Boneless', price: 179 };
+    const PAPAS_LOADED = dbProducts.find(p => p.name === 'Papas Loaded' || p.name === 'Papas 911 Loaded') || dbProducts.find(p => p.category === 'extras') || { name: 'Papas Loaded', price: 49 };
+    const BEBIDA = dbProducts.find(p => p.name.includes('Refresco')) || { name: 'Refresco', price: 25 };
+    const POSTRE = dbProducts.find(p => p.name === 'Brownie con Helado' || p.category === 'postres') || { name: 'Postre', price: 59 };
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [state.messages, thinking]);
-  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 350); }, [open]);
+    return {
+      comboName: COMBO_911.name, comboPrice: COMBO_911.price,
+      papasName: PAPAS_LOADED.name, papasPrice: PAPAS_LOADED.price,
+      bebidaName: BEBIDA.name, bebidaPrice: BEBIDA.price,
+      postreName: POSTRE.name, postrePrice: POSTRE.price,
+      comboBonelessName: COMBO_BONELESS.name, comboBonelessPrice: COMBO_BONELESS.price,
+      ahorroBoneless: (COMBO_BONELESS as any).originalPrice ? (COMBO_BONELESS as any).originalPrice - COMBO_BONELESS.price : 49,
+      currentTotal: safeTotal,
+      hasPapas: cartItems.some(i => typeof i === 'string' && i.includes('Papas')),
+      hasBebida: cartItems.some(i => typeof i === 'string' && i.includes('Refresco')),
+      hasPostre: cartItems.some(i => typeof i === 'string' && (i.includes('Brownie') || i.includes('Postre'))),
+    };
+  }, [cartItems, safeTotal, dbProducts]);
+
+  // Improved scroll to bottom with multiple passes for dynamic content/images
+  useEffect(() => {
+    const scrollToBottom = () => {
+      const el = messagesRef.current;
+      if (el) {
+        el.scrollTo({ 
+          top: el.scrollHeight, 
+          behavior: 'smooth' 
+        });
+      }
+    };
+
+    scrollToBottom();
+    
+    // Additional passes to account for animating cards and images
+    const timers = [100, 300, 600, 1000].map(ms => setTimeout(scrollToBottom, ms));
+    
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [state.messages, thinking]);
+  useEffect(() => { if (isOpen) setTimeout(() => inputRef.current?.focus(), 350); }, [isOpen]);
 
   // Greeting + Session Start
   useEffect(() => {
-    if (open && state.messages.length === 0) {
+    if (isOpen && state.messages.length === 0) {
       logEvent({
         event_type: 'session_start',
-        payload_json: { engine_type: engine.toUpperCase() }
+        payload_json: { engine_type: engine.toUpperCase(), customer_name: customer.name }
       });
-      const g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
+      
+      let g = '¡Qué onda! 🔥 Soy tu asistente de Snacks 911. ¿Qué se te antoja hoy?';
+      
+      if (customer.name) {
+        const prefs = customer.preferences && customer.preferences.length > 0 
+          ? ` ¿lo de siempre o quieres probar algo nuevo?`
+          : ` ¿Qué se te antoja hoy?`;
+        g = `¡Qué onda ${customer.name}! 🔥${prefs}`;
+      }
+      
       setState(prev => ({
         ...prev,
         messages: [{ id: idRef.current++, text: g, sender: 'bot' }]
       }));
     }
-  }, [open, state.messages.length, engine]);
+  }, [isOpen, state.messages.length, engine, customer.name, customer.preferences]);
 
   // Auto-expand when showing cards or menu
   useEffect(() => {
@@ -107,18 +231,46 @@ export default function OrderBot() {
   // Impulse shelf data
   const shelfData = useMemo(() => {
     const lastMsg = state.messages[state.messages.length - 1];
-    if (!lastMsg || lastMsg.sender !== 'bot') return [];
-    const cards = lastMsg.ui?.cards;
-    if (!cards || !cards.length) return [];
-    return cards.map((c: any) => ({
-      id: c.id,
-      name: c.title,
-      price: c.price || 0,
-      image: c.imageUrl || '',
-    }));
-  }, [state.messages]);
+    
+    // If bot sent specific cards, use them
+    if (lastMsg?.sender === 'bot' && lastMsg.ui?.cards?.length) {
+      return lastMsg.ui.cards.map((c: any) => ({
+        id: c.id,
+        name: c.title,
+        price: c.price || 0,
+        image: c.imageUrl || '',
+        category: c.category || '',
+        label: c.label || ''
+      }));
+    }
 
-  const shelfVisible = shelfData.length > 0 && open;
+    // Default impulse shelf (Popular products from DB)
+    return dbProducts
+      .filter(p => p.popular || p.category === 'combos')
+      .slice(0, 4)
+      .map(p => ({
+        id: String(p.id),
+        name: p.name,
+        price: p.price,
+        image: p.image_url || p.imageUrl || '',
+        category: p.category,
+        label: p.popular ? '🔥 Popular' : ''
+      }));
+  }, [state.messages, dbProducts]);
+
+  const shelfVisible = shelfData.length > 0 && isOpen;
+
+  const productsShowing = useMemo(() => {
+    if (shelfVisible) return true;
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (!lastMsg || lastMsg.sender !== 'bot') return false;
+    return lastMsg.type === 'products' || (lastMsg.ui?.cards?.length ?? 0) > 0;
+  }, [state.messages, shelfVisible]);
+
+  useEffect(() => {
+    onProductsVisible?.(productsShowing);
+    if (productsShowing) onActiveViewChange?.('chat');
+  }, [productsShowing, onProductsVisible, onActiveViewChange]);
 
   // Track shown actions
   useEffect(() => {
@@ -149,7 +301,7 @@ export default function OrderBot() {
 
       const itemsToSubmit = cartItems.map(name => {
         const cleanName = name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-        const product = allProducts.find(p =>
+        const product = dbProducts.find(p =>
           p.name === cleanName ||
           (typeof p.name === 'string' && p.name.includes(cleanName)) ||
           (typeof p.name === 'string' && cleanName.includes(p.name))
@@ -222,6 +374,14 @@ export default function OrderBot() {
   const send = useCallback(async () => {
     const t = input.trim();
     if (!t || thinking) return;
+
+    // Detect and save customer info
+    const info = detectCustomerInfo(t);
+    if (Object.keys(info).length > 0) {
+      saveCustomerData(info);
+      setCustomer(getCustomerData());
+    }
+
     setInput('');
     setState(prev => ({
       ...prev,
@@ -307,19 +467,28 @@ export default function OrderBot() {
   }, [thinking, processResponse, state.cart, state.cartTotal]);
 
   return (
+    <div className={inline ? 'chat-inline-wrapper' : undefined} style={inline ? { width: '100%', maxWidth: '680px', margin: '0 auto', padding: '1.5rem 1rem' } : undefined}>
     <>
       <div
-        className="chat-container"
-        style={{
-          position: 'fixed', bottom: open ? '5.5rem' : '-600px', left: '1.25rem',
+        className={`chat-container${inline ? ' chat-inline' : ''}`}
+        style={inline ? {
+          position: 'relative',
+          width: '100%', maxWidth: '100%',
+          minHeight: '420px', height: 'auto',
+          maxHeight: '70vh',
+          borderRadius: 'var(--radius-lg)',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column' as const,
+          fontFamily: 'var(--font-chat), sans-serif',
+        } : {
+          position: 'fixed', bottom: isOpen ? '5.5rem' : '-600px', left: '1.25rem',
           width: expanded ? '640px' : '540px', maxWidth: 'calc(100vw - 2.5rem)',
           height: '540px', maxHeight: 'calc(100vh - 8rem)',
           zIndex: 9998,
           borderRadius: 'var(--radius-lg)',
-          overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column' as const,
           transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s var(--easing-premium), opacity 0.4s var(--easing-premium)',
-          opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none',
-          fontFamily: 'var(--font-body), sans-serif',
+          opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' as const,
+          fontFamily: 'var(--font-chat), sans-serif',
           boxShadow: '0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 0 60px rgba(255,69,0,0.06)',
         }}
       >
@@ -356,7 +525,7 @@ export default function OrderBot() {
         </div>
 
         {/* Messages */}
-        <div className="chat-messages">
+        <div className="chat-messages" ref={messagesRef}>
           {state.messages.length <= 1 && (
             <div className="chat-empty-state">
               <div className="chat-empty-icon">🍟</div>
@@ -443,10 +612,10 @@ export default function OrderBot() {
                       <motion.div
                         key={card.id}
                         className="chat-product-card"
-                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.45, delay: 0.1 + ci * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ y: -4, scale: 1.04 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 + ci * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ scale: 1.03, boxShadow: '0 0 20px rgba(255, 69, 0, 0.15)', borderColor: 'rgba(255, 69, 0, 0.3)' }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => {
                           const action: Action = {
@@ -477,12 +646,20 @@ export default function OrderBot() {
                           {card.price > 0 && (
                             <div className="chat-product-card-price">${card.price}</div>
                           )}
-                          <motion.div
-                            className="chat-product-card-add"
-                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,69,0,0.25)' }}
-                          >
-                            + Agregar
-                          </motion.div>
+                          <AddFeedbackButton 
+                            onClick={() => {
+                              const action: Action = {
+                                id: `card-add-${card.id}`,
+                                label: `Agregar ${card.title}`,
+                                type: 'add_to_cart',
+                                value: `agrega ${card.title}`,
+                                payload: { productId: card.id, name: card.title, price: card.price },
+                                price: card.price,
+                                image: card.imageUrl,
+                              };
+                              handleAction(action);
+                            }} 
+                          />
                         </div>
                       </motion.div>
                     ))}
@@ -496,10 +673,10 @@ export default function OrderBot() {
                       <motion.div
                         key={a.id || a.value}
                         className="chat-product-card"
-                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.45, delay: 0.1 + ai * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ y: -4, scale: 1.04 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 + ai * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ scale: 1.03, boxShadow: '0 0 20px rgba(255, 69, 0, 0.15)', borderColor: 'rgba(255, 69, 0, 0.3)' }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => handleAction(a)}
                       >
@@ -517,12 +694,7 @@ export default function OrderBot() {
                         <div className="chat-product-card-body">
                           <div className="chat-product-card-name">{a.label}</div>
                           {a.price && <div className="chat-product-card-price">${a.price}</div>}
-                          <motion.div
-                            className="chat-product-card-add"
-                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,69,0,0.25)' }}
-                          >
-                            + Agregar
-                          </motion.div>
+                          <AddFeedbackButton onClick={() => handleAction(a)} />
                         </div>
                       </motion.div>
                     ))}
@@ -558,6 +730,25 @@ export default function OrderBot() {
                     })}
                   </div>
                 )}
+
+                {activeView === 'chat' && m.sender === 'bot' && i === state.messages.length - 1 && state.messages.length > 1 && !(m.ui?.cards?.length) && m.type !== 'products' && (
+                  <ChatSuggestions
+                    cartItemNames={cartItems}
+                    cartTotal={safeTotal}
+                    onVerTodos={() => onActiveViewChange?.('catalog')}
+                    onAdd={(product) => {
+                      const action: Action = {
+                        id: `suggest-add-${product.id}`,
+                        label: `Agregar ${product.name}`,
+                        type: 'add_to_cart',
+                        value: `agrega ${product.name}`,
+                        payload: { productId: product.id, name: product.name, price: product.price },
+                        price: product.price,
+                      };
+                      handleAction(action);
+                    }}
+                  />
+                )}
               </div>
               {m.sender === 'user' && (
                 <div className="msg-avatar" style={{ marginBottom: '2px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
@@ -576,10 +767,10 @@ export default function OrderBot() {
               </div>
             </div>
           )}
-          <div ref={endRef} />
         </div>
 
         {/* AI Content Zone — dynamic suggestions, cards, upsells */}
+        {activeView === 'chat' && shelfData.length === 0 && (
         <div className={`ai-content-zone ${shelfData.length === 0 ? 'empty' : ''}`}>
           {shelfData.length > 0 ? (
             <div className="ai-content-zone-inner h-scroll">
@@ -587,13 +778,13 @@ export default function OrderBot() {
                 <motion.div
                   key={product.id}
                   className="chat-product-card"
-                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.35, delay: 0.06 * i, ease: [0.16, 1, 0.3, 1] }}
-                  whileHover={{ y: -4, scale: 1.04 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 + 0.06 * i, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ scale: 1.03, boxShadow: '0 0 20px rgba(255, 69, 0, 0.15)', borderColor: 'rgba(255, 69, 0, 0.3)' }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => {
-                    const prod = allProducts.find(p => String(p.id) === String(product.id));
+                    const prod = dbProducts.find(p => String(p.id) === String(product.id));
                     if (prod) {
                       handleAction({
                         id: `zone-add-${product.id}`,
@@ -616,7 +807,21 @@ export default function OrderBot() {
                     {product.price > 0 && (
                       <div className="chat-product-card-price">${product.price}</div>
                     )}
-                    <div className="chat-product-card-add">+ Agregar</div>
+                    <AddFeedbackButton 
+                      onClick={() => {
+                        const prod = dbProducts.find(p => String(p.id) === String(product.id));
+                        if (prod) {
+                          handleAction({
+                            id: `zone-add-${product.id}`,
+                            label: `Agregar ${product.name}`,
+                            type: 'add_to_cart',
+                            value: `agrega ${product.name}`,
+                            payload: { productId: product.id, name: product.name, price: product.price },
+                            price: product.price,
+                          });
+                        }
+                      }} 
+                    />
                   </div>
                 </motion.div>
               ))}
@@ -625,6 +830,7 @@ export default function OrderBot() {
             <span className="ai-content-zone-placeholder">Sugerencias inteligentes aquí</span>
           )}
         </div>
+        )}
 
         {/* Suggestion chips */}
         {state.messages.length > 1 && (
@@ -673,11 +879,23 @@ export default function OrderBot() {
           padding: '0 1rem 0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', gap: '0.5rem', paddingTop: '0.75rem',
         }}>
-          <input ref={inputRef} value={input}
+          <motion.input 
+            ref={inputRef} 
+            value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Escribe tu mensaje..."
+            placeholder={placeholders[placeholderIdx]}
             className="chat-input"
+            whileFocus={{ 
+              scale: 1.01,
+              borderColor: 'rgba(255, 69, 0, 0.4)',
+              boxShadow: '0 0 20px rgba(255, 69, 0, 0.1), 0 0 0 3px rgba(255, 69, 0, 0.05)'
+            }}
+            transition={{ duration: 0.2 }}
+            animate={{
+              borderColor: input.trim() ? 'rgba(255, 69, 0, 0.25)' : 'var(--border-subtle)',
+              boxShadow: input.trim() ? '0 0 10px rgba(255, 69, 0, 0.05)' : 'none'
+            }}
           />
           <Button onClick={send} disabled={!input.trim() || thinking}
             variant={input.trim() && !thinking ? 'primary' : 'secondary'}
@@ -691,8 +909,8 @@ export default function OrderBot() {
         </div>
       </div>
 
-      {/* FAB */}
-      <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999 }}>
+      {/* FAB — hidden in inline mode */}
+      {!inline && <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.25rem', zIndex: 9999 }}>
         <Button
           onClick={() => setOpen(p => !p)}
           aria-label={open ? 'Cerrar chat' : 'Abrir asistente'}
@@ -721,13 +939,15 @@ export default function OrderBot() {
         {!open && state.cart?.items?.length > 0 && (
           <span className="fab-badge">{state.cart.items.length}</span>
         )}
-      </div>
+      </div>}
 
+      {activeView === 'chat' && shelfData.length === 0 && (
       <ImpulseShelf
         visible={shelfVisible}
         products={shelfData}
+        inline={inline}
         onAdd={(product) => {
-          const prod = allProducts.find(p => String(p.id) === String(product.id));
+          const prod = dbProducts.find(p => String(p.id) === String(product.id));
           if (prod) {
             handleAction({
               id: `shelf-add-${product.id}`,
@@ -739,14 +959,15 @@ export default function OrderBot() {
             });
           }
         }}
-        onVerTodos={() => setVitrinaOpen(true)}
-        chatBottom={open ? 88 : 0}
+        onVerTodos={() => { setVitrinaOpen(true); onActiveViewChange?.('catalog'); }}
+        chatBottom={isOpen ? 88 : 0}
       />
+      )}
 
       <VitrinaModal
         isOpen={vitrinaOpen}
         onClose={() => setVitrinaOpen(false)}
-        products={allProducts}
+        products={dbProducts}
         onAdd={(product) => {
           handleAction({
             id: `vitrina-add-${product.id}`,
@@ -780,5 +1001,6 @@ export default function OrderBot() {
          }
        `}</style>
     </>
+    </div>
   );
 }

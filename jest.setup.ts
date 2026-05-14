@@ -147,3 +147,88 @@ jest.mock("@/lib/payments/conekta", () => ({
   __esModule: true,
   createPaymentLink: async () => "https://mock-payment-link.com"
 }));
+
+// ─── AI Agent Mock — responds intelligently based on message content ────────
+// Returns TALK + optional cart actions so botEngine can process the full flow.
+
+jest.mock('@/core/ai/aiAgent', () => ({
+  __esModule: true,
+  processTransaction: jest.fn(
+    async (message: string, cart: any[], availableProducts: any[], businessName: string) => {
+      const n = message.toLowerCase().trim();
+
+      const findProduct = (keyword: string) =>
+        availableProducts.find(
+          (p: any) =>
+            String(p.id) === keyword ||
+            p.name?.toLowerCase().includes(keyword)
+        );
+
+      // "no" / negative
+      if (/^(no|nop|nope|nah)$/i.test(n)) {
+        return {
+          actions: [{ type: 'TALK' }],
+          response_text: `Perfecto. Cuando gustes pedir algo aquí estoy.`,
+        };
+      }
+
+      // Add/order intent
+      if (/(?:quiero|dame|agrega|pon|añade|me das|pidamos)\s+(.+)/i.test(n)) {
+        const match = n.match(/(?:quiero|dame|agrega|pon|añade|me das|pidamos)\s+(.+)/i);
+        const target = match?.[1]?.trim() || '';
+
+        let product: any = findProduct(target);
+        if (!product) {
+          product = availableProducts.find((p: any) =>
+            p.name?.toLowerCase().includes(target.split(' ')[0])
+          );
+        }
+
+        if (product) {
+          return {
+            actions: [
+              { type: 'TALK' },
+              { type: 'ADD_TO_CART', productId: String(product.id), quantity: 1 },
+            ],
+            response_text: `¡Claro! Agrego ${product.name} ($${product.price}) a tu pedido. ¿Lo acompañamos con un refresco o papas? 🔥`,
+          };
+        }
+        return {
+          actions: [{ type: 'TALK' }],
+          response_text: `Mmm, no encontré eso en el menú. ¿Quieres ver lo que tenemos? 🔥`,
+        };
+      }
+
+      // Checkout with cart
+      if (/(?:confirmar|pedir|checkout|pagar|finalizar)/i.test(n) && cart.length > 0) {
+        const total = cart.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || 1), 0);
+        return {
+          actions: [{ type: 'TALK' }, { type: 'CHECKOUT' }],
+          response_text: `¡Perfecto! Tu pedido va en camino. Total: $${total}`,
+        };
+      }
+
+      // Confirm with empty cart
+      if (/(?:confirmar|pedir|checkout|pagar|finalizar)/i.test(n)) {
+        return {
+          actions: [{ type: 'TALK' }],
+          response_text: 'Tu carrito está vacío. ¿Quieres ver el menú?',
+        };
+      }
+
+      // Menu / category query → TALK (cards built by buildChatUI)
+      if (/menu|combos|salsas|dips|aderezos|alitas|boneless|papas|bebida|postre|carta|que (hay|tienen|venden)|muestrame|enseñame/i.test(n)) {
+        return {
+          actions: [{ type: 'TALK' }],
+          response_text: `¡Claro! 🔥 Aquí tienes lo que pediste de ${businessName}.`,
+        };
+      }
+
+      // Generic
+      return {
+        actions: [{ type: 'TALK' }],
+        response_text: `¡Qué onda! Soy tu asistente de ${businessName}. ¿Qué se te antoja hoy? 🔥`,
+      };
+    }
+  ),
+}));

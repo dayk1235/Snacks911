@@ -37,6 +37,7 @@
   --easing-premium: cubic-bezier(0.16, 1, 0.3, 1);
   --font-display: var(--font-bebas), 'Impact', sans-serif;
   --font-body: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  --font-chat: var(--font-plus-jakarta), var(--font-inter), 'Inter', -apple-system, sans-serif;
 }
 
 /* ─── Glassmorphism Utilities ────────────────────────────────────────────── */
@@ -544,6 +545,52 @@ body {
 
 /* ─── Chat-specific styles ──────────────────────────────────────────────────── */
 
+/* Inline wrapper — centers the chat in normal page flow */
+.chat-inline-wrapper {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+}
+
+@media (max-width: 720px) {
+  .chat-inline-wrapper {
+    max-width: 100%;
+    padding: 1.25rem 0.75rem 1.25rem;
+  }
+}
+
+/* Override dark background when chat is inline (not floating) */
+.chat-container.chat-inline {
+  background: rgba(2, 2, 3, 0.9);
+  background-image: none;
+  border: 1px solid rgba(255, 69, 0, 0.25);
+  box-shadow:
+    0 0 20px rgba(255, 69, 0, 0.12),
+    0 0 50px rgba(255, 69, 0, 0.06),
+    0 0 80px rgba(255, 69, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+.chat-container.chat-inline::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 69, 0, 0.4),
+    transparent 35%,
+    transparent 65%,
+    rgba(255, 184, 0, 0.25)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
 /* Chat container */
 .chat-container {
   background: #0A0A0E;
@@ -735,7 +782,7 @@ body {
 .chat-product-card-img-wrap {
   position: relative;
   width: 100%;
-  height: 110px;
+  height: 72px;
   overflow: hidden;
 }
 .chat-product-card {
@@ -745,8 +792,8 @@ body {
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s var(--easing-premium), border-color 0.2s ease, box-shadow 0.25s ease;
-  min-width: 185px;
-  max-width: 185px;
+  min-width: 140px;
+  max-width: 140px;
   flex-shrink: 0;
   position: relative;
 }
@@ -771,7 +818,7 @@ body {
 
 .chat-cards-scroll {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
   padding: 8px 0;
   scroll-snap-type: x mandatory;
@@ -784,29 +831,29 @@ body {
 .chat-cards-scroll::-webkit-scrollbar { display: none; }
 .chat-cards-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 .chat-product-card-body {
-  padding: 10px;
+  padding: 7px 8px;
 }
 .chat-product-card-name {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 .chat-product-card-price {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--accent-gold);
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .chat-product-card-add {
   display: inline-block;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   background: rgba(255, 69, 0, 0.15);
   color: var(--accent);
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 /* Cart summary in chat */
@@ -1204,8 +1251,8 @@ body {
 .impulse-shelf > * { scroll-snap-align: start; }
 
 .impulse-shelf-card {
-  min-width: 150px;
-  max-width: 150px;
+  min-width: 130px;
+  max-width: 130px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1225,32 +1272,32 @@ body {
 }
 .impulse-shelf-card-img {
   width: 100%;
-  height: 80px;
+  height: 64px;
   object-fit: cover;
 }
 .impulse-shelf-card-body {
-  padding: 8px 10px;
+  padding: 6px 8px;
 }
 .impulse-shelf-card-name {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.15;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .impulse-shelf-card-price {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--accent);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .impulse-shelf-card-add-btn {
   position: absolute;
-  top: 60px;
+  top: 48px;
   right: 6px;
   width: 24px;
   height: 24px;

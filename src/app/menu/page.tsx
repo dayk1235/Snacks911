@@ -153,6 +153,7 @@ export default function MenuPage() {
   const [lastAdded, setLastAdded]     = useState<Product | null>(null);
   const [showProductUpsell, setShowProductUpsell] = useState<Product | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [activeView, setActiveView] = useState('chat');
   const [orders, setOrders] = useState<Order[]>([]);
   const [dbProducts, setDbProducts] = useState<AdminProduct[]>([]);
   const menuProducts = useMemo<Product[]>(() => {
@@ -349,6 +350,8 @@ export default function MenuPage() {
       <CustomCursor />
       <AnimatedBackground />
 
+      <OrderBot inline activeView={activeView} onActiveViewChange={setActiveView} onProductsVisible={() => {}} />
+
       {/* ── Customizer Modal ── */}
       <ProductCustomizerModal
         product={customizing}
@@ -357,8 +360,20 @@ export default function MenuPage() {
       />
 
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-[100] h-16 glass-dark border-b border-white/5 px-4 md:px-8 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <header
+        className="sticky top-0 z-[100] h-16 glass-dark border-b border-white/5 px-4 md:px-8 flex items-center justify-between"
+        style={activeView === 'chat' ? {
+          height: '3rem',
+          background: 'rgba(2,2,3,0.45)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.02)',
+          transition: 'height 0.35s ease, background 0.35s ease, backdrop-filter 0.35s ease',
+        } : {
+          transition: 'height 0.35s ease, background 0.35s ease, backdrop-filter 0.35s ease',
+        }}
+      >
+        <div className="flex items-center gap-6" style={{ opacity: activeView === 'chat' ? 0.65 : 1, transition: 'opacity 0.35s ease' }}>
           <Link href="/" className="flex items-center gap-2 text-foreground-muted hover:text-accent transition-colors text-sm font-bold uppercase tracking-widest group">
             <motion.div whileHover={{ x: -4 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -373,6 +388,7 @@ export default function MenuPage() {
           </div>
         </div>
 
+        <div style={{ opacity: activeView === 'chat' ? 0.65 : 1, transition: 'opacity 0.35s ease' }}>
         <PremiumButton
           onClick={() => setCartOpen(true)}
           variant={totalItems > 0 ? 'primary' : 'glass'}
@@ -389,6 +405,7 @@ export default function MenuPage() {
             )}
           </div>
         </PremiumButton>
+        </div>
       </header>
 
       {/* ── Hero Section ── */}
@@ -432,6 +449,7 @@ export default function MenuPage() {
         </div>
       </div>
 
+      {activeView === 'catalog' && (
       <main className="max-w-7xl mx-auto px-4 pb-32">
         {activeCategory === 'todos' ? (
           <div className="space-y-20">
@@ -482,6 +500,7 @@ export default function MenuPage() {
           </div>
         )}
       </main>
+      )}
 
       {/* ── Floating Cart Bar (Mobile) ── */}
       <AnimatePresence>
@@ -534,8 +553,6 @@ export default function MenuPage() {
           onSkip={handleUpsellSkip}
         />
       )}
-
-      <OrderBot />
     </div>
   );
 }

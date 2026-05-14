@@ -5,9 +5,10 @@ import { useRef, useEffect, useState } from 'react';
 interface NavbarProps {
   cartCount: number;
   onCartOpen: () => void;
+  minimal?: boolean;
 }
 
-export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
+export default function Navbar({ cartCount, onCartOpen, minimal = false }: NavbarProps) {
   const badgeRef  = useRef<HTMLSpanElement>(null);
   const prevCount = useRef(0);
 
@@ -78,12 +79,13 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 100,
-        padding: '0.9rem 2rem',
-        background: 'var(--bg-primary-transparent)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid var(--border-subtle)',
-        boxShadow: '0 4px 30px rgba(0,0,0,0.3)',
+        padding: minimal ? '0.35rem 1rem' : '0.6rem 1.5rem',
+        background: minimal ? 'rgba(2, 2, 3, 0.45)' : 'rgba(2, 2, 3, 0.7)',
+        backdropFilter: minimal ? 'blur(12px)' : 'blur(20px)',
+        WebkitBackdropFilter: minimal ? 'blur(12px)' : 'blur(20px)',
+        borderBottom: minimal ? '1px solid rgba(255, 255, 255, 0.02)' : '1px solid rgba(255, 255, 255, 0.04)',
+        boxShadow: minimal ? '0 1px 8px rgba(0,0,0,0.08)' : '0 1px 15px rgba(0,0,0,0.15)',
+        transition: 'padding 0.35s ease, background 0.35s ease, backdrop-filter 0.35s ease, box-shadow 0.35s ease',
         ...navStyle,
       }}
     >
@@ -99,7 +101,7 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             aria-label="Snacks 911"
-            style={{ display: 'block', width: 'clamp(140px, 22vw, 248px)', height: 'auto', overflow: 'visible' }}
+            style={{ display: 'block', width: minimal ? 'clamp(100px, 18vw, 160px)' : 'clamp(120px, 20vw, 200px)', height: 'auto', overflow: 'visible' }}
           >
             {/* 🚨 Siren — CSS keyframe animation */}
             <g style={{ willChange: 'filter', transformBox: 'fill-box', transformOrigin: 'center', animation: 'sirenFlash 1.8s ease-in-out infinite' }}>
@@ -124,17 +126,17 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
         </div>
 
         {/* ── Desktop nav ── */}
-        <div className="hide-mobile" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <div className="hide-mobile" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', opacity: minimal ? 0.65 : 1, transition: 'opacity 0.35s ease' }}>
           {/* Menú Completo */}
           <a
             href="/menu"
             className="nav-link"
             style={{
-              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
-              textDecoration: 'none', fontSize: '0.82rem',
-              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
+              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
+              textDecoration: 'none', fontSize: '0.75rem',
+              fontWeight: 500, letterSpacing: '0.02em', position: 'relative',
               transition: 'color 0.2s ease',
-              padding: '0.45rem 0.9rem',
+              padding: '0.35rem 0.7rem',
               borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '0.35rem',
             }}
@@ -150,11 +152,11 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             href="#contact"
             className="nav-link"
             style={{
-              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
-              textDecoration: 'none', fontSize: '0.82rem',
-              fontWeight: 600, letterSpacing: '0.03em', position: 'relative',
+              fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
+              textDecoration: 'none', fontSize: '0.75rem',
+              fontWeight: 500, letterSpacing: '0.02em', position: 'relative',
               transition: 'color 0.2s ease',
-              padding: '0.45rem 0.9rem',
+              padding: '0.35rem 0.7rem',
               borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '0.35rem',
             }}
@@ -174,8 +176,8 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             style={{
               fontFamily: 'var(--font-body)', position: 'relative',
               background: 'linear-gradient(135deg, var(--accent), var(--accent-gradient))',
-              border: 'none', borderRadius: '12px', padding: '0.55rem 1.25rem',
-              color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+              border: 'none', borderRadius: '10px', padding: '0.4rem 1rem',
+              color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               boxShadow: '0 0 16px rgba(255,69,0,0.2)', letterSpacing: '0.02em',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',

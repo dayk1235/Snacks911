@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Bebas_Neue } from 'next/font/google';
+import { Inter, Bebas_Neue, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -17,6 +17,13 @@ const bebas = Bebas_Neue({
   fallback: ['Impact', 'Arial Narrow', 'sans-serif'],
 });
 
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta',
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: ['Inter', 'system-ui', 'sans-serif'],
+});
+
 export const metadata: Metadata = {
   title: 'Snacks 911 — Antojo de Emergencia 🚨',
   description:
@@ -30,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" data-scroll-behavior="smooth" className={`${inter.variable} ${bebas.variable} h-full`}>
+    <html lang="es" data-scroll-behavior="smooth" className={`${inter.variable} ${bebas.variable} ${plusJakarta.variable} h-full`}>
       <head>
         <link rel="preload" as="image" href="/images/hero.webp" fetchPriority="high" />
       </head>

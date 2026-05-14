@@ -78,4 +78,4 @@ export {
 // Orchestration (Server-only entry points)
 // export { runAgents } from './agentOrchestrator';
 // export { agentOrchestrator } from './agentOrchestratorApi';
-// export { runBot } from './runBot';
+export { runBot } from './runBot';
