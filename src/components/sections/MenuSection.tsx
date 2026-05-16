@@ -42,17 +42,16 @@ export default function MenuSection({ onAdd }: MenuSectionProps) {
         {/* Categories Filter - Centered */}
         <div className="flex justify-center gap-3 mb-16 overflow-x-auto pb-4 no-scrollbar">
           {categories.map(cat => (
-            <button
+            <motion.button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-8 py-4 rounded-full text-[0.7rem] font-black uppercase tracking-[0.2em] transition-all duration-500 border ${
-                selectedCategory === cat
-                  ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)] shadow-[0_0_30px_var(--accent)] scale-105'
-                  : 'bg-white/5 text-white/40 hover:bg-white/10 border-white/5 hover:border-white/20'
-              }`}
+              className={`btn btn-pill ${selectedCategory === cat ? 'active' : ''}`}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
             >
               {cat}
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -79,9 +78,14 @@ export default function MenuSection({ onAdd }: MenuSectionProps) {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="absolute bottom-5 left-5 right-5 translate-y-6 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-75">
-                    <button className="w-full bg-[var(--accent)] text-[var(--bg)] py-4 rounded-full text-[0.75rem] font-black uppercase tracking-[3px] shadow-[0_0_30px_var(--accent)] hover:scale-105 active:scale-95 transition-all">
+                    <motion.button
+                      className="btn btn-primary btn-sm w-full"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.94 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
+                    >
                       + RESCUE
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 

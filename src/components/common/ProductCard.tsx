@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { memo, useState } from 'react';
+import { motion } from 'framer-motion';
 import type { Product } from '@/data/products';
 import { getProductImage } from '@/data/products';
 
@@ -64,12 +65,15 @@ function ProductCardComponent({ product, onAddToCart, onCustomize }: ProductCard
         <span className="price font-mono font-black text-[var(--accent)] text-xl tracking-tight">
           ${product.price.toFixed(2)}
         </span>
-        <button 
-          className={`btn ${added ? 'btn-ghost' : 'btn-primary'} !py-2 !px-4 !text-[0.7rem] !font-black !tracking-widest`}
+        <motion.button
+          className={`btn ${added ? 'btn-ghost' : 'btn-primary'} btn-sm`}
           onClick={handleAdd}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
         >
           {added ? '✓ AÑADIDO' : '+ RESCUE'}
-        </button>
+        </motion.button>
       </div>
 
       <style jsx>{`

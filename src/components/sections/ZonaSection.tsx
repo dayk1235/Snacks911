@@ -9,7 +9,7 @@ const info = [
 
 export default function ZonaSection() {
   return (
-    <section id="zona" style={{ background: 'var(--color-bg)', padding: '80px 24px' }}>
+    <section id="zona" style={{ background: 'var(--color-bg)', padding: '140px 24px' }}>
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <h2 className="m-0 uppercase" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 6vw, 4rem)', color: 'var(--color-text)' }}>

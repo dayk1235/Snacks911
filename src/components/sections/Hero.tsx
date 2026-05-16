@@ -2,8 +2,11 @@
 
 import { memo } from 'react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import StatusBadge from '@/components/StatusBadge';
 import { buildWaLink } from '@/utils/whatsapp';
+import { useChatStore } from '@/stores/chatStore';
+import { Button } from '@/components/ui/Button';
 
 const stats = [
   { icon: '🔥', value: '+120', label: 'pedidos esta semana' },
@@ -72,23 +75,31 @@ function HeroSection({ children }: { children?: React.ReactNode }) {
           ))}
         </div>
 
-        {/* Primary CTA */}
-        <a
-          href={buildWaLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-block text-white font-black px-8 py-4 rounded-full shadow-xl
-            hover:scale-105 active:scale-95 transition-all duration-200"
-          style={{
-            background: 'var(--color-primary)',
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.4rem',
-            letterSpacing: '0.05em',
-            boxShadow: '0 0 40px rgba(255,60,0,0.35)',
-          }}
-        >
-          📲 HACER MI PEDIDO
-        </a>
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mt-2 w-full">
+          <Button
+            variant="primary"
+            size="lg"
+            glow
+            className="w-full sm:w-auto"
+            onClick={() => useChatStore.getState().open()}
+          >
+            🤖 PEDIR CON IA
+          </Button>
+
+          <motion.a
+            href={buildWaLink()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto btn btn-outline btn-lg"
+            style={{ fontFamily: 'var(--font-body)' }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
+          >
+            📲 WhatsApp directo
+          </motion.a>
+        </div>
 
         <p className="m-0 text-[0.8rem]" style={{ color: 'var(--color-muted)' }}>
           Sin apps. Sin comisiones. Directo por WhatsApp.

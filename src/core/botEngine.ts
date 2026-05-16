@@ -45,18 +45,19 @@ async function dbGetProductsSafe() {
     
     if (products.length === 0) {
       console.warn('[botEngine] No products returned from DB, using static data as last resort.');
-      return staticProducts.map(p => ({ ...p, id: String(p.id), available: p.available !== false }));
+      return staticProducts.map(p => ({ ...p, id: String(p.id), available: p.available !== false, category: p.category?.toLowerCase() }));
     }
     
     return products.map(p => ({
       ...p,
       id: String(p.id),
-      available: p.available !== false && p.stock !== 0
+      available: p.available !== false && p.stock !== 0,
+      category: p.category?.toLowerCase()
     }));
   } catch (err) {
     console.error('[botEngine] dbGetProductsSafe critical failure:', (err as Error)?.message);
     // Return static as emergency only
-    return staticProducts.map(p => ({ ...p, id: String(p.id), available: p.available !== false }));
+    return staticProducts.map(p => ({ ...p, id: String(p.id), available: p.available !== false, category: p.category?.toLowerCase() }));
   }
 }
 
@@ -294,7 +295,7 @@ export async function getBotResponse({
 
   // When router falls back to generic logic or returns low confidence, use layered fallback
   // Note: we trust 'rule-based' if confidence is high (preloaded hits)
-  if (routerResult.confidence < 0.7) {
+  if (routerResult.confidence < 0.6) {
     // Layer 1: Keyword-based local fallback (explicit product/category mentions)
     const keywordFallback = getLocalFallbackResponse(message, availableProducts);
     if (keywordFallback) {

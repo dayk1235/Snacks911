@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useCartStore } from '@/lib/cartStore';
 
 const CONFIG_OPTIONS = {
@@ -84,17 +85,16 @@ export default function RescueConfigurator() {
         <div className="glass p-6 md:p-12 relative overflow-hidden">
           <div className="flex justify-center gap-3 sm:gap-6 mb-12 overflow-x-auto pb-4 no-scrollbar">
             {[1, 2, 3].map((s) => (
-              <div 
+              <motion.button
                 key={s}
-                className={`step-pill cursor-pointer px-8 py-3 rounded-full whitespace-nowrap text-[0.75rem] font-black uppercase tracking-widest transition-all duration-500 border ${
-                  step === s 
-                    ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)] shadow-[0_0_30px_var(--accent)] scale-105' 
-                    : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
-                }`}
+                className={`btn btn-pill ${step === s ? 'active' : ''}`}
                 onClick={() => setStep(s)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
               >
                 {s === 1 ? '1. BASE' : s === 2 ? '2. EXTRAS' : '3. BEBIDA'}
-              </div>
+              </motion.button>
             ))}
           </div>
 

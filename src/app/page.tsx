@@ -72,9 +72,14 @@ function UpsellPopup({ product, onAdd, onClose }: { product: Product; onAdd: (pr
   );
 }
 
+import ChatBubble from '@/components/chat/ChatBubble';
+import ChatDrawer from '@/components/chat/ChatDrawer';
+import { useChatStore } from '@/stores/chatStore';
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { items: cartItems, totalItems, totalPrice, addToCart: storeAddToCart, updateQuantity, clearCart: handleClearCart, removeFromCart } = useCartStore();
+  const { isOpen: chatOpenStore } = useChatStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
@@ -131,7 +136,13 @@ export default function HomePage() {
   }, [addToCart]);
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
+    <main 
+      className="min-h-screen w-full overflow-x-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]" 
+      style={{ 
+        background: 'var(--color-bg)',
+        marginRight: chatOpenStore ? '420px' : '0' 
+      }}
+    >
       <CustomCursor />
 
       {/* ── Navbar (with cart icon kept for compat) */}
@@ -149,6 +160,10 @@ export default function HomePage() {
 
       {/* ── FOOTER TICKER */}
       <TickerBar />
+
+      {/* ── CHAT SYSTEM */}
+      <ChatBubble />
+      <ChatDrawer />
 
       {/* ── FLOATING WhatsApp button */}
       <WhatsAppButton />

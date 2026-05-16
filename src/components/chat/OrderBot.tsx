@@ -558,12 +558,16 @@ export default function OrderBot({
               <span className="text-[9px] text-[var(--accent)] font-black uppercase tracking-widest animate-pulse">⚡ Alta demanda en tu zona</span>
               <span className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">⏱️ Entrega: 25–35 min</span>
             </div>
-            <button 
-              onClick={() => setOpen(false)} 
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[var(--fg)] cursor-pointer hover:bg-white/10 transition-all"
+            <motion.button
+              onClick={() => setOpen(false)}
+              className="btn btn-icon btn-sm"
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--fg)' }}
             >
               ✕
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -582,9 +586,12 @@ export default function OrderBot({
                   { label: '🍟 Papas', value: 'ver papas', icon: '🍟' },
                   { label: '🥤 Bebidas', value: 'ver bebidas', icon: '🥤' },
                 ].map(chip => (
-                  <button
+                  <motion.button
                     key={chip.value}
                     className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-[0.75rem] font-bold transition-all text-left group"
+                    whileHover={{ scale: 1.03, y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                     onClick={() => {
                       setState(prev => ({
                         ...prev,
@@ -595,7 +602,7 @@ export default function OrderBot({
                   >
                     <span className="text-lg group-hover:scale-125 transition-transform">{chip.icon}</span>
                     <span>{chip.label}</span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -625,8 +632,11 @@ export default function OrderBot({
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="chat-cart-item-price font-mono text-[var(--accent)]">${item.price || 0}</span>
-                          <button
+                          <motion.button
                             className="text-white/40 hover:text-red-500 transition-colors"
+                            whileHover={{ scale: 1.15 }}
+                            whileTap={{ scale: 0.9 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleAction({
@@ -636,7 +646,7 @@ export default function OrderBot({
                                 value: `quita ${item.name}`,
                               });
                             }}
-                          >✕</button>
+                          >✕</motion.button>
                         </div>
                       </div>
                     ))}
@@ -721,16 +731,19 @@ export default function OrderBot({
                 {m.actions && m.actions.length > 0 && m.sender === 'bot' && m.type !== 'products' && (
                   <div className="flex flex-wrap gap-2 mt-2" style={{ animation: 'actionsFadeIn 0.3s ease 0.3s both' }}>
                     {m.actions.map((a: any, ai: number) => (
-                      <button
+                      <motion.button
                         key={a.id || a.value}
                         onClick={() => handleAction(a)}
-                        className={`btn ${a.type === 'checkout' ? 'btn-primary' : 'btn-ghost'} !py-1.5 !px-4 !text-[0.7rem] !rounded-full`}
+                        className={`btn ${a.type === 'checkout' ? 'btn-primary' : 'btn-ghost'} btn-sm`}
+                        whileHover={{ scale: 1.05, y: -1 }}
+                        whileTap={{ scale: 0.94 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                         style={{
                           animation: `btnBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.4 + (ai * 0.08)}s both`,
                         }}
                       >
                         {a.label}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 )}
@@ -847,9 +860,12 @@ export default function OrderBot({
                 { label: '🍗 Boneless', value: 'quiero boneless', action: false },
               ];
             })().map(chip => (
-              <button
+              <motion.button
                 key={chip.value}
                 className="chat-suggestion-chip"
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                 onClick={() => {
                   if (chip.action) {
                     handleAction({
@@ -868,7 +884,7 @@ export default function OrderBot({
                 }}
               >
                 {chip.label}
-              </button>
+              </motion.button>
             ))}
           </div>
         )}

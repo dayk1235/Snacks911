@@ -11,7 +11,7 @@ const salsas = [
 
 export default function SalsasSection() {
   return (
-    <section id="salsas" style={{ background: 'var(--color-surface)', padding: '80px 24px' }}>
+    <section id="salsas" style={{ background: 'var(--color-surface)', padding: '140px 24px' }}>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">

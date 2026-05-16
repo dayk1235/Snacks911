@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { buildWaLink } from '@/utils/whatsapp';
+import { useChatStore } from '@/stores/chatStore';
+import { Button } from '@/components/ui/Button';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -111,6 +114,8 @@ const TABS: { id: Tab; label: string }[] = [
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 function MenuCard({ item }: { item: MenuItem }) {
+  const openChat = useChatStore((state) => state.open);
+
   return (
     <div
       className="flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1"
@@ -156,15 +161,13 @@ function MenuCard({ item }: { item: MenuItem }) {
           <span className="font-black text-xl" style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-display)' }}>
             ${item.price}
           </span>
-          <a
-            href={buildWaLink(item.name, String(item.price))}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-white font-bold text-sm py-2 px-4 rounded-lg hover:scale-105 active:scale-95 transition-all duration-200"
-            style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-body)' }}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => openChat(`Quiero pedir ${item.name}`)}
           >
-            📲 Quiero este
-          </a>
+            🤖 Pedir con IA
+          </Button>
         </div>
       </div>
     </div>
@@ -176,7 +179,7 @@ export default function MenuSection() {
   const [activeTab, setActiveTab] = useState<Tab>('combos');
 
   return (
-    <section id="menu" style={{ background: 'var(--color-bg)', padding: '80px 24px' }}>
+    <section id="menu" style={{ background: 'var(--color-bg)', padding: '140px 24px' }}>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
@@ -198,19 +201,16 @@ export default function MenuSection() {
         {/* Tabs */}
         <div className="flex overflow-x-auto gap-2 pb-2 mb-8 no-scrollbar">
           {TABS.map(({ id, label }) => (
-            <button
+            <motion.button
               key={id}
               onClick={() => setActiveTab(id)}
-              className="flex-shrink-0 px-5 py-2 rounded-full text-sm font-bold uppercase tracking-wide transition-all duration-200"
-              style={{
-                fontFamily: 'var(--font-body)',
-                background: activeTab === id ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: activeTab === id ? 'white' : 'var(--color-muted)',
-                border: activeTab === id ? 'none' : '1px solid var(--color-border)',
-              }}
+              className={`btn btn-pill flex-shrink-0 ${activeTab === id ? 'active' : ''}`}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
             >
               {label}
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -223,19 +223,17 @@ export default function MenuSection() {
 
         {/* Bottom CTA */}
         <div className="text-center mt-10">
-          <a
+          <motion.a
             href={buildWaLink()}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-white font-black px-8 py-4 rounded-full hover:scale-105 active:scale-95 transition-all"
-            style={{
-              background: 'var(--color-primary)',
-              fontFamily: 'var(--font-display)',
-              fontSize: '1.2rem',
-            }}
+            className="btn btn-primary btn-lg inline-block"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
           >
             📲 Ver menú completo por WhatsApp
-          </a>
+          </motion.a>
         </div>
       </div>
     </section>

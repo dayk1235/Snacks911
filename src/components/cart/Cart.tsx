@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Button } from '../ui/Button';
 import gsap from 'gsap';
 import { AdminStore } from '@/lib/adminStore';
@@ -147,35 +148,24 @@ function CustomerCaptureModal({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
-          <button
+          <motion.button
             onClick={handleSubmit}
             disabled={phone.replace(/\D/g, '').length < 10}
-            style={{
-              width: '100%', padding: '0.85rem',
-              borderRadius: '14px', border: 'none',
-              background: phone.replace(/\D/g, '').length >= 10
-                ? 'linear-gradient(135deg, var(--accent), var(--accent-gradient))'
-                : 'rgba(255,69,0,0.2)',
-              color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.95rem',
-              cursor: phone.replace(/\D/g, '').length >= 10 ? 'pointer' : 'default',
-              boxShadow: phone.replace(/\D/g, '').length >= 10 ? '0 4px 16px rgba(255,69,0,0.25)' : 'none',
-              transition: 'all 0.15s',
-            }}
+            className="btn btn-primary w-full"
+            whileHover={phone.replace(/\D/g, '').length >= 10 ? { scale: 1.03 } : undefined}
+            whileTap={phone.replace(/\D/g, '').length >= 10 ? { scale: 0.96 } : undefined}
+            transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
           >
             Guardar y continuar →
-          </button>
-          <button
+          </motion.button>
+          <Button
             onClick={onSkip}
-            style={{
-              width: '100%', padding: '0.65rem',
-              borderRadius: '10px', border: 'none',
-              background: 'none', color: '#444',
-              fontWeight: 600, fontSize: '0.8rem',
-              cursor: 'pointer',
-            }}
+            variant="ghost"
+            size="sm"
+            fullWidth
           >
             Omitir
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -253,67 +243,30 @@ function OrderConfirmModal({
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <button
+          <Button
             onClick={onConfirm}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#1EB854,#15a347)';
-              (e.currentTarget as HTMLElement).style.boxShadow  = '0 8px 24px rgba(30,184,84,0.35)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#25D366,#1EB854)';
-              (e.currentTarget as HTMLElement).style.boxShadow  = '0 4px 16px rgba(37,211,102,0.25)';
-            }}
-            style={{
-              background: 'linear-gradient(135deg,#25D366,#1EB854)',
-              border: 'none', borderRadius: '14px',
-              padding: '0.85rem', color: '#fff',
-              fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(37,211,102,0.25)',
-              transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            }}
+            variant="success"
+            fullWidth
           >
             Si, pedido enviado — vaciar carrito
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={onRetry}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background   = 'rgba(255,69,0,0.14)';
-              (e.currentTarget as HTMLElement).style.borderColor  = 'rgba(255,69,0,0.4)';
-              (e.currentTarget as HTMLElement).style.color        = '#FF5500';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background   = 'rgba(255,255,255,0.04)';
-              (e.currentTarget as HTMLElement).style.borderColor  = 'rgba(255,255,255,0.1)';
-              (e.currentTarget as HTMLElement).style.color        = '#aaa';
-            }}
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '14px',
-              padding: '0.8rem', color: '#aaa',
-              fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            }}
+            variant="outline"
+            fullWidth
           >
             No llego — reintentar WhatsApp
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={onCancel}
-            style={{
-              background: 'none', border: 'none',
-              color: '#444', fontSize: '0.8rem',
-              cursor: 'pointer', padding: '0.25rem',
-              transition: 'color 0.2s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#777'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#444'; }}
+            variant="ghost"
+            size="sm"
+            fullWidth
           >
             Volver al carrito
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -393,76 +346,31 @@ function PaymentPendingModal({
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <button
+          <Button
             onClick={handleOpenPayment}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#FF5500,#FF7000)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(255,69,0,0.35)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#FF4500,#FF6000)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(255,69,0,0.25)';
-            }}
-            style={{
-              background: 'linear-gradient(135deg,#FF4500,#FF6000)',
-              border: 'none', borderRadius: '14px',
-              padding: '0.85rem', color: '#fff',
-              fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(255,69,0,0.25)',
-              transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            }}
+            variant="primary"
+            glow
+            fullWidth
           >
             💳 Ir a pagar
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={onPaid}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#1EB854,#15a347)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(30,184,84,0.35)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg,#25D366,#1EB854)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(37,211,102,0.25)';
-            }}
-            style={{
-              background: 'linear-gradient(135deg,#25D366,#1EB854)',
-              border: 'none', borderRadius: '14px',
-              padding: '0.85rem', color: '#fff',
-              fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(37,211,102,0.25)',
-              transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            }}
+            variant="success"
+            fullWidth
           >
             ✅ Ya pagué
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={onCancel}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
-              (e.currentTarget as HTMLElement).style.color = '#aaa';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-              (e.currentTarget as HTMLElement).style.color = '#666';
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '14px',
-              padding: '0.8rem', color: '#666',
-              fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            }}
+            variant="ghost"
+            size="sm"
+            fullWidth
           >
             Cancelar
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -560,30 +468,21 @@ function CartExtras({
               </div>
 
               {/* Add button */}
-              <button
+              <motion.button
                 onClick={() => handleAdd(extra)}
                 disabled={isAdded}
-                onMouseEnter={e => {
-                  if (!isAdded) (e.currentTarget as HTMLElement).style.background = 'rgba(255,69,0,0.15)';
-                }}
-                onMouseLeave={e => {
-                  if (!isAdded) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)';
-                }}
+                className="btn btn-icon btn-sm"
+                whileHover={!isAdded ? { scale: 1.12 } : undefined}
+                whileTap={!isAdded ? { scale: 0.9 } : undefined}
+                transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                 style={{
-                  width: '28px', height: '28px', borderRadius: '12px', flexShrink: 0,
-                  background: isAdded ? 'rgba(34,197,94,0.15)' : 'var(--bg-secondary)',
+                  background: isAdded ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
                   border: isAdded ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-subtle)',
-                  color: isAdded ? 'var(--status-success)' : 'var(--text-primary)',
-                  fontSize: isAdded ? '0.75rem' : '1rem',
-                  fontWeight: 700,
-                  cursor: isAdded ? 'default' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                  lineHeight: 1,
+                  color: isAdded ? '#22c55e' : 'var(--text-primary)',
                 }}
               >
                 {isAdded ? '✓' : '+'}
-              </button>
+              </motion.button>
             </div>
           );
         })}
@@ -1114,7 +1013,9 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
               id="checkout-whatsapp"
               onClick={handleWhatsApp}
               fullWidth
-              className="!py-5 !text-[1.1rem] !bg-[#25D366] !shadow-[0_0_30px_rgba(37,211,102,0.3)] animate-none"
+              variant="success"
+              size="lg"
+              glow
             >
               Pedir por WhatsApp
             </Button>
@@ -1124,7 +1025,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                 onClick={handleCardPayment}
                 fullWidth
                 variant="primary"
-                className="!py-5 !text-[1.1rem]"
+                size="lg"
+                glow
               >
                 💳 Pagar con tarjeta
               </Button>

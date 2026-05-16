@@ -193,12 +193,12 @@ export function detectUserIntent(message: string, hasCart: boolean = false): Det
   const m = message.toLowerCase().trim();
 
   if (/^(hola|hey|holi|buenas|buenos dias|buen dia|saludos|qué tal|que tal)\b/.test(m) && m.length < 20) return 'GREETING';
+  if (/\?|cu[aá]nto|precio|cuesta|vale|cu[eé]ntame|c[oó]mo funciona|qu[eé] es|tienen\b|hay\b|horario|abren|servicio|llega/i.test(m)) return 'QUESTION';
   if (/vaciar|quitar todo|limpiar carrito|clear|borrar carrito/.test(m)) return 'CLEAR_CART';
   if (/confirmar|checkout|pedir ya|ordenar ya|listo|proceder|pagar/.test(m)) return 'CHECKOUT';
   if (/^(y\s+)?(algo|qu[eé])\s+m[aá]s\b|^(algo|qu[eé])\s+adicional|para\s+acompa[ñn]ar|y\s+qu[eé]\s+(me\s+)?(recomiendas|sugieres|pones|das)/i.test(m)) return 'ADD_COMPLEMENT';
   if (/quiero|dame|agrega|pon|añade|me das|pidamos|ordenar\b|encargar|agregame/.test(m)) return 'ORDER';
   if (/menu|carta|combos|que (hay|tienen|vendes|venden)|muestrame|enseñame|ver\s/.test(m)) return 'BROWSE';
-  if (/cu[aá]nto|precio|cuesta|vale|cu[eé]ntame|como funciona|que es|tienen\?|hay\?/.test(m)) return 'QUESTION';
   
   // Default fallback instead of UNKNOWN
   return hasCart ? 'ADD_COMPLEMENT' : 'CLARIFY';

@@ -43,18 +43,29 @@ export default function VitrinaModal({ isOpen, onClose, products, onAdd }: Vitri
         >
           <div className="vitrina-header">
             <span className="vitrina-title">🍟 Menú Completo</span>
-            <button className="vitrina-close" onClick={onClose}>✕</button>
+            <motion.button
+              className="vitrina-close"
+              onClick={onClose}
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
+            >
+              ✕
+            </motion.button>
           </div>
 
           <div className="vitrina-filters">
             {CATEGORIES.map(cat => (
-              <button
+              <motion.button
                 key={cat.id}
                 className={`vitrina-filter-pill ${filter === cat.id ? 'active' : ''}`}
                 onClick={() => setFilter(cat.id)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
               >
                 {cat.label}
-              </button>
+              </motion.button>
             ))}
           </div>
 

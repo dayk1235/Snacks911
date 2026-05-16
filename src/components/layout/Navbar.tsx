@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { buildWaLink } from '@/utils/whatsapp';
+import { Button } from '@/components/ui/Button';
 
 interface NavbarProps {
   cartCount?: number;
@@ -61,7 +62,7 @@ export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: N
         className={`fixed z-[1500] left-1/2 -translate-x-1/2 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.2,1,0.3,1)] ${
           scrolled
             ? 'top-[32px] w-full max-w-full h-[70px] bg-black/90 backdrop-blur-xl border-b border-[#2a2a2a] rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]'
-            : 'top-[42px] w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
+            : 'cyber-glow-medium top-[42px] w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
         }`}
       >
         <div className="w-full max-w-[1400px] mx-auto px-8 sm:px-12 flex items-center justify-between">
@@ -110,24 +111,30 @@ export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: N
             )}
 
             {/* Primary CTA */}
-            <a
+            <motion.a
               href={buildWaLink()}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-full hover:opacity-90 active:scale-95 transition-all"
-              style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-body)' }}
+              className="hidden md:inline-flex items-center gap-2 btn btn-primary btn-sm"
+              style={{ fontFamily: 'var(--font-body)', textTransform: 'none', letterSpacing: '0.3px' }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
             >
               📲 Pedir ahora
-            </a>
+            </motion.a>
 
             {/* Mobile hamburger */}
-            <button
-              className="md:hidden text-white text-2xl p-1 leading-none transition-colors"
-              onClick={() => setMobileMenuOpen(true)}
+            <motion.button
+              className="md:hidden text-white text-2xl p-1 leading-none"
               style={{ color: 'var(--color-muted)' }}
+              onClick={() => setMobileMenuOpen(true)}
+              whileHover={{ scale: 1.15 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
             >
               ☰
-            </button>
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -150,13 +157,14 @@ export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: N
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="relative w-[80%] max-w-[300px] h-full bg-[#0a0a0a]/95 backdrop-blur-2xl border-l border-[#2a2a2a] p-10 flex flex-col gap-8 shadow-[-20px_0_60px_rgba(0,0,0,0.5)]"
             >
-              <button
-                className="self-end text-[0.8rem] font-black uppercase tracking-widest transition-colors"
-                style={{ color: 'var(--color-muted)' }}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-end"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 ✕ Cerrar
-              </button>
+              </Button>
 
               <div className="flex flex-col gap-6 mt-2">
                 {NAV_LINKS.map(({ label, href }) => (
@@ -173,15 +181,17 @@ export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: N
               </div>
 
               <div className="mt-auto">
-                <a
+                <motion.a
                   href={buildWaLink()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center text-white font-black text-lg py-4 rounded-2xl transition-all active:scale-95"
-                  style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
+                  className="block w-full text-center btn btn-primary btn-lg"
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                 >
                   📲 HACER MI PEDIDO
-                </a>
+                </motion.a>
               </div>
             </motion.div>
           </div>
@@ -192,6 +202,29 @@ export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: N
         @keyframes ticker {
           0% { transform: translateX(0); }
           100% { transform: translateX(-25%); }
+        }
+        @keyframes cyber-glow-medium {
+          0% {
+            border-color: rgba(255, 90, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 90, 0, 0.2), inset 0 0 10px rgba(255, 90, 0, 0.1);
+          }
+          33% {
+            border-color: rgba(255, 0, 128, 0.5);
+            box-shadow: 0 0 30px rgba(255, 0, 128, 0.3), inset 0 0 15px rgba(255, 0, 128, 0.15);
+          }
+          66% {
+            border-color: rgba(138, 43, 226, 0.5);
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.3), inset 0 0 15px rgba(138, 43, 226, 0.15);
+          }
+          100% {
+            border-color: rgba(255, 90, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 90, 0, 0.2), inset 0 0 10px rgba(255, 90, 0, 0.1);
+          }
+        }
+        .cyber-glow-medium {
+          border-width: 1px;
+          border-style: solid;
+          animation: cyber-glow-medium 4s linear infinite;
         }
       `}</style>
     </>

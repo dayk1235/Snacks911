@@ -59,13 +59,13 @@ export function getCachedResponse(key: string): any | null {
   const entry = cache.get(key);
   if (!entry) return null;
 
-  const isExpired = Date.now() - entry.cachedAt > TTL_MS;
+  const isExpired = Date.now() - (entry as CacheEntry).cachedAt > TTL_MS;
   if (isExpired) {
     cache.delete(key);
     return null;
   }
 
-  return entry.response;
+  return (entry as CacheEntry).response;
 }
 
 /** Store a response in the cache. */

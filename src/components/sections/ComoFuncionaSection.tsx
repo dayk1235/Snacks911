@@ -20,7 +20,7 @@ const pasos = [
 
 export default function ComoFuncionaSection() {
   return (
-    <section id="como-funciona" style={{ background: 'var(--color-surface)', padding: '80px 24px' }}>
+    <section id="como-funciona" style={{ background: 'var(--color-surface)', padding: '140px 24px' }}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

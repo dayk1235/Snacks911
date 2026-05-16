@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { products, getProductImage } from '@/data/products';
 import { useCartStore } from '@/lib/cartStore';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/Button';
 
 export default function UpsellGrid() {
   const { addToCart } = useCartStore();
@@ -54,12 +55,15 @@ export default function UpsellGrid() {
                 <h3 className="text-lg font-bold text-white uppercase tracking-tight">{product.name}</h3>
                 <div className="flex justify-between items-center">
                   <span className="text-[var(--accent)] font-black text-xl">${product.price}</span>
-                  <button 
+                  <motion.button
                     onClick={() => addToCart(product)}
-                    className="text-[0.7rem] font-black text-white/40 hover:text-[var(--accent)] uppercase tracking-widest transition-colors"
+                    className="text-[0.7rem] font-black text-white/40 uppercase tracking-widest"
+                    whileHover={{ scale: 1.08, color: '#ff5a00' }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 25, mass: 0.6 }}
                   >
                     + AGREGAR
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

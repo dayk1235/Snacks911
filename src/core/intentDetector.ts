@@ -760,9 +760,10 @@ export function detectIntent(message: string, context?: any): IntentResult {
   if (checkoutKeywords.some((kw) => n.includes(kw))) {
     scores.CONFIRM_ORDER += 4;
   }
-  const fulfillmentKeywords = ["domicilio", "recoger"];
-  if (fulfillmentKeywords.some(kw => n.includes(kw))) {
-    scores.CONFIRM_ORDER += 2;
+  
+  // Penalize CONFIRM_ORDER if it looks like a question
+  if (message.includes('?') || n.includes('llegas a') || n.includes('llevan a') || n.includes('puedo pagar')) {
+    scores.CONFIRM_ORDER -= 50;
   }
 
   // ─── FINAL OVERRIDES ───
