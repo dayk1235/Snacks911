@@ -1,134 +1,109 @@
 'use client';
 
-import { memo, useEffect, useState } from 'react';
-import { AdminStore } from '@/lib/adminStore';
-import type { BusinessSettings } from '@/lib/adminTypes';
-import { useStoreSettings } from '@/lib/storeSettingsStore';
-import type { Product } from '@/data/products';
+import { memo } from 'react';
 import Image from 'next/image';
+import StatusBadge from '@/components/StatusBadge';
+import { buildWaLink } from '@/utils/whatsapp';
 
-interface HeroProps {
-  featuredProduct?: Product;
-  onOrderFeatured?: () => void;
-}
+const stats = [
+  { icon: '🔥', value: '+120', label: 'pedidos esta semana' },
+  { icon: '⚡', value: '28 min', label: 'entrega promedio' },
+  { icon: '🚨', value: 'Diario', label: 'el combo más pedido se agota' },
+];
 
-const DEFAULT_SETTINGS: Partial<BusinessSettings> = {
-  whatsappNumber: '525584507458',
-  heroBadgeText: 'Abierto ahora · Entrega en ~30 min',
-};
-
-function HeroSection({ featuredProduct, onOrderFeatured, children }: HeroProps & { children?: React.ReactNode }) {
-  const [siteSettings, setSiteSettings] = useState<Partial<BusinessSettings>>(DEFAULT_SETTINGS);
-  const { isOpen: storeOpen, heroSubtitle, fetchSettings } = useStoreSettings();
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    AdminStore.getSettings()
-      .then(s => setSiteSettings(s))
-      .catch(() => { /* ignore */ });
-    fetchSettings();
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth - 0.5) * 20,
-        y: (e.clientY / window.innerHeight - 0.5) * 20,
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [fetchSettings]);
-
+function HeroSection({ children }: { children?: React.ReactNode }) {
   return (
-    <section id="hero" className="hero min-h-screen flex items-center relative overflow-hidden px-6 bg-[#050505]">
-      {/* Cinematic Vignette */}
-      <div className="absolute inset-0 z-[5] pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_70%,rgba(0,0,0,0.8)_100%)]"></div>
+    <section
+      id="hero"
+      className="relative min-h-[100svh] flex flex-col items-center justify-center text-center px-6 pt-[76px] overflow-hidden"
+    >
+      {/* Background image */}
+      <Image
+        src="/images/hero.webp"
+        alt=""
+        fill
+        className="object-cover"
+        style={{ opacity: 0.25 }}
+        priority
+      />
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#0a0a0a]" />
+      {/* Ambient glow orbs */}
+      <div className="hero-orb-1 pointer-events-none" />
+      <div className="hero-orb-2 pointer-events-none" />
 
-      {/* Dynamic Background Parallax */}
-      <div 
-        className="hero-glow absolute w-[100vw] h-[100vw] top-[-10%] right-[-10%] z-[0] transition-transform duration-700 ease-out opacity-20"
-        style={{ 
-          background: 'radial-gradient(circle, var(--glow) 0%, transparent 70%)',
-          transform: `translate(${mousePos.x * -0.5}px, ${mousePos.y * -0.5}px)` 
-        }}
-      ></div>
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center gap-6 max-w-2xl w-full">
+        <StatusBadge />
 
-      {/* Heat Particles Effect */}
-      <div className="absolute inset-0 pointer-events-none z-[1] overflow-hidden">
-        {[...Array(12)].map((_, i) => (
-          <div 
-            key={i}
-            className="absolute w-1 h-1 bg-[var(--accent)] rounded-full animate-[heat_4s_infinite_ease-in-out] opacity-10"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              transform: `scale(${Math.random() * 2})`
-            }}
-          />
-        ))}
-      </div>
-      
-      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-10 relative z-10">
-        <div 
-          className="hero-content lg:col-span-5 transition-transform duration-300 ease-out flex flex-col items-center lg:items-start text-center lg:text-left"
-          style={{ transform: `translate(${mousePos.x * 0.1}px, ${mousePos.y * 0.1}px)` }}
+        <h1
+          className="m-0 uppercase leading-[0.95]"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(3rem, 10vw, 6rem)',
+            color: 'var(--color-text)',
+          }}
         >
-          {/* Urgency Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 animate-[fadeInUp_0.8s_ease_both] opacity-50">
-            <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]"></span>
-            <span className="text-[0.6rem] font-bold tracking-widest text-white uppercase">🔥 EN COCINA AHORA MISMO</span>
-          </div>
-          
-          <h1 className="hero-title text-[clamp(2.5rem,8vw,6rem)] font-black leading-[0.9] uppercase tracking-[-0.04em] m-0 opacity-70">
-            <span className="block animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_both]">
-              EL ANTOJO
-            </span>
-            <span className="block fire-text drop-shadow-[0_0_30px_rgba(255,90,0,0.2)] animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.2s_both]">
-              NO ESPERA
-            </span>
-          </h1>
+          TU ANTOJO LLEGA EN{' '}
+          <span style={{ color: 'var(--color-primary)' }}>30 MINUTOS</span>
+        </h1>
 
-          <p className="text-[var(--muted)] max-w-[400px] my-6 text-base sm:text-lg leading-relaxed animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.4s_both] opacity-60">
-            {heroSubtitle || "Tu rescate calórico de alta velocidad. Despacho inmediato para hambres críticas."}
-          </p>
+        <p
+          className="m-0 text-[1.05rem] leading-relaxed"
+          style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}
+        >
+          Alitas, boneless y snacks con salsas 100% caseras.
+          <br />
+          Iztapalapa y zonas cercanas.
+        </p>
 
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 animate-[fadeInUp_0.8s_cubic-bezier(0.2,1,0.3,1)_0.6s_both] scale-90 origin-left">
-            <button 
-              className="btn btn-primary min-w-[160px] sm:min-w-[180px]"
-              onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}
+        {/* FOMO stats */}
+        <div className="flex flex-wrap justify-center gap-4 mt-1">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="flex items-center gap-2 text-sm"
+              style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}
             >
-              🔥 VER MENÚ
-            </button>
-          </div>
-
-          {/* Micro-copy */}
-          <div className="flex items-center gap-6 mt-14 opacity-30 text-[0.6rem] font-bold tracking-[0.1em] uppercase animate-[fadeInUp_0.8s_ease_1s_both]">
-            <span>Entrega rápida</span>
-            <span className="w-1 h-1 bg-white/30 rounded-full"></span>
-            <span>Caliente</span>
-            <span className="w-1 h-1 bg-white/30 rounded-full"></span>
-            <span>Sin esperas</span>
-          </div>
+              <span>{s.icon}</span>
+              <strong style={{ color: 'var(--color-accent)' }}>{s.value}</strong>
+              <span>{s.label}</span>
+            </div>
+          ))}
         </div>
 
-        {/* ChatBot Main Interaction Area */}
-        <div className="lg:col-span-7 flex justify-center items-center relative z-20">
-          <div className="w-full max-w-[640px] transform translate-y-[-20px]">
-            {children}
-          </div>
-        </div>
+        {/* Primary CTA */}
+        <a
+          href={buildWaLink()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-white font-black px-8 py-4 rounded-full shadow-xl
+            hover:scale-105 active:scale-95 transition-all duration-200"
+          style={{
+            background: 'var(--color-primary)',
+            fontFamily: 'var(--font-display)',
+            fontSize: '1.4rem',
+            letterSpacing: '0.05em',
+            boxShadow: '0 0 40px rgba(255,60,0,0.35)',
+          }}
+        >
+          📲 HACER MI PEDIDO
+        </a>
+
+        <p className="m-0 text-[0.8rem]" style={{ color: 'var(--color-muted)' }}>
+          Sin apps. Sin comisiones. Directo por WhatsApp.
+        </p>
+
+        {/* Optional chatbot slot — kept for backward compat */}
+        {children && (
+          <div className="w-full max-w-[640px] mt-4">{children}</div>
+        )}
       </div>
 
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(60px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes heat {
-          0%, 100% { transform: translateY(0) scale(1); opacity: 0.1; }
-          50% { transform: translateY(-40px) scale(1.5); opacity: 0.3; }
-        }
-      `}</style>
+      {/* Scroll hint */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 hero-arrow-bounce text-[1.5rem]">
+        ↓
+      </div>
     </section>
   );
 }
@@ -136,14 +111,21 @@ function HeroSection({ featuredProduct, onOrderFeatured, children }: HeroProps &
 const Hero = memo(HeroSection);
 export default Hero;
 
+// TickerBar — kept as named export so page.tsx doesn't break
 export const TickerBar = memo(function TickerBar() {
+  const items = ['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rápida', 'Salsas Caseras', 'Snacks 911 🚨'];
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md py-4 border-t border-white/10 overflow-hidden pointer-events-none">
-      <div className="ticker-track flex whitespace-nowrap animate-[ticker_40s_linear_infinite]">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] backdrop-blur-md py-3 border-t overflow-hidden pointer-events-none"
+      style={{ background: 'rgba(0,0,0,0.85)', borderColor: 'var(--color-border)' }}>
+      <div className="ticker-track flex whitespace-nowrap">
         {[0, 1, 2].map((copy) => (
           <div key={copy} className="flex items-center px-4">
-            {['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rapida', 'Sabor Extremo', 'Snacks 911 Dispatch'].map((item) => (
-              <span key={item} className="flex items-center text-[0.7rem] font-black tracking-[0.2em] text-[var(--accent)] uppercase px-12">
+            {items.map((item) => (
+              <span
+                key={`${copy}-${item}`}
+                className="flex items-center text-[0.7rem] font-black tracking-[0.2em] uppercase px-12"
+                style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
+              >
                 {item}
                 <span className="ml-24 opacity-20 text-white">★</span>
               </span>
@@ -151,12 +133,6 @@ export const TickerBar = memo(function TickerBar() {
           </div>
         ))}
       </div>
-      <style jsx>{`
-        @keyframes ticker {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-33.33%); }
-        }
-      `}</style>
     </div>
   );
 });

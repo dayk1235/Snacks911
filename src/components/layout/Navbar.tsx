@@ -1,30 +1,52 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { buildWaLink } from '@/utils/whatsapp';
 
 interface NavbarProps {
-  cartCount: number;
-  onCartOpen: () => void;
+  cartCount?: number;
+  onCartOpen?: () => void;
   minimal?: boolean;
 }
 
-export default function Navbar({ cartCount, onCartOpen, minimal = false }: NavbarProps) {
+const NAV_LINKS = [
+  { label: 'Menú',          href: '#menu' },
+  { label: 'Salsas',        href: '#salsas' },
+  { label: 'Cómo funciona', href: '#como-funciona' },
+  { label: 'Zona',          href: '#zona' },
+];
+
+export default function Navbar({ cartCount = 0, onCartOpen, minimal = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+  // rAF throttle — evita re-renders excesivos en scroll
+  const onScroll = useCallback(() => {
+    let ticking = false;
+    return () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 80);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handler = onScroll();
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, [onScroll]);
 
   return (
     <>
-      <div className="fixed top-0 left-0 w-full h-[32px] bg-[var(--accent)] z-[2000] flex items-center overflow-hidden">
+      {/* Top ticker bar */}
+      <div className="fixed top-0 left-0 w-full h-[32px] z-[2000] flex items-center overflow-hidden"
+        style={{ background: 'var(--color-primary)' }}>
         <div className="flex whitespace-nowrap animate-[ticker_20s_linear_infinite] items-center">
           {[...Array(4)].map((_, i) => (
             <span key={i} className="text-black font-black text-[0.65rem] uppercase tracking-[0.2em] px-8">
@@ -34,50 +56,75 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
         </div>
       </div>
 
-      <nav 
-        id="navbar" 
+      <nav
+        id="navbar"
         className={`fixed z-[1500] left-1/2 -translate-x-1/2 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.2,1,0.3,1)] ${
-          scrolled 
-            ? 'top-[32px] w-full max-w-full h-[70px] bg-[#040404]/85 backdrop-blur-xl border-b border-white/10 rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
+          scrolled
+            ? 'top-[32px] w-full max-w-full h-[70px] bg-black/90 backdrop-blur-xl border-b border-[#2a2a2a] rounded-none shadow-[0_4px_30px_rgba(0,0,0,0.4)]'
             : 'top-[42px] w-[calc(100%-40px)] max-w-[1200px] h-[70px] bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
         }`}
       >
         <div className="w-full max-w-[1400px] mx-auto px-8 sm:px-12 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 no-underline group shrink-0 ml-2">
-            <div className="font-mono font-black text-[1.3rem] tracking-[-1px] text-white uppercase">
-              SNACKS <span className="text-[var(--accent)]">911</span>
+          <Link href="/" className="flex items-center gap-3 no-underline group shrink-0">
+            <div
+              className="font-black text-[1.3rem] tracking-[-1px] text-white uppercase"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              SNACKS <span style={{ color: 'var(--color-primary)' }}>911 🚨</span>
             </div>
           </Link>
 
-          {/* Desktop Links - Centered */}
-          <div className="hidden md:flex gap-[40px] items-center absolute left-1/2 -translate-x-1/2">
-            {['Inicio', 'Combos', 'Menú', 'Estado'].map((item) => (
-              <Link 
-                key={item}
-                href={item === 'Menú' ? '/menu' : `/#${item.toLowerCase()}`} 
-                className="text-[0.85rem] font-bold uppercase tracking-[1.5px] text-white opacity-50 hover:opacity-100 hover:text-[var(--accent)] transition-all no-underline"
+          {/* Desktop Links */}
+          <div className="hidden md:flex gap-[32px] items-center absolute left-1/2 -translate-x-1/2">
+            {NAV_LINKS.map(({ label, href }) => (
+              <a
+                key={href}
+                href={href}
+                className="text-[0.85rem] font-bold uppercase tracking-[1.5px] opacity-50 hover:opacity-100 transition-all no-underline"
+                style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-muted)')}
               >
-                {item}
-              </Link>
+                {label}
+              </a>
             ))}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-[25px] shrink-0 mr-2">
-            <div 
-              className="relative cursor-pointer hover:scale-110 transition-transform flex items-center justify-center w-12 h-12 bg-white/5 rounded-full border border-white/10" 
-              onClick={onCartOpen}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Cart icon — kept for backward compat with page.tsx */}
+            {onCartOpen && (
+              <div
+                className="relative cursor-pointer hover:scale-110 transition-transform flex items-center justify-center w-10 h-10 bg-white/5 rounded-full border border-white/10"
+                onClick={onCartOpen}
+              >
+                <span className="text-xl">🛒</span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 text-black text-[0.65rem] w-[18px] h-[18px] rounded-full flex items-center justify-center font-black shadow-[0_0_10px_rgba(255,60,0,0.6)]"
+                    style={{ background: 'var(--color-primary)' }}>
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Primary CTA */}
+            <a
+              href={buildWaLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-full hover:opacity-90 active:scale-95 transition-all"
+              style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-body)' }}
             >
-              <span className="text-2xl">🛒</span>
-              <span className="absolute -top-1 -right-1 bg-[var(--accent)] text-black text-[0.7rem] w-[20px] h-[20px] rounded-full flex items-center justify-center font-black shadow-[0_0_15px_rgba(255,90,0,0.6)]">
-                {cartCount}
-              </span>
-            </div>
-            
-            <button 
-              className="md:hidden text-white text-2xl p-1 leading-none hover:text-[var(--accent)] transition-colors"
+              📲 Pedir ahora
+            </a>
+
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden text-white text-2xl p-1 leading-none transition-colors"
               onClick={() => setMobileMenuOpen(true)}
+              style={{ color: 'var(--color-muted)' }}
             >
               ☰
             </button>
@@ -85,46 +132,56 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-[2000] flex justify-end">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-[80%] max-w-[300px] h-full bg-[#050505]/95 backdrop-blur-2xl border-l border-white/10 p-10 flex flex-col gap-8 shadow-[-20px_0_60px_rgba(0,0,0,0.5)]"
+              className="relative w-[80%] max-w-[300px] h-full bg-[#0a0a0a]/95 backdrop-blur-2xl border-l border-[#2a2a2a] p-10 flex flex-col gap-8 shadow-[-20px_0_60px_rgba(0,0,0,0.5)]"
             >
-              <button 
-                className="self-end text-white/40 hover:text-white text-2xl"
+              <button
+                className="self-end text-[0.8rem] font-black uppercase tracking-widest transition-colors"
+                style={{ color: 'var(--color-muted)' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                ✕
+                ✕ Cerrar
               </button>
-              
-              <div className="flex flex-col gap-8 mt-4">
-                {['Inicio', 'Combos', 'Menú', 'Estado'].map((item) => (
-                  <Link 
-                    key={item}
-                    href={item === 'Menú' ? '/menu' : `/#${item.toLowerCase()}`} 
+
+              <div className="flex flex-col gap-6 mt-2">
+                {NAV_LINKS.map(({ label, href }) => (
+                  <a
+                    key={href}
+                    href={href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-white text-2xl font-black uppercase tracking-tighter hover:text-[var(--accent)] transition-colors"
+                    className="text-white text-2xl font-black uppercase tracking-tighter transition-colors no-underline"
+                    style={{ fontFamily: 'var(--font-display)' }}
                   >
-                    {item}
-                  </Link>
+                    {label}
+                  </a>
                 ))}
               </div>
-              
-              <div className="mt-auto pt-10 border-t border-white/5 flex flex-col items-center">
-                <div className="text-[0.6rem] text-white/20 font-black uppercase tracking-[0.3em]">Snacks 911 Dispatch</div>
+
+              <div className="mt-auto">
+                <a
+                  href={buildWaLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center text-white font-black text-lg py-4 rounded-2xl transition-all active:scale-95"
+                  style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
+                >
+                  📲 HACER MI PEDIDO
+                </a>
               </div>
             </motion.div>
           </div>
@@ -135,10 +192,6 @@ export default function Navbar({ cartCount, onCartOpen, minimal = false }: Navba
         @keyframes ticker {
           0% { transform: translateX(0); }
           100% { transform: translateX(-25%); }
-        }
-        @keyframes flicker {
-          0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; }
-          20%, 21.9%, 63%, 63.9%, 65%, 69.9% { opacity: 0.8; filter: brightness(1.3); }
         }
       `}</style>
     </>

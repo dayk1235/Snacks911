@@ -1,49 +1,58 @@
+import { buildWaLink } from '@/utils/whatsapp';
+
+const links = [
+  { label: 'Menú',          href: '#menu' },
+  { label: 'Salsas',        href: '#salsas' },
+  { label: 'Zona',          href: '#zona' },
+  { label: '¿Cómo funciona?', href: '#como-funciona' },
+];
+
 export default function SiteFooter() {
   return (
-    <footer className="glass border-t border-[var(--border)] mt-[100px] py-20 px-6">
-      <div className="max-w-[1440px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-        <div>
-          <div className="font-mono font-black text-2xl mb-5 text-[var(--fg)] tracking-tighter">
-            SNACKS <span className="text-[var(--accent)]">911</span>
+    <footer style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', padding: '48px 24px 32px' }}>
+      <div className="max-w-5xl mx-auto flex flex-col gap-8">
+        {/* Top row */}
+        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+          {/* Logo + tagline */}
+          <div className="text-center md:text-left">
+            <div className="font-black text-2xl text-white uppercase" style={{ fontFamily: 'var(--font-display)' }}>
+              SNACKS <span style={{ color: 'var(--color-primary)' }}>911 🚨</span>
+            </div>
+            <p className="m-0 mt-1 text-sm" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
+              Urgencia de Antojo 🚨
+            </p>
           </div>
-          <p className="text-[var(--muted)] text-[0.9rem] leading-relaxed">
-            Tu unidad de respuesta rápida para emergencias de hambre. Operando 24/7 en el corazón de la ciudad.
-          </p>
-        </div>
 
-        <div>
-          <h4 className="font-black mb-5 text-[var(--fg)] tracking-widest text-sm">LINKS RÁPIDOS</h4>
-          <div className="flex flex-col gap-2.5 text-[0.9rem]">
-            <a href="/#hero" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors no-underline">Inicio</a>
-            <a href="/#combos" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors no-underline">Combos</a>
-            <a href="/menu" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors no-underline">Menú</a>
-            <a href="/#order-status" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors no-underline">Estado</a>
+          {/* Nav links */}
+          <div className="flex flex-wrap justify-center md:justify-end gap-4">
+            {links.map(({ label, href }) => (
+              <a key={href} href={href} className="text-sm font-bold no-underline transition-colors hover:text-white"
+                style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
+                {label}
+              </a>
+            ))}
           </div>
+
+          {/* WhatsApp CTA */}
+          <a href={buildWaLink()} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 text-white font-bold text-sm px-5 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-all"
+            style={{ background: '#25D366', fontFamily: 'var(--font-body)' }}>
+            📲 Pedir por WhatsApp
+          </a>
         </div>
 
-        <div>
-          <h4 className="font-black mb-5 text-[var(--fg)] tracking-widest text-sm">CONTACTO</h4>
-          <p className="text-[var(--muted)] text-[0.9rem] mb-1">📍 Av. Rescate 911, Sector Industrial</p>
-          <p className="text-[var(--muted)] text-[0.9rem] mb-5">📞 SOS: 800-SNACKS-911</p>
-          <div className="flex gap-4 text-xl">
-            <span className="cursor-pointer hover:scale-125 transition-transform">📸</span>
-            <span className="cursor-pointer hover:scale-125 transition-transform">🐦</span>
-            <span className="cursor-pointer hover:scale-125 transition-transform">📘</span>
-          </div>
+        {/* Redes sociales — slots listos para activar */}
+        {/* 
+        <div className="flex gap-4 justify-center">
+          <a href="https://instagram.com/snacks911" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href="https://tiktok.com/@snacks911" target="_blank" rel="noopener noreferrer">TikTok</a>
         </div>
+        */}
 
-        <div className="flex items-end">
-          <button 
-            className="btn-primary w-full py-4 text-sm font-black tracking-widest"
-            onClick={() => window.location.href = '/menu'}
-          >
-            ORDENA AHORA 🔥
-          </button>
+        {/* Bottom */}
+        <div className="border-t pt-5 text-center text-[0.78rem]" style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
+          © {new Date().getFullYear()} Snacks 911 · Hecho con 🔥 en Iztapalapa
         </div>
-      </div>
-
-      <div className="text-center mt-20 pt-10 border-t border-white/5 text-[0.7rem] text-[var(--muted)] opacity-50 uppercase tracking-[0.2em] font-bold">
-        © {new Date().getFullYear()} SNACKS 911 - DESPACHO TÁCTICO DE CALORÍAS.
       </div>
     </footer>
   );
