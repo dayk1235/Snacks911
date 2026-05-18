@@ -31,10 +31,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://snacks911-lro4.vercel.app'),
   title: 'Snacks 911 — Tu antojo en 30 min 🚨',
   description: 'Alitas, boneless y snacks con salsas 100% caseras. Entrega a domicilio en Iztapalapa. Pide por WhatsApp.',
-  icons: {
-    icon: '/icon.png',
-    apple: '/apple-touch-icon.png',
-  },
+
   openGraph: {
     title: 'Snacks 911 🚨 — Antojo de Emergencia',
     description: 'Alitas, boneless, papas loaded. Salsas caseras. 30 minutos a tu puerta.',

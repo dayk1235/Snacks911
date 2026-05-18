@@ -136,78 +136,7 @@ export default function Navbar({ cartCount = 0, onCartOpen }: NavbarProps) {
               : 'bg-white/5 backdrop-blur-[30px] border border-white/10 rounded-[24px]'
           }`}
         >
-          {/* ── Bottom flames ─── */}
-          {!scrolled && (
-            <div
-              className="flame-container absolute bottom-0 left-0 right-0 overflow-hidden pointer-events-none"
-              style={{ height: '24px', zIndex: 1 }}
-            >
-              {/* Warm underglow */}
-              <div
-                className="absolute bottom-0 left-0 right-0"
-                style={{
-                  height: '16px',
-                  background: 'linear-gradient(to top, rgba(255,69,0,0.15) 0%, rgba(255,140,0,0.06) 40%, transparent 100%)',
-                  borderRadius: '0 0 23px 23px',
-                }}
-              />
-              {/* Individual flames */}
-              {[
-                { l: '5%',  w: 7,  h: 14, d: 0.18, s: 1.0, del: '0s' },
-                { l: '16%', w: 6,  h: 11, d: 0.14, s: 0.85, del: '0.07s' },
-                { l: '27%', w: 8,  h: 16, d: 0.22, s: 1.1, del: '0.03s' },
-                { l: '38%', w: 5,  h: 10, d: 0.16, s: 0.8, del: '0.12s' },
-                { l: '48%', w: 9,  h: 18, d: 0.24, s: 1.15, del: '0s' },
-                { l: '58%', w: 6,  h: 12, d: 0.15, s: 0.9, del: '0.09s' },
-                { l: '69%', w: 7,  h: 15, d: 0.19, s: 1.05, del: '0.04s' },
-                { l: '80%', w: 5,  h: 10, d: 0.13, s: 0.8, del: '0.1s' },
-                { l: '91%', w: 8,  h: 14, d: 0.2, s: 1.0, del: '0.06s' },
-              ].map((f, i) => (
-                <div
-                  key={`flame-${i}`}
-                  className="flame absolute"
-                  style={{
-                    left: f.l,
-                    bottom: '-4px',
-                    width: `${f.w}px`,
-                    height: `${f.h}px`,
-                    background: 'linear-gradient(to top, #FF4500 0%, #FF6B00 25%, #FF8C00 50%, #FFA500 75%, rgba(255,200,0,0.3) 95%, transparent 100%)',
-                    borderRadius: '45% 45% 45% 45% / 60% 60% 40% 40%',
-                    transformOrigin: 'bottom center',
-                    animationDuration: `${f.d}s`,
-                    animationDelay: f.del,
-                    opacity: f.s,
-                    filter: 'blur(0.3px)',
-                  }}
-                />
-              ))}
-              {/* Embers */}
-              {[
-                { l: '12%', d: 1.2, del: '0.1s', y: 16 },
-                { l: '32%', d: 1.5, del: '0.4s', y: 18 },
-                { l: '52%', d: 1.0, del: '0.7s', y: 14 },
-                { l: '72%', d: 1.3, del: '0.2s', y: 17 },
-                { l: '88%', d: 1.4, del: '0.5s', y: 15 },
-              ].map((e, i) => (
-                <div
-                  key={`ember-${i}`}
-                  className="ember absolute"
-                  style={{
-                    left: e.l,
-                    bottom: '0px',
-                    width: '2px',
-                    height: '2px',
-                    background: '#FFD700',
-                    borderRadius: '50%',
-                    boxShadow: '0 0 4px 1px rgba(255,140,0,0.8), 0 0 8px 2px rgba(255,69,0,0.4)',
-                    animationDuration: `${e.d}s`,
-                    animationDelay: e.del,
-                    '--rise': `${e.y}px`,
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
-          )}
+
 
           <div className="relative z-[2] w-full max-w-[1400px] mx-auto px-6 sm:px-10 flex items-center justify-between">
             {/* Logo */}
@@ -378,41 +307,11 @@ export default function Navbar({ cartCount = 0, onCartOpen }: NavbarProps) {
           animation: beam-sweep 5.5s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
           width: 0;
         }
-        @keyframes flame-flicker {
-          0%   { transform: scaleY(0.6) scaleX(0.8); opacity: 0.6; }
-          30%  { transform: scaleY(1.3) scaleX(1.05); opacity: 0.95; }
-          55%  { transform: scaleY(0.7) scaleX(0.9); opacity: 0.7; }
-          75%  { transform: scaleY(1.1) scaleX(1.0); opacity: 0.9; }
-          100% { transform: scaleY(0.5) scaleX(0.75); opacity: 0.55; }
-        }
-        .flame {
-          animation: flame-flicker var(--f-dur, 0.2s) ease-in-out infinite;
-          animation-delay: var(--f-del, 0s);
-        }
-        @keyframes ember-rise {
-          0%   { transform: translateY(0) scale(1); opacity: 0.9; }
-          40%  { opacity: 0.7; }
-          80%  { opacity: 0.25; }
-          100% { transform: translateY(calc(-1 * var(--rise, 16px))) scale(0.15); opacity: 0; }
-        }
-        .ember {
-          animation: ember-rise var(--e-dur, 1.5s) ease-out infinite;
-          animation-delay: var(--e-del, 0s);
-        }
         @media (prefers-reduced-motion: reduce) {
           .beam-track {
             animation: none;
             opacity: 0.35;
             left: 50%;
-          }
-          .flame {
-            animation: none !important;
-            transform: scaleY(0.8);
-            opacity: 0.4;
-          }
-          .ember {
-            animation: none !important;
-            opacity: 0;
           }
         }
       `}</style>
