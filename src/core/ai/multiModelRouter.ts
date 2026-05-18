@@ -66,6 +66,7 @@ function buildPrompt(
   cart: any[],
   availableProducts: any[],
   businessName: string,
+  executionLog?: string[],
 ): string {
   const catalog = availableProducts
     .map(p => `ID: ${p.id} | Nombre: ${p.name} | Precio: $${p.price} | Categoria: ${p.category}`)
@@ -76,6 +77,10 @@ function buildPrompt(
       ? 'El carrito está vacío.'
       : cart.map((i: any) => `- ${i.quantity}x ${i.name} (ID: ${i.productId || i.id})`).join('\n');
 
+  const logStr = executionLog && executionLog.length > 0
+    ? `\n### ACCIONES RECIÉN EJECUTADAS (No las repitas, solo confírmalas si es necesario):\n${executionLog.join('\n')}`
+    : '';
+
   return `
 ### NEGOCIO: ${businessName}
 
@@ -83,7 +88,7 @@ function buildPrompt(
 ${catalog}
 
 ### CARRITO ACTUAL DEL CLIENTE:
-${cartStr}
+${cartStr}${logStr}
 
 ### MENSAJE DEL CLIENTE:
 "${message}"
@@ -376,6 +381,7 @@ export async function processWithRouter(
   cart: any[],
   availableProducts: any[],
   businessName: string,
+  executionLog?: string[],
 ): Promise<RouterResult> {
   const start = Date.now();
   const hasCart = cart.length > 0;
@@ -385,7 +391,7 @@ export async function processWithRouter(
   const detectedIntent = unifiedIntent.intent as any;
 
   // ── Fast Path for Preloaded/High-Confidence Rules ──────────────
-  if (unifiedIntent.source === 'rule' && unifiedIntent.confidence >= 0.9) {
+  if (unifiedIntent.source === 'rule' && unifiedIntent.confidence >= 0.9 && (!executionLog || executionLog.length === 0)) {
     const prebakedResponses: Record<string, string> = {
       'combos': '🔥 Aquí tienes nuestros combos más rifados:',
       'menu': '📋 Te muestro todo nuestro menú. ¿Qué se te antoja?',
@@ -405,7 +411,7 @@ export async function processWithRouter(
     }
   }
 
-  const prompt = buildPrompt(message, cart, availableProducts, businessName);
+  const prompt = buildPrompt(message, cart, availableProducts, businessName, executionLog);
 
   // ── Tier 1: Race Gemini against fallback deadline ────────────────────
   // Start the fallback timer immediately — it fires at 2s if Gemini hasn't won

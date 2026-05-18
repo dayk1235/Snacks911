@@ -27,11 +27,12 @@ export function resolveAction(unifiedIntent: UnifiedIntent): ActionDecision {
     'saludo': 'greet',
     'confirmar': 'checkout',
     'cancelar': 'clear_cart',
+    'view_cart': 'view_cart',
     'otro': 'talk'
   };
 
   // 2. Intent Priority (Actionable > Informational)
-  const priority = ['reject_item', 'order', 'confirmar', 'browse_menu', 'saludo', 'fallback', 'unknown'];
+  const priority = ['cancelar', 'view_cart', 'reject_item', 'order', 'confirmar', 'browse_menu', 'saludo', 'fallback', 'unknown'];
   
   // Sort intents by priority
   const sortedIntents = [...intents].sort((a, b) => {
@@ -47,19 +48,23 @@ export function resolveAction(unifiedIntent: UnifiedIntent): ActionDecision {
   let requiresConfirmation = false;
   let reason = '';
 
-  if (unifiedIntent.confidence < 0.7) {
-    requiresConfirmation = true;
-    reason = `Low intent confidence (${unifiedIntent.confidence.toFixed(2)})`;
-  }
+  const transactionalActions = ['add_to_cart', 'remove_from_cart', 'clear_cart', 'checkout'];
 
-  // Entity confidence check
-  if (unifiedIntent.entities) {
-    const prodConf = unifiedIntent.entities.product?.confidence || 1.0;
-    const qtyConf = unifiedIntent.entities.quantity?.confidence || 1.0;
-    
-    if (prodConf < 0.7 || qtyConf < 0.7) {
+  if (transactionalActions.includes(action)) {
+    if (unifiedIntent.confidence < 0.7) {
       requiresConfirmation = true;
-      reason = reason ? `${reason} + Low entity confidence` : 'Low entity confidence';
+      reason = `Low intent confidence (${unifiedIntent.confidence.toFixed(2)})`;
+    }
+
+    // Entity confidence check
+    if (unifiedIntent.entities) {
+      const prodConf = unifiedIntent.entities.product?.confidence || 1.0;
+      const qtyConf = unifiedIntent.entities.quantity?.confidence || 1.0;
+      
+      if (prodConf < 0.7 || qtyConf < 0.7) {
+        requiresConfirmation = true;
+        reason = reason ? `${reason} + Low entity confidence` : 'Low entity confidence';
+      }
     }
   }
 
@@ -81,16 +86,18 @@ export function resolveAction(unifiedIntent: UnifiedIntent): ActionDecision {
   const hasEntities = !!(unifiedIntent.entities?.product?.value);
   
   if (isTransactional && !hasEntities) {
-    requiresConfirmation = true;
+    requiresConfirmation = false;
     reason = `Transactional action ${action} missing product entity`;
   }
+
+  const safeToExecute = !requiresConfirmation && (!isTransactional || hasEntities);
 
   return {
     action,
     secondaryActions: sortedIntents.slice(1).map(i => actionMap[i]).filter(Boolean),
     requiresConfirmation,
     reason,
-    safeToExecute: !requiresConfirmation,
+    safeToExecute,
     entities: unifiedIntent.entities
   };
 }

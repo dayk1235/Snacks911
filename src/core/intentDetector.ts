@@ -209,7 +209,7 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'pedido',
     keywords: ['quiero', 'dame', 'ponme', 'agrega', 'añade', 'pido', 'llevo', 'dámelo', 'damelo'],
     patterns: [
-      /(quiero|dame|ponme|pido|llevo|agrega|añade|ordenar) (un|una|el|la|los|las|unos|unas)?\s*(combos?|boneless|alitas|papas|banderillas?|dedos|queso)/i,
+      /(quiero|dame|ponme|pido|pide|pedir|llevo|agrega|añade|ordenar) (un|una|el|la|los|las|unos|unas)?\s*(combos?|boneless|alitas|papas|banderillas?|dedos|queso)/i,
       /me (llevas|mandas|envías|envia)/i,
       /dame (un|el|ese)/i,
       /te (pido|hago un pedido de)/i,
@@ -379,7 +379,7 @@ function extractEntities(n: string, raw: string): Entities {
 
   // 2. Products (Aliases)
   const productAliases: Record<string, string[]> = {
-    'Combo Mixto 911': ['mixto', 'combo mixto'],
+    'Combo Mixto 911': ['mixto', 'combo mixto', 'combo 911', 'combo'],
     'Boneless Power 911': ['boneless power', 'power'],
     'Alitas Fuego 911': ['alitas fuego', 'fuego'],
     'Combo Callejero 911': ['callejero'],
@@ -414,7 +414,12 @@ function extractEntities(n: string, raw: string): Entities {
   };
   const numMatches = n.match(/\b\d+\b/g);
   if (numMatches) {
-    numMatches.forEach(m => entities.qty.push(parseInt(m)));
+    numMatches.forEach(m => {
+      const val = parseInt(m);
+      if (val !== 911) {
+        entities.qty.push(val);
+      }
+    });
   }
   for (const [word, num] of Object.entries(qtyMap)) {
     if (new RegExp(`\\b${word}\\b`, 'i').test(n)) {
@@ -484,7 +489,7 @@ export function detectIntent(message: string, context?: any): IntentResult {
   // ─────────────────────────────────────────
 
   // 🟡 VIEW CART
-  if (/(ver carrito|mi pedido|ver orden|que llevo|que pedi)/i.test(n)) {
+  if (/^(ver carrito|mi pedido|ver orden|que llevo|que pedi|cuenta|mi cuenta|ver cuenta|muestrame mi cuenta)$/i.test(n)) {
     return {
       intent: 'VIEW_CART',
       entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
@@ -497,7 +502,7 @@ export function detectIntent(message: string, context?: any): IntentResult {
   }
 
   // 🔵 SHOW_MENU
-  if (/^(menu|ver menu|muestrame el menu|que hay de comer|que tienen|ver todo|carta|que venden|hola|buen dia|buenas tardes|buenas noches)/i.test(n)) {
+  if (/^(menu|ver menu|muestrame el menu|que hay de comer|que tienen|ver todo|carta|que venden|hola|buen dia|buenas tardes|buenas noches)$/i.test(n)) {
     return {
       intent: 'SHOW_MENU',
       entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
@@ -510,7 +515,7 @@ export function detectIntent(message: string, context?: any): IntentResult {
   }
 
   // 🟢 RECOMMEND
-  if (/(sorprendeme|recomiendame|que es lo mejor|algo rico|no se que pedir|tu dime)/i.test(n)) {
+  if (/^(sorprendeme|recomiendame|que es lo mejor|algo rico|no se que pedir|tu dime)$/i.test(n)) {
     return {
       intent: 'RECOMMEND',
       entities: entitiesToRecord({ products: [], categories: [], qty: [], sauces: [], restrictions: [] }),
@@ -1028,7 +1033,10 @@ export function extractAllergies(message: string): string[] {
  * 3. Devuelve formato unificado.
  */
 export async function getUnifiedIntent(message: string): Promise<UnifiedIntent> {
-  const low = message.toLowerCase().trim();
+  const low = message.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
   const start = Date.now();
 
   // 0. Empty/Short Input Handling
@@ -1044,17 +1052,22 @@ export async function getUnifiedIntent(message: string): Promise<UnifiedIntent> 
     return res;
   }
 
-  // 1. Negation Detection (High Priority)
+  // 1. Negation & Clear Patterns
   const negationPatterns = [
     /\bno\s+quiero\b/i,
     /\bsin\b/i,
     /\bquita\b/i,
     /\bno\s+me\s+des\b/i,
     /\belimina\b/i,
-    /\borra\b/i
+    /\borra\b/i,
+    /\blimpia\b/i,
+    /\bvaciar\b/i
   ];
   
-  if (negationPatterns.some(p => p.test(low))) {
+  const isClearCart = /\blimpia\b|\bvaciar\b|\bborrar\s+todo\b|\bcarrito\s+vacio\b/i.test(low);
+  const isNegation = negationPatterns.some(p => p.test(low)) && !isClearCart;
+
+  if (isNegation) {
     const ruleResult = detectIntent(message);
     const ruleEntities = parseEntitiesRecord(ruleResult.entities);
     
@@ -1078,52 +1091,32 @@ export async function getUnifiedIntent(message: string): Promise<UnifiedIntent> 
     { pattern: /menu|carta|ver|mostrar|enseñ/i, intent: 'browse_menu' },
     { pattern: /combos|paquetes/i, intent: 'browse_menu' },
     { pattern: /quiero|dame|agrega|ponme|pide|pedir|orden|encarga/i, intent: 'order' },
-    { pattern: /recomienda|que es lo mejor|sugiere|sorprende/i, intent: 'fallback' }
+    { pattern: /recomienda|que es lo mejor|sugiere|sorprende/i, intent: 'fallback' },
+    { pattern: /limpia|vaciar|borrar todo|carrito vacio/i, intent: 'cancelar' }
   ];
 
   const detectedIntents = intentTriggers
     .filter(t => t.pattern.test(low))
     .map(t => t.intent);
 
-  // 3. Fast Path: Preloaded Patterns (from multiModelRouter)
-  if (/^(ver\s+)?combos?$/i.test(low)) {
-    const res: UnifiedIntent = { 
-      intent: 'browse_menu', 
-      confidence: 0.95, 
-      source: 'rule',
-      intents: ['browse_menu'],
-      primaryIntent: 'browse_menu'
-    };
-    logIntentDecision({ input: message, ...res });
-    return res;
-  }
-  if (/^(ver\s+)?men[uú]|(ver\s+)?carta|(ver\s+)?todo(\s+el)?(\s+men[uú])?$/i.test(low)) {
-    const res: UnifiedIntent = { 
-      intent: 'browse_menu', 
-      confidence: 0.95, 
-      source: 'rule',
-      intents: ['browse_menu'],
-      primaryIntent: 'browse_menu'
-    };
-    logIntentDecision({ input: message, ...res });
-    return res;
-  }
-  
+  // 3. Entity & Pattern refinement
   // Specific order detection (quantity + product)
   if (/^\d+\s+(alitas|boneless|papas|refresco|combo)/i.test(low)) {
-    const res: UnifiedIntent = { 
-      intent: 'order', 
-      confidence: 0.9, 
-      source: 'rule',
-      intents: ['order'],
-      primaryIntent: 'order'
-    };
-    // Entities extracted in Step 4 below
+    if (!detectedIntents.includes('order')) detectedIntents.push('order');
   }
 
   // 4. Step 1: Rule-based detector
   const ruleResult = detectIntent(message);
-  
+  const ruleEntities = parseEntitiesRecord(ruleResult.entities);
+
+  // Safety net: Manual product extraction if legacy regex missed it
+  if (ruleEntities.products.length === 0) {
+    const commonProducts = ['alitas', 'boneless', 'papas', 'refresco', 'combo'];
+    for (const p of commonProducts) {
+      if (low.includes(p)) ruleEntities.products.push(p);
+    }
+  }
+
   const intentMap: Record<string, string> = {
     'pedido': 'order',
     'ADD_TO_CART': 'order',
@@ -1147,19 +1140,24 @@ export async function getUnifiedIntent(message: string): Promise<UnifiedIntent> 
     'browsing': 'saludo',
     'gratitud': 'otro',
     'despedida': 'otro',
-    'VIEW_CART': 'otro',
+    'VIEW_CART': 'view_cart',
     'vacio': 'fallback',
+    'cancelar': 'cancelar',
     'otro': 'fallback'
   };
 
   // Confidence Calibration
   let baseConfidence = ruleResult.confidence;
-  const hasVerb = /quiero|ver|dame|ponme|pide/i.test(low);
-  const hasProduct = /alitas|boneless|papas|combo|refresco/i.test(low);
   
-  if (hasVerb && hasProduct) baseConfidence = 0.92;
-  else if (hasProduct || hasVerb) baseConfidence = 0.75;
-  else baseConfidence = 0.55;
+  if (baseConfidence < 1.0) {
+    const hasVerb = /quiero|ver|dame|ponme|pide|limpia|vaciar|llevo|pago/i.test(low);
+    const hasProduct = /alitas|boneless|papas|combo|refresco|menu|carta|carrito|pedido|cuenta/i.test(low);
+    
+    if (detectedIntents.length > 1) baseConfidence = 0.95;
+    else if (hasVerb && hasProduct) baseConfidence = 0.92;
+    else if (hasProduct || hasVerb) baseConfidence = 0.75;
+    else baseConfidence = 0.55;
+  }
 
   if (baseConfidence >= 0.4) {
     const ruleEntities = parseEntitiesRecord(ruleResult.entities);

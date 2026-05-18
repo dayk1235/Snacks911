@@ -271,3 +271,32 @@ export function getCartContext(context: UserContext) {
 export function clearCartContext(context: UserContext) {
   context.cart = { items: [], total: 0 };
 }
+
+export function removeFromCartContext(context: any, productIdentifier: string) {
+  if (!context.cart || !Array.isArray(context.cart.items)) return;
+
+  const idToMatch = String(productIdentifier).toLowerCase();
+  
+  const existingIndex = context.cart.items.findIndex((i: any) => 
+    String(i.id).toLowerCase() === idToMatch || 
+    String(i.productId).toLowerCase() === idToMatch ||
+    String(i.name).toLowerCase().includes(idToMatch)
+  );
+
+  if (existingIndex !== -1) {
+    const item = context.cart.items[existingIndex];
+    context.cart.total -= (item.price * (item.qty || item.quantity || 1));
+    context.cart.items.splice(existingIndex, 1);
+    
+    // Ensure total doesn't go negative
+    if (context.cart.total < 0) context.cart.total = 0;
+
+    eventBus.emit('CART_UPDATED', {
+      tenantId: context.tenantId || 'default',
+      userId: context.phone,
+      cart: context.cart.items,
+      total: context.cart.total,
+      timestamp: Date.now()
+    });
+  }
+}

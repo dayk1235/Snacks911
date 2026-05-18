@@ -1,19 +1,73 @@
 import { getContext, updateContext } from "./context";
 import { processWithRouter } from "./ai/multiModelRouter";
 import { getUnifiedIntent } from "./intentDetector";
-import { addToCart, clearCartContext } from "./cartEngine";
+import { addToCart, clearCartContext, removeFromCartContext } from "./cartEngine";
 import { dbSaveOrder } from "@/lib/db.server";
 import { isGreetingOnly } from "./nluBaseline";
 import type { Action, UICard, UICart, BotUI } from "./types";
 import { getProductImage, products as staticProducts } from "@/data/products";
 import { getBestUpsell } from "./offerAgent";
-import { resolveAction } from "./actionResolver";
+import { resolveAction, ActionDecision } from "./actionResolver";
 import * as flowEngine from "@/ai/runtime/flowEngine";
 import { getCustomerData, recordPurchase } from "@/lib/customerMemory";
 import { getCacheKey, getCachedResponse, setCachedResponse, isInDegradedMode, recordAIFailure, recordAISuccess } from "@/lib/responseCache";
 
 function getProductImageUrl(product: any): string {
   return product.image_url || product.imageUrl || product.image || getProductImage(product) || '';
+}
+
+/**
+ * Executes deterministic business actions mapped from intents.
+ */
+function executeAction(action: string, entities: any, context: any, availableProducts: any[]) {
+  switch (action) {
+    case 'add_to_cart':
+      if (entities?.product?.value) {
+        const prod = availableProducts.find(p => 
+          p.name.toLowerCase().includes(entities.product.value.toLowerCase())
+        );
+        if (prod) {
+          addToCart(context, prod);
+          return { success: true, message: `✅ Añadido: ${prod.name}` };
+        }
+      }
+      return { success: false, message: "❌ No encontré el producto exacto" };
+      
+    case 'remove_from_cart':
+      if (entities?.product?.value) {
+        removeFromCartContext(context, entities.product.value);
+        return { success: true, message: `🗑️ Quitamos ${entities.product.value} del carrito` };
+      }
+      return { success: false };
+
+    case 'clear_cart':
+      clearCartContext(context);
+      return { success: true, message: "🧹 Carrito limpio" };
+
+    case 'show_menu':
+      return { success: true, message: "📋 Aquí tienes nuestro menú completo:" };
+
+    case 'checkout':
+      if (!context.cart?.items?.length) {
+        return { success: true, message: "Tu carrito está vacío por ahora. Agrega algo antes de confirmar." };
+      }
+      return { success: true, message: `🚀 ¡Excelente! Vamos a cerrar tu pedido. Total: $${context.cart.total}` };
+
+    case 'greet':
+      return { success: true, message: "👋 ¡Hola! ¿Qué se te antoja hoy?" };
+
+    case 'view_cart':
+      const cartSummary = buildCartSummaryResponse(context);
+      return {
+        success: true,
+        message: cartSummary.text,
+        ui: cartSummary.ui,
+        actions: cartSummary.actions
+      };
+
+    default:
+      return { success: false };
+  }
 }
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -91,35 +145,16 @@ export async function getBotResponse({
     console.error('[botEngine] Error resolving tenant:', e);
   }
 
-  // 2. Load User Context
+  // 2. Load Context & Products
   const context = getContext(cleanPhone, activeTenantId, businessName);
-
-  if (initialCart && Array.isArray(initialCart.items)) {
-    const items = initialCart.items
-      .map((item: any) => ({
-        id: String(item.id || item.productId || ''),
-        productId: String(item.productId || item.id || ''),
-        name: item.name || 'Producto',
-        price: Number(item.price) || 0,
-        quantity: Number(item.quantity || item.qty) || 1,
-        qty: Number(item.qty || item.quantity) || 1,
-      }))
-      .filter((item: any) => item.id && item.quantity > 0);
-
-    context.cart = {
-      items,
-      total: Number(initialCart.total) || items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0),
-    };
+  
+  // Sync context cart with initialCart (from web client or upstream)
+  if (initialCart?.items) {
+    context.cart = initialCart;
   }
 
-  // 3. Fetch Available Products
   const allProducts = await dbGetProductsSafe();
   const availableProducts = allProducts.filter((p: any) => p.available !== false && p.stock !== 0);
-
-  const cartSummaryRequest = /(ver\s+)?(mi\s+)?(carrito|cuenta|orden|pedido)|qu[eé]\s+llevo|cu[aá]nto\s+(llevo|es|ser[ií]a|va)|total/i.test(message);
-  if (cartSummaryRequest) {
-    return buildCartSummaryResponse(context);
-  }
 
   // 4. Shortcut: respond instantly to simple greetings without calling the AI
   if (isGreetingOnly(message)) {
@@ -156,7 +191,7 @@ export async function getBotResponse({
       type: 'buttons',
       actions: actions,
       ui: lastItems.length > 0 ? {
-        cards: lastItems.map(id => {
+        cards: lastItems.map((id: any) => {
           const p = allProducts.find((prod: any) => String(prod.id) === String(id));
           return p ? {
             id: String(p.id),
@@ -260,36 +295,99 @@ export async function getBotResponse({
     };
   }
 
-  // 4.3 Action Resolution & Cache check
+  // --- ACTION RESOLUTION LAYER (NLU + Deterministic Logic) ---
   const unifiedIntent = await getUnifiedIntent(message);
   
-  // --- ACTION RESOLUTION LAYER INTEGRATION ---
-  const actionDecision = resolveAction(unifiedIntent);
-  context.actionDecision = actionDecision;
-  
-  if (actionDecision.secondaryActions && actionDecision.secondaryActions.length > 0) {
-    context.pendingActions = actionDecision.secondaryActions;
+  // A. Confirmation Interceptor
+  if (context.actionDecision?.requiresConfirmation && (unifiedIntent.intent === 'aceptacion' || message.toLowerCase() === 'si')) {
+    console.log(`[botEngine] Confirmation RECEIVED for action: ${context.actionDecision.action}`);
+    context.actionDecision.requiresConfirmation = false;
+    context.actionDecision.safeToExecute = true;
+    const result = executeAction(context.actionDecision.action, context.actionDecision.entities, context, availableProducts);
+    if (!context.pendingActions || context.pendingActions.length === 0) {
+      return { text: result?.message || `¡Listo! Hecho.`, cart: context.cart, type: 'text' };
+    }
   }
 
-  // Confirmation Handling
+  const actionDecision = resolveAction(unifiedIntent);
+  context.actionDecision = actionDecision;
+  if (actionDecision.secondaryActions?.length) context.pendingActions = actionDecision.secondaryActions;
+
+  // B. Deterministic Action Execution Loop
+  let executionLog: string[] = [];
+  let transactionalActionExecuted = false;
+
+  if (actionDecision.safeToExecute) {
+    const result = executeAction(actionDecision.action, actionDecision.entities, context, availableProducts);
+    if (result?.success) {
+      if (result.message) executionLog.push(result.message);
+      if (['add_to_cart', 'remove_from_cart', 'clear_cart'].includes(actionDecision.action)) transactionalActionExecuted = true;
+    }
+    
+    if (context.pendingActions) {
+      for (const nextAction of [...context.pendingActions]) {
+        const subResult = executeAction(nextAction, actionDecision.entities, context, availableProducts);
+        if (subResult?.success) {
+          if (subResult.message) executionLog.push(subResult.message);
+          if (['add_to_cart', 'remove_from_cart', 'clear_cart'].includes(nextAction)) transactionalActionExecuted = true;
+          context.pendingActions = context.pendingActions.filter(a => a !== nextAction);
+        }
+      }
+    }
+
+    const definitiveActions = ['checkout', 'greet', 'view_cart'];
+    if (definitiveActions.includes(actionDecision.action) && !transactionalActionExecuted && unifiedIntent.confidence >= 0.85) {
+      let response: any = { text: executionLog.join('\n') || '¡Listo! Hecho.', cart: context.cart, type: 'text' };
+      
+      if (actionDecision.action === 'view_cart') {
+        const cartSummary = buildCartSummaryResponse(context);
+        response.ui = cartSummary.ui;
+        response.actions = cartSummary.actions;
+        response.type = 'buttons';
+      } else if (actionDecision.action === 'checkout') {
+        response.action = 'checkout';
+      }
+      
+      return response;
+    }
+  }
+
+  // --- Confirmation Handling ---
   if (actionDecision.requiresConfirmation) {
     return {
       text: actionDecision.reason ? `😅 No estoy 100% seguro. ¿Me confirmas que quieres ${actionDecision.action}?` : `😅 ¿Me confirmas tu pedido?`,
       cart: context.cart,
       type: 'buttons',
-      actions: [
-        { id: 'yes', label: '✅ Sí', type: 'postback', value: 'si' },
-        { id: 'no', label: '❌ No', type: 'postback', value: 'no' }
-      ]
+      actions: [{ id: 'yes', label: '✅ Sí', type: 'show_category', value: 'si' }, { id: 'no', label: '❌ No', type: 'dismiss', value: 'no' }]
     };
   }
 
-  // Pass into flowEngine to guide decisions (acts as state influencer for subsequent AI turns)
-  flowEngine.handle({
-    intent: unifiedIntent,
-    actionDecision,
-    context
-  });
+  if (initialCart && Array.isArray(initialCart.items)) {
+    const items = initialCart.items
+      .map((item: any) => ({
+        id: String(item.id || item.productId || ''),
+        productId: String(item.productId || item.id || ''),
+        name: item.name || 'Producto',
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity || item.qty) || 1,
+        qty: Number(item.qty || item.quantity) || 1,
+      }))
+      .filter((item: any) => item.id && item.quantity > 0);
+
+    context.cart = {
+      items,
+      total: Number(initialCart.total) || items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0),
+    };
+  }
+
+
+  const cartSummaryRequest = /(ver\s+)?(mi\s+)?(carrito|cuenta|orden|pedido)|qu[eé]\s+llevo|cu[aá]nto\s+(llevo|es|ser[ií]a|va)|total/i.test(message);
+  if (cartSummaryRequest) {
+    return buildCartSummaryResponse(context);
+  }
+
+  // Shortcuts moved to top of getBotResponse to take precedence over Action Resolution Layer
+
   // -------------------------------------------
 
   const quickIntent = unifiedIntent.intent as any;
@@ -337,7 +435,8 @@ export async function getBotResponse({
     message,
     context.cart?.items || [],
     availableProducts,
-    businessName
+    businessName,
+    executionLog
   );
   const aiResponse = routerResult.response;
 
