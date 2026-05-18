@@ -6,12 +6,19 @@ export default function BackgroundSystem() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    // PERF FIX: throttled mousemove via requestAnimationFrame — was calling setState on every pixel-move (60-120 calls/sec)
+    let rafId: number | null = null; // PERF FIX
+
     const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      setMousePos({ x, y });
-      document.documentElement.style.setProperty('--mouse-x', x.toString());
-      document.documentElement.style.setProperty('--mouse-y', y.toString());
+      if (rafId !== null) return; // PERF FIX: skip if a frame is already pending
+      rafId = requestAnimationFrame(() => { // PERF FIX: batch updates to 1 per frame (~16ms)
+        const x = (e.clientX / window.innerWidth - 0.5) * 2;
+        const y = (e.clientY / window.innerHeight - 0.5) * 2;
+        setMousePos({ x, y });
+        document.documentElement.style.setProperty('--mouse-x', x.toString());
+        document.documentElement.style.setProperty('--mouse-y', y.toString());
+        rafId = null;
+      });
     };
 
     // Observer for section entrances
@@ -48,6 +55,7 @@ export default function BackgroundSystem() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId !== null) cancelAnimationFrame(rafId); // PERF FIX: cancel pending frame on unmount
       observer.disconnect();
       clearTimeout(timeout);
     };

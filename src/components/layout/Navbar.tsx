@@ -295,10 +295,6 @@ export default function Navbar({ cartCount = 0, onCartOpen }: NavbarProps) {
       </AnimatePresence>
 
       <style jsx global>{`
-        @keyframes ticker {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-25%); }
-        }
         @keyframes beam-sweep {
           0%   { left: 2%; }
           100% { left: 98%; }

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import Image from 'next/image'; // PERF FIX: replace native <img> with next/image for auto-webp, lazy loading, and CLS prevention
 
 const galleryImages = [
   { src: '/images/alitas.webp',   alt: 'Alitas crujientes con salsa BBQ' },
@@ -44,10 +45,13 @@ export default function GaleriaSection() {
               {/* Cyber color tint overlay on hover */}
               <div className="absolute inset-0 bg-[var(--color-primary)]/30 mix-blend-overlay z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              {/* Image with slow cinematic zoom */}
-              <img
+              {/* PERF FIX: migrated <img> to next/image for auto-webp, explicit dimensions prevent CLS */}
+              <Image
                 src={img.src}
                 alt={img.alt}
+                width={600} // PERF FIX: explicit width prevents layout shift (CLS)
+                height={400} // PERF FIX: explicit height prevents layout shift (CLS)
+                sizes="(max-width: 768px) 50vw, 33vw" // PERF FIX: responsive sizes for masonry 2-col/3-col
                 className="w-full h-auto block object-cover transition-all duration-[800ms] ease-[cubic-bezier(0.2,1,0.3,1)] group-hover:scale-110 group-hover:rotate-1"
                 loading="lazy"
               />

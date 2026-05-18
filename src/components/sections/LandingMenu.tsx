@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image'; // PERF FIX: replace native <img> with next/image for webp optimization and CLS prevention
+import { useGSAP } from '@/lib/gsap';
 import { buildWaLink } from '@/utils/whatsapp';
 import { useChatStore } from '@/stores/chatStore';
 import { Button } from '@/components/ui/Button';
@@ -118,7 +120,7 @@ function MenuCard({ item }: { item: MenuItem }) {
 
   return (
     <div
-      className="flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1"
+      className="menu-card flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1"
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
@@ -128,11 +130,14 @@ function MenuCard({ item }: { item: MenuItem }) {
       {/* Image placeholder */}
       <div className="relative w-full h-40 overflow-hidden bg-[#1e1e1e] flex-shrink-0">
         {item.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          // PERF FIX: migrated <img> to next/image with fill, lazy, sizes — eliminates CLS from menu images
+          <Image
             src={item.image}
             alt={item.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" // PERF FIX: responsive sizes for 1/2/3 col grid
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            loading="lazy" // PERF FIX: below the fold images should not block initial load
           />
         ) : (
           <div className="flex items-center justify-center h-full text-4xl opacity-30">🍗</div>
@@ -178,26 +183,99 @@ function MenuCard({ item }: { item: MenuItem }) {
 export default function MenuSection() {
   const [activeTab, setActiveTab] = useState<Tab>('combos');
 
-  return (
-    <section id="menu" style={{ background: 'var(--color-bg)', padding: '140px 24px' }}>
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h2
-            className="m-0 uppercase"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(2rem, 6vw, 4rem)',
-              color: 'var(--color-text)',
-            }}
-          >
-            EL MENÚ
-          </h2>
-          <p className="mt-2 text-base" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
-            Todo hecho al momento. Sin conservadores.
-          </p>
-        </div>
+  // ── ScrollTrigger: pinned title + parallax + per-card reveal (desktop) / simple stagger (mobile) ──
+  useGSAP((gsap, ST) => {
+    if (!ST) return;
 
+    ST.matchMedia({
+      // ── Desktop: pinned title layout ─────────────────────────────────
+      '(min-width: 769px)': function () {
+        // Parallax on sticky title
+        gsap.to('.menu-sticky-title', {
+          scrollTrigger: {
+            trigger: '.menu-section',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1.5,
+          },
+          y: -60,
+          ease: 'none',
+        });
+
+        // Per-card reveal + progressive counter
+        const cards = gsap.utils.toArray('.menu-card') as Element[];
+        cards.forEach((card: Element, i: number) => {
+          gsap.from(card, {
+            scrollTrigger: {
+              trigger: card as Element,
+              start: 'top 85%',
+              once: true,
+            },
+            y: 60,
+            opacity: 0,
+            scale: 0.96,
+            duration: 0.6,
+            ease: 'power2.out',
+            clearProps: 'all',
+          });
+
+          // Progressive counter: "1/12" → "12/12"
+          ST.create({
+            trigger: card as Element,
+            start: 'top 60%',
+            onEnter: () => {
+              const countEl = document.querySelector('.menu-count');
+              if (countEl) countEl.textContent = `${i + 1}/${cards.length}`;
+            },
+            onLeaveBack: () => {
+              const countEl = document.querySelector('.menu-count');
+              if (countEl) countEl.textContent = `${i}/${cards.length}`;
+            },
+          });
+        });
+      },
+
+      // ── Mobile: simple stagger, no pin ────────────────────────────────
+      '(max-width: 768px)': function () {
+        gsap.from('.menu-card', {
+          scrollTrigger: {
+            trigger: '.menu-section',
+            start: 'top 80%',
+            once: true,
+          },
+          y: 40,
+          opacity: 0,
+          stagger: 0.1,
+          duration: 0.5,
+          ease: 'power2.out',
+          clearProps: 'all',
+        });
+      },
+    });
+  }, []);
+
+  return (
+    <section id="menu" className="menu-section" style={{ background: 'var(--color-bg)', padding: '140px 24px' }}>
+      {/* ── Sticky title (left on desktop, top on mobile) ────────────── */}
+      <div className="menu-sticky-title">
+        <h2
+          className="m-0 uppercase"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(2rem, 6vw, 4rem)',
+            color: 'var(--color-text)',
+          }}
+        >
+          EL MENÚ
+        </h2>
+        <p className="mt-2 text-base" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
+          Todo hecho al momento. Sin conservadores.
+        </p>
+        <span className="menu-count">0/12</span>
+      </div>
+
+      {/* ── Cards (right on desktop, below on mobile) ────────────────── */}
+      <div className="menu-cards-container">
         {/* Tabs */}
         <div className="flex overflow-x-auto gap-2 pb-2 mb-8 no-scrollbar">
           {TABS.map(({ id, label }) => (

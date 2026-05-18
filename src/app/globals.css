@@ -111,8 +111,25 @@ section[id] {
   text-shadow: 0 0 10px var(--glow);
 }
 
-/* Global transitions */
-* {
+/* PERF FIX: replaced * selector (applied transitions to ALL DOM elements, creating compositor layers on every node) */
+/* Global transitions — scoped only to interactive elements that actually animate */
+.btn,
+.card-premium,
+.glass,
+.bento-item,
+.pro-card,
+.chat-product-card,
+.nav-link::after,
+.impulse-shelf-card,
+.chat-suggestion-chip,
+.btn-pill,
+.vitrina-card,
+.btn-glass,
+.btn-outline,
+.btn-secondary,
+.btn-ghost,
+.pro-btn-primary,
+.pro-btn-secondary {
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 
@@ -758,12 +775,26 @@ p {
 .nav-link:hover::after {
   transform: scaleX(1);
 }
+/* PERF FIX: GSAP handles animation now — CSS animation removed, only layout + GPU hints remain */
 .ticker-track {
   display: flex;
   width: max-content;
   white-space: nowrap;
-  animation: ticker 28s linear infinite;
+}
+
+/* Marquee track inner — GSAP-driven, GPU-accelerated */
+.marquee-track-inner {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
   will-change: transform;
+  transform: translateZ(0); /* PERF FIX: force GPU composite layer */
+}
+
+/* Marquee container row — overflow hidden for infinite scroll illusion */
+.marquee-row {
+  overflow: hidden;
+  position: relative;
 }
 
 /* ─── Admin-specific resets ────────────────────────────────────────────────── */
@@ -811,6 +842,12 @@ p {
   100% { transform: scale(1); }
 }
 .btn-pulse { animation: btnPulse 0.25s ease; }
+
+/* ─── ScrambleText effect — newly revealed characters get accent color ── */
+.scramble-active {
+  color: var(--color-accent, #ff4500);
+  opacity: 0.7;
+}
 
 /* ─── Hero CSS animations (replaces GSAP) ─────────────────────────────────── */
 @keyframes heroDotBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
@@ -1886,5 +1923,55 @@ p {
 }
 .scroll-cta-close:hover {
   color: #fff;
+}
+
+/* ─── Menu Section — Pinned title layout (desktop) ─────────────────────── */
+.menu-section {
+  display: flex;
+  gap: 4rem;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+.menu-sticky-title {
+  flex: 0 0 280px;
+  position: sticky;
+  top: 20vh;
+}
+.menu-sticky-title h2 {
+  margin: 0;
+}
+.menu-sticky-title .menu-count {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--color-primary);
+  line-height: 1;
+  margin-top: 0.75rem;
+}
+.menu-cards-container {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Mobile: collapse to vertical stack, no sticky */
+@media (max-width: 768px) {
+  .menu-section {
+    flex-direction: column;
+    gap: 2rem;
+    min-height: auto;
+  }
+  .menu-sticky-title {
+    flex: none;
+    position: static;
+    text-align: center;
+    width: 100%;
+  }
+  .menu-sticky-title .menu-count {
+    display: none; /* counter hidden on mobile */
+  }
+  .menu-cards-container {
+    flex: none;
+  }
 }
 

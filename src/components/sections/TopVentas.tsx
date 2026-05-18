@@ -56,7 +56,9 @@ export default function TopVentas() {
                   src={getProductImage(product)} 
                   alt={product.name}
                   fill
+                  sizes="(max-width: 768px) 320px, 420px" // PERF FIX: responsive sizes matching card widths, was missing
                   className="object-contain p-4 transition-transform duration-1000 group-hover:scale-110"
+                  loading="lazy" // PERF FIX: below the fold, lazy load to not block LCP
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
               </div>
