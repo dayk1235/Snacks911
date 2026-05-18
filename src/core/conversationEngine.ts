@@ -19,6 +19,29 @@ export async function handleChatMessage(message: string): Promise<BotResponse> {
 
   const lowerMsg = message.toLowerCase();
 
+  if (/(ver\s+)?(mi\s+)?(carrito|cuenta|orden|pedido)|qu[eé]\s+llevo|cu[aá]nto\s+(llevo|es|ser[ií]a|va)|total/i.test(lowerMsg)) {
+    if (store.cart.length === 0) {
+      return { text: "Tu carrito está vacío 😅. ¿Quieres ver combos o bebidas?" };
+    }
+
+    const total = store.getTotal();
+    const lines = store.cart.map(item => `• ${item.qty}x ${item.name} - $${item.price * item.qty}`);
+
+    return {
+      text: `Tu cuenta va así:\n${lines.join('\n')}\n\nTotal: $${total}\n\n¿Quieres agregar algo más o cerramos tu pedido?`,
+      actions: [
+        { id: 'web-summary-drinks', label: '🥤 Agregar bebida', type: 'show_category', value: 'ver bebidas' },
+        { id: 'web-summary-checkout', label: '📦 Pedir ya', type: 'checkout', value: 'Finalizar pedido' },
+      ],
+      ui: {
+        cart: {
+          total,
+          itemCount: store.cart.reduce((sum, item) => sum + item.qty, 0),
+        },
+      },
+    };
+  }
+
   // 1. HARDCODED INTENTS (Conversational Sales Flow)
   if (intentResult.intent === 'CONFIRM_ORDER' || lowerMsg.includes('finalizar') || lowerMsg === 'pagar') {
     if (store.cart.length === 0) {
@@ -40,10 +63,17 @@ export async function handleChatMessage(message: string): Promise<BotResponse> {
       
       if (product) {
         store.addToCart(product);
+        const currentState = useChatStore.getState();
         return { 
           text: `¡Listo! Agregué **${product.name}** a tu pedido. 🔥 ¿Algo más o quieres finalizar?`,
           action: 'add_to_cart',
-          product
+          product,
+          ui: {
+            cart: {
+              total: currentState.getTotal(),
+              itemCount: currentState.cart.reduce((sum, item) => sum + item.qty, 0)
+            }
+          }
         };
       }
     }
@@ -54,9 +84,30 @@ export async function handleChatMessage(message: string): Promise<BotResponse> {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, phone: 'web-user' })
+      body: JSON.stringify({
+        message,
+        phone: 'web-user',
+        cart: {
+          items: store.cart,
+          total: store.getTotal(),
+        },
+      })
     });
     const data = await res.json();
+
+    if (data.cart?.items?.length) {
+      const syncedCart = data.cart.items.map((item: any) => ({
+        id: String(item.id || item.productId),
+        name: item.name,
+        description: item.description || '',
+        price: Number(item.price) || 0,
+        category: item.category || 'general',
+        image: item.image || '',
+        ingredients: item.ingredients || [],
+        qty: Number(item.qty || item.quantity) || 1,
+      }));
+      useChatStore.getState().syncCart(syncedCart);
+    }
     
     // Check if the AI suggested a product or if it's in the UI
     const suggestedProduct = products.find(p => 

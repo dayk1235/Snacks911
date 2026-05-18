@@ -274,3 +274,32 @@ export function handleMessage(
 
   return createResponse(responseText);
 }
+
+/**
+ * NEW: Support for ActionDecision to guide decisions safely without bypassing existing logic.
+ */
+export function handle(params: { intent: any; actionDecision: any; context: any }) {
+  const { intent, actionDecision, context } = params;
+
+  // Use actionDecision to influence the legacy state
+  const stateAdapter: Partial<ChatState> = {
+    producto: actionDecision.entities?.product?.value || null,
+    paso: context.state === 'inicio' ? 'inicio' : 'seleccion'
+  };
+
+  // If there's a strong rejection, force state reset or handle it
+  if (actionDecision.action === 'remove_from_cart') {
+    stateAdapter.paso = 'inicio';
+    stateAdapter.producto = null;
+  }
+
+  // Call the deterministic core logic
+  return handleMessage(
+    intent.input || intent.intent || '',
+    { 
+      intent: (actionDecision.primaryIntent || 'otro') as string, 
+      producto: (stateAdapter.producto ?? null) as string | null 
+    },
+    stateAdapter
+  );
+}

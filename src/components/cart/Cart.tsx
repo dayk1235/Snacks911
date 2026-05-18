@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Button } from '../ui/Button';
 import gsap from 'gsap';
+import { X, ShoppingCart, CreditCard, PartyPopper, Check, Phone } from 'lucide-react';
 import { AdminStore } from '@/lib/adminStore';
 import { track } from '@/lib/analytics';
 import { getProductImage } from '@/data/products';
@@ -90,7 +91,9 @@ function CustomerCaptureModal({
           textAlign: 'center', cursor: 'default',
         }}
       >
-        <div style={{ fontSize: '3rem', marginBottom: '0.75rem', lineHeight: 1 }}>🎉</div>
+        <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+          <PartyPopper size={48} strokeWidth={1.5} color="#FF4500" />
+        </div>
 
         <h3 style={{ margin: '0 0 0.3rem', fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
           ¡Gracias por tu pedido!
@@ -99,15 +102,16 @@ function CustomerCaptureModal({
           Guarda tu info para descuentos y repetir más rápido.
         </p>
         <div style={{
-          display: 'inline-block',
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
           padding: '0.25rem 0.75rem',
           background: 'rgba(255,69,0,0.1)',
           border: '1px solid rgba(255,69,0,0.2)',
           borderRadius: '50px',
           marginBottom: '1.5rem',
         }}>
+          <Check size={14} strokeWidth={3} color="#FF4500" />
           <span style={{ fontSize: '0.72rem', color: '#FF4500', fontWeight: 700 }}>
-            🎁 10% OFF en tu próximo pedido
+            10% OFF en tu próximo pedido
           </span>
         </div>
 
@@ -228,10 +232,8 @@ function OrderConfirmModal({
           cursor: 'default',
         }}
       >
-        <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FF4500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
-          </svg>
+        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+          <Phone size={40} strokeWidth={1.8} color="#FF4500" />
         </div>
 
         <h3 style={{ margin: '0 0 0.6rem', fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
@@ -335,7 +337,9 @@ function PaymentPendingModal({
           cursor: 'default',
         }}
       >
-        <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>💳</div>
+        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+          <CreditCard size={48} strokeWidth={1.5} color="#FF4500" />
+        </div>
 
         <h3 style={{ margin: '0 0 0.6rem', fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
           {customerName ? `¡${customerName}, tu pedido está listo!` : '¡Tu pedido está listo!'}
@@ -352,7 +356,8 @@ function PaymentPendingModal({
             glow
             fullWidth
           >
-            💳 Ir a pagar
+            <CreditCard size={16} strokeWidth={2} className="inline mr-1" />
+            Ir a pagar
           </Button>
 
           <Button
@@ -360,7 +365,8 @@ function PaymentPendingModal({
             variant="success"
             fullWidth
           >
-            ✅ Ya pagué
+            <Check size={16} strokeWidth={3} className="inline mr-1" />
+            Ya pagué
           </Button>
 
           <Button
@@ -525,6 +531,22 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
         if (s?.whatsappNumber) setWhatsappNumber(s.whatsappNumber);
       });
     }
+  }, [isOpen]);
+
+  /* ── Lock body scroll when open ────────────────────────────────────────── */
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  /* ── Escape key closes cart ────────────────────────────────────────────── */
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [isOpen]);
 
   /* ── Drawer animation ──────────────────────────────────────────────────── */
@@ -803,7 +825,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
           position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.65)',
           backdropFilter: 'blur(4px)',
-          zIndex: 200,
+          zIndex: 45,
         }}
       />
 
@@ -820,34 +842,37 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
           backdropFilter: 'blur(28px)',
           WebkitBackdropFilter: 'blur(28px)',
           borderLeft: '1px solid var(--border-subtle)',
-          zIndex: 300,
+          zIndex: 50,
           display: 'flex', flexDirection: 'column',
         }}
       >
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '1.5rem',
+          padding: '1.25rem 1.5rem',
           borderBottom: '1px solid var(--border-subtle)',
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Tu Pedido</h2>
-          <Button
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={20} strokeWidth={2} color="var(--color-primary)" />
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Tu Pedido</h2>
+          </div>
+          <motion.button
             onClick={handleClose}
-            variant="ghost"
-            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '12px', color: 'var(--text-primary)' }}
+            className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Cerrar carrito"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
           >
-            ✕
-          </Button>
+            <X size={18} strokeWidth={2} />
+          </motion.button>
         </div>
 
         {/* Scrollable content area */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {items.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#444', padding: '5rem 1.5rem' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/>
-                </svg>
+              <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                <ShoppingCart size={48} strokeWidth={1.2} color="#444" />
               </div>
               <p style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>
                 Tu carrito está vacío.<br />¡Agrega algo rico!
@@ -1000,7 +1025,7 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                 background: 'rgba(34,197,94,0.08)', borderRadius: '8px',
                 border: '1px solid rgba(34,197,94,0.2)',
               }}>
-                <span style={{ fontSize: '0.7rem' }}>✅</span>
+                <Check size={14} strokeWidth={3} color="#22c55e" />
                 <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 700 }}>¡Pedido mínimo alcanzado!</span>
               </div>
             )}
@@ -1028,7 +1053,8 @@ export default function Cart({ isOpen, onClose, items, onUpdateQuantity, total, 
                 size="lg"
                 glow
               >
-                💳 Pagar con tarjeta
+                <CreditCard size={16} strokeWidth={2} className="inline mr-1" />
+                Pagar con tarjeta
               </Button>
             </div>
           </div>

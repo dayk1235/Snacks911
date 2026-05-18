@@ -1,7 +1,24 @@
 /**
- * aiService.ts
- * 20% layer — calls Gemini with strict guardrails.
- * The AI only "writes" responses; all prices/products come from DB.
+ * @fileoverview aiService.ts — WhatsApp-specific AI layer.
+ *
+ * ⚠️  CONSOLIDATION NOTE (Arquitectura Audit):
+ * La función `getAIResponse()` de este archivo es CASI IDÉNTICA a
+ * `processTransaction()` en `src/core/ai/aiAgent.ts`.
+ *
+ * GANADOR: `src/core/ai/aiAgent.ts`
+ * Razones:
+ *   - Retry con exponential backoff (3 intentos, 500/1000/2000ms)
+ *   - Clasificación de errores tipada (AUTH_ERROR, RATE_LIMIT, JSON_PARSE, etc.)
+ *   - Integración con `logAIFailure` (aiFailureLogger)
+ *   - Guard de API key al inicio
+ *
+ * Este archivo mantiene las funciones EXCLUSIVAS del dominio WhatsApp:
+ *   - `buildContextPayload()` — construye el contexto desde datos de DB
+ *   - `rewriteMessage()`      — mejora estética de mensajes de texto
+ *
+ * @deprecated `getAIResponse` — Para nuevas integraciones preferir
+ *   `processTransaction` de `src/core/ai/aiAgent.ts`.
+ *   Este archivo se mantiene por compatibilidad con waBot y webhook/route.ts.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';

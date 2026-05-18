@@ -126,7 +126,7 @@ export default Hero;
 export const TickerBar = memo(function TickerBar() {
   const items = ['Alitas BBQ', 'Boneless Picante', 'Papas Loaded', 'Combo 911', 'Entrega Rápida', 'Salsas Caseras', 'Snacks 911 🚨'];
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] backdrop-blur-md py-3 border-t overflow-hidden pointer-events-none"
+    <div className="fixed bottom-0 left-0 right-0 z-[100] backdrop-blur-md py-4 border-t overflow-hidden pointer-events-none"
       style={{ background: 'rgba(0,0,0,0.85)', borderColor: 'var(--color-border)' }}>
       <div className="ticker-track flex whitespace-nowrap">
         {[0, 1, 2].map((copy) => (
@@ -134,7 +134,7 @@ export const TickerBar = memo(function TickerBar() {
             {items.map((item) => (
               <span
                 key={`${copy}-${item}`}
-                className="flex items-center text-[0.7rem] font-black tracking-[0.2em] uppercase px-12"
+                className="flex items-center text-[0.85rem] font-black tracking-[0.2em] uppercase px-12"
                 style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
               >
                 {item}

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/admin/cash', label: 'Caja', icon: '💰' },
   { href: '/admin/sales', label: 'Ventas', icon: '📈' },
   { href: '/admin/staff', label: 'Personal', icon: '👥' },
+  { href: '/admin/optimize', label: 'ARIA ✦', icon: '🤖' },
   { href: '/admin/settings', label: 'Configuración', icon: '⚙️' },
 ];
 

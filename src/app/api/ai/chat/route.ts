@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rateLimit'
 
 export async function POST(req: Request) {
   try {
-    const { message, phone } = await req.json()
+    const { message, phone, cart } = await req.json()
     const userId = phone || 'web-user'
 
     const allowed = rateLimit(userId)
@@ -18,7 +18,8 @@ export async function POST(req: Request) {
 
     const result = await getBotResponse({
       message,
-      phone: userId
+      phone: userId,
+      initialCart: cart
     })
 
     const mode = await getSystemMode()

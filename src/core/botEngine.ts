@@ -1,11 +1,14 @@
 import { getContext, updateContext } from "./context";
-import { processWithRouter, detectUserIntent } from "./ai/multiModelRouter";
+import { processWithRouter } from "./ai/multiModelRouter";
+import { getUnifiedIntent } from "./intentDetector";
 import { addToCart, clearCartContext } from "./cartEngine";
 import { dbSaveOrder } from "@/lib/db.server";
 import { isGreetingOnly } from "./nluBaseline";
 import type { Action, UICard, UICart, BotUI } from "./types";
 import { getProductImage, products as staticProducts } from "@/data/products";
 import { getBestUpsell } from "./offerAgent";
+import { resolveAction } from "./actionResolver";
+import * as flowEngine from "@/ai/runtime/flowEngine";
 import { getCustomerData, recordPurchase } from "@/lib/customerMemory";
 import { getCacheKey, getCachedResponse, setCachedResponse, isInDegradedMode, recordAIFailure, recordAISuccess } from "@/lib/responseCache";
 
@@ -65,10 +68,12 @@ export async function getBotResponse({
   message,
   phone,
   tenantId,
+  initialCart,
 }: {
   message: string;
   phone?: string;
   tenantId?: string;
+  initialCart?: any;
 }) {
   const isWeb = phone === 'web-user';
   const cleanPhone = phone ? normalizePhone(phone) : 'anonymous';
@@ -89,9 +94,32 @@ export async function getBotResponse({
   // 2. Load User Context
   const context = getContext(cleanPhone, activeTenantId, businessName);
 
+  if (initialCart && Array.isArray(initialCart.items)) {
+    const items = initialCart.items
+      .map((item: any) => ({
+        id: String(item.id || item.productId || ''),
+        productId: String(item.productId || item.id || ''),
+        name: item.name || 'Producto',
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity || item.qty) || 1,
+        qty: Number(item.qty || item.quantity) || 1,
+      }))
+      .filter((item: any) => item.id && item.quantity > 0);
+
+    context.cart = {
+      items,
+      total: Number(initialCart.total) || items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0),
+    };
+  }
+
   // 3. Fetch Available Products
   const allProducts = await dbGetProductsSafe();
   const availableProducts = allProducts.filter((p: any) => p.available !== false && p.stock !== 0);
+
+  const cartSummaryRequest = /(ver\s+)?(mi\s+)?(carrito|cuenta|orden|pedido)|qu[eé]\s+llevo|cu[aá]nto\s+(llevo|es|ser[ií]a|va)|total/i.test(message);
+  if (cartSummaryRequest) {
+    return buildCartSummaryResponse(context);
+  }
 
   // 4. Shortcut: respond instantly to simple greetings without calling the AI
   if (isGreetingOnly(message)) {
@@ -232,8 +260,39 @@ export async function getBotResponse({
     };
   }
 
-  // 4.3 Cache check
-  const quickIntent = detectUserIntent(message);
+  // 4.3 Action Resolution & Cache check
+  const unifiedIntent = await getUnifiedIntent(message);
+  
+  // --- ACTION RESOLUTION LAYER INTEGRATION ---
+  const actionDecision = resolveAction(unifiedIntent);
+  context.actionDecision = actionDecision;
+  
+  if (actionDecision.secondaryActions && actionDecision.secondaryActions.length > 0) {
+    context.pendingActions = actionDecision.secondaryActions;
+  }
+
+  // Confirmation Handling
+  if (actionDecision.requiresConfirmation) {
+    return {
+      text: actionDecision.reason ? `😅 No estoy 100% seguro. ¿Me confirmas que quieres ${actionDecision.action}?` : `😅 ¿Me confirmas tu pedido?`,
+      cart: context.cart,
+      type: 'buttons',
+      actions: [
+        { id: 'yes', label: '✅ Sí', type: 'postback', value: 'si' },
+        { id: 'no', label: '❌ No', type: 'postback', value: 'no' }
+      ]
+    };
+  }
+
+  // Pass into flowEngine to guide decisions (acts as state influencer for subsequent AI turns)
+  flowEngine.handle({
+    intent: unifiedIntent,
+    actionDecision,
+    context
+  });
+  // -------------------------------------------
+
+  const quickIntent = unifiedIntent.intent as any;
   const cacheKey = getCacheKey(message, quickIntent, context);
   if (cacheKey && !context.cart?.items?.length) {
     const cached = getCachedResponse(cacheKey);
@@ -463,6 +522,52 @@ function getSmartComplements(cartItems: any[], availableProducts: any[]): any[] 
   }
 
   return complements;
+}
+
+function buildCartSummaryResponse(context: any) {
+  const items = context.cart?.items || [];
+
+  if (!items.length) {
+    return {
+      text: 'Tu carrito está vacío por ahora. ¿Quieres ver combos, boneless o bebidas?',
+      cart: context.cart,
+      type: 'buttons',
+      actions: [
+        { id: 'empty-combos', label: '🔥 Ver combos', type: 'show_category', value: 'ver combos' },
+        { id: 'empty-bebidas', label: '🥤 Ver bebidas', type: 'show_category', value: 'ver bebidas' },
+      ],
+      ui: null,
+    };
+  }
+
+  const total = items.reduce((sum: number, item: any) => {
+    const qty = Number(item.quantity || item.qty) || 1;
+    return sum + (Number(item.price) || 0) * qty;
+  }, 0);
+
+  context.cart.total = total;
+
+  const lines = items.map((item: any) => {
+    const qty = Number(item.quantity || item.qty) || 1;
+    const price = Number(item.price) || 0;
+    return `• ${qty}x ${item.name} - $${price * qty}`;
+  });
+
+  return {
+    text: `Tu cuenta va así:\n${lines.join('\n')}\n\nTotal: $${total}\n\n¿Quieres agregar algo más o cerramos tu pedido?`,
+    cart: context.cart,
+    type: 'buttons',
+    actions: [
+      { id: 'summary-drinks', label: '🥤 Agregar bebida', type: 'show_category', value: 'ver bebidas' },
+      { id: 'summary-checkout', label: '📦 Pedir ya', type: 'checkout', value: 'confirmar pedido' },
+    ],
+    ui: {
+      cart: {
+        total,
+        itemCount: items.reduce((sum: number, item: any) => sum + (Number(item.quantity || item.qty) || 1), 0),
+      },
+    },
+  };
 }
 
 // ─── Context-Aware Fallback Inference ────────────────────────────────────────
@@ -716,7 +821,7 @@ function detectCategoryMention(message: string): string {
   if (/alitas|boneless|proteina/i.test(n)) return 'proteina';
   if (/papas|loaded/i.test(n)) return 'papas';
   if (/banderilla|dedos|salchila/i.test(n)) return 'banderillas';
-  if (/bebida|refresco|tomar/i.test(n)) return 'bebidas';
+  if (/bebida|bebidas|refresco|tomar|beber/i.test(n)) return 'bebidas';
   if (/postre|brownie|helado/i.test(n)) return 'postres';
   return 'combos';
 }
@@ -747,17 +852,24 @@ function buildChatUI(
   }
 
   // Product cards when user asks for menu/combos/categories
-  const isMenuQuery = /menu|carta|combos|que (hay|tienen|venden)|muestrame|enseñame|productos|alitas|boneless|papas|banderilla|bebida|refresco|postre|salsa|salsas|dip|dips|aderezo|aderezos|extra|extras/i.test(nMsg);
+  const isMenuQuery = /menu|carta|combos|que (hay|tienen|venden)|muestrame|enseñame|productos|alitas|boneless|papas|banderilla|bebida|bebidas|refresco|tomar|beber|postre|salsa|salsas|dip|dips|aderezo|aderezos|extra|extras/i.test(nMsg);
   const isAddQuery = /quiero|dame|agrega|pon|añade|me das|pidamos|ordenar/i.test(nMsg);
-  const hasTalk = aiResponse.actions?.some((a: any) => a.type === 'TALK');
 
-  if (isMenuQuery && hasTalk) {
+  if (isMenuQuery) {
     const cat = detectCategoryMention(nMsg);
-    const products = availableProducts
+    let matchedProducts = availableProducts
       .filter((p: any) => p.category === cat && p.id)
       .slice(0, 4);
-    if (products.length > 0) {
-      ui.cards = products.map((p: any) => ({
+      
+    // Fallback to static products if DB returned none for this category
+    if (matchedProducts.length === 0) {
+      matchedProducts = staticProducts
+        .filter((p: any) => p.category === cat)
+        .slice(0, 4);
+    }
+      
+    if (matchedProducts.length > 0) {
+      ui.cards = matchedProducts.map((p: any) => ({
         id: String(p.id),
         title: p.name || '',
         description: p.description || '',

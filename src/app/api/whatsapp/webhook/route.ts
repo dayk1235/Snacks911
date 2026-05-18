@@ -7,13 +7,17 @@ import { getAIResponse, buildContextPayload, type MenuItemContext } from '@/lib/
 import { dbGetProductsServer } from '@/lib/dbServer';
 import { logConversation } from '@/lib/logger';
 import { extractAndSaveInsights } from '@/core/ai/memoryAgent';
-import { getBotResponse } from '@/core/botEngine';
 import { detectIntent } from '@/core';
 import { getDBCircuitHealth, resetDBCircuits } from '@/lib/db.server';
 import { eventBus } from '@/core/eventBus';
 import { initShadowEngine } from '@/core/ai/shadowEngine';
 import { initCommander } from '@/lib/commander';
 import { updateContext, getContext } from '@/core/context';
+import { rateLimit } from '@/lib/rateLimit';
+import {
+  handleIncomingMessage as handleWhatsAppAdapterMessage,
+  type WhatsAppAdapterResponse,
+} from '@/core/whatsappAdapter';
 
 initShadowEngine();
 initCommander();
@@ -25,6 +29,54 @@ initCommander();
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
 const API_VERSION = 'v19.0';
+
+type NormalizedWhatsAppType = 'text' | 'button' | 'list' | 'order';
+
+interface NormalizedWhatsAppMessage {
+  from: string;
+  type: NormalizedWhatsAppType;
+  payload: any;
+}
+
+interface ParsedWhatsAppMessage extends NormalizedWhatsAppMessage {
+  messageId: string;
+  metadata: {
+    displayPhoneNumber?: string;
+    phoneNumberId?: string;
+  };
+}
+
+interface WhatsAppWebhookBody {
+  object?: string;
+  entry?: Array<{
+    id?: string;
+    changes?: Array<{
+      field?: string;
+      value?: {
+        messaging_product?: string;
+        metadata?: {
+          display_phone_number?: string;
+          phone_number_id?: string;
+        };
+        messages?: WhatsAppRawMessage[];
+      };
+    }>;
+  }>;
+}
+
+interface WhatsAppRawMessage {
+  id?: string;
+  from?: string;
+  type?: string;
+  text?: { body?: string };
+  button?: { text?: string; payload?: string };
+  interactive?: {
+    type?: string;
+    button_reply?: { id?: string; title?: string };
+    list_reply?: { id?: string; title?: string; description?: string };
+  };
+  order?: Record<string, unknown>;
+}
 
 /* =========================|
    GET — Webhook Verification
@@ -54,140 +106,130 @@ export async function GET(req: Request) {
 }
 
 /* =========================
-   POST — Incoming Messages
+   WhatsApp Parsing
 ========================= */
 
-import { rateLimit } from '@/lib/rateLimit';
+function parseWhatsAppMessage(body: WhatsAppWebhookBody): NormalizedWhatsAppMessage | null {
+  return parseWhatsAppMessages(body)[0] ?? null;
+}
+
+function parseWhatsAppMessages(body: WhatsAppWebhookBody): ParsedWhatsAppMessage[] {
+  const parsed: ParsedWhatsAppMessage[] = [];
+
+  for (const entry of body.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      const value = change.value;
+      const metadata = {
+        displayPhoneNumber: value?.metadata?.display_phone_number,
+        phoneNumberId: value?.metadata?.phone_number_id,
+      };
+
+      for (const message of value?.messages ?? []) {
+        const normalized = normalizeRawMessage(message);
+        if (!normalized) continue;
+
+        parsed.push({
+          ...normalized,
+          messageId: message.id || `${normalized.from}-${Date.now()}`,
+          metadata,
+        });
+      }
+    }
+  }
+
+  return parsed;
+}
+
+function normalizeRawMessage(message: WhatsAppRawMessage): NormalizedWhatsAppMessage | null {
+  if (!message.from) return null;
+
+  if (message.type === 'text' && message.text?.body) {
+    return {
+      from: message.from,
+      type: 'text',
+      payload: { text: message.text.body },
+    };
+  }
+
+  if (message.type === 'button' && message.button) {
+    return {
+      from: message.from,
+      type: 'button',
+      payload: {
+        id: message.button.payload || message.button.text || '',
+        title: message.button.text || message.button.payload || '',
+      },
+    };
+  }
+
+  if (message.type === 'interactive' && message.interactive?.button_reply) {
+    return {
+      from: message.from,
+      type: 'button',
+      payload: {
+        id: message.interactive.button_reply.id || '',
+        title: message.interactive.button_reply.title || '',
+      },
+    };
+  }
+
+  if (message.type === 'interactive' && message.interactive?.list_reply) {
+    return {
+      from: message.from,
+      type: 'list',
+      payload: {
+        id: message.interactive.list_reply.id || '',
+        title: message.interactive.list_reply.title || '',
+        description: message.interactive.list_reply.description || '',
+      },
+    };
+  }
+
+  if (message.type === 'order' && message.order) {
+    return {
+      from: message.from,
+      type: 'order',
+      payload: message.order,
+    };
+  }
+
+  return null;
+}
+
+function getMessageContent(message: NormalizedWhatsAppMessage): string {
+  if (message.type === 'text') return String(message.payload.text || '').trim();
+  if (message.type === 'button' || message.type === 'list') {
+    return String(message.payload.id || message.payload.title || '').trim();
+  }
+  if (message.type === 'order') return 'orden de catálogo';
+  return '';
+}
+
+/* =========================
+   POST — Incoming Messages
+========================= */
 
 export async function POST(req: NextRequest) {
   console.log("WEBHOOK HIT POST");
 
   try {
-    const body = await req.json();
+    const body = (await req.json()) as WhatsAppWebhookBody;
     console.log("[WA RAW] Payload received:", JSON.stringify(body, null, 2).slice(0, 500));
-    
-    if (!body.entry) {
+
+    const firstMessage = parseWhatsAppMessage(body);
+    if (!firstMessage) {
       return NextResponse.json({ status: 'ok' });
     }
 
-    for (const entry of body.entry) {
-      for (const change of entry.changes || []) {
-        const metadata = change.value?.metadata;
-        const displayPhoneNumber = metadata?.display_phone_number;
-        const messages = change.value?.messages || [];
-
-        // 0. Resolve Tenant
-        if (!displayPhoneNumber) {
-           console.error("[WA] Missing display_phone_number in metadata");
-           continue;
+    const parsedMessages = parseWhatsAppMessages(body);
+    for (const parsedMessage of parsedMessages) {
+      try {
+        await processWebhookMessage(parsedMessage);
+      } catch (error) {
+        if ((error as Error).message === 'RATE_LIMITED') {
+          return new Response("Too many requests", { status: 429 });
         }
-        
-        const { getTenantByWhatsAppNumber } = await import('@/lib/tenant/tenantResolver');
-        const tenant = await getTenantByWhatsAppNumber(displayPhoneNumber);
-
-        if (!tenant) {
-          console.error(`[WA] No active tenant found for number: ${displayPhoneNumber}`);
-          continue;
-        }
-
-        for (const msg of messages) {
-          const from = msg.from;
-          
-          // Rate Limit Check (per phone number)
-          if (from && !rateLimit(from, 5, 10000)) {
-            console.warn("[RATE LIMIT] WhatsApp sender:", from);
-            return new Response("Too many requests", { status: 429 });
-          }
-
-          const messageId = msg.id;
-          const text = msg.text?.body;
-          const buttonId = msg?.interactive?.button_reply?.id;
-          const listId = msg?.interactive?.list_reply?.id;
-
-          if (!text && !buttonId && !listId) {
-            console.log('[WA] Skipping non-text:', msg.type);
-            continue;
-          }
-
-          const userInput = text || buttonId || listId;
-          if (!userInput || !from) continue;
-
-          // DB-level deduplication
-          const deduped = await deduplicateMessage(messageId, from, userInput);
-          if (!deduped) {
-            console.log('[WA] Duplicate message, skipping:', messageId);
-            continue;
-          }
-
-          console.log('[WA] Processing:', { from, text: userInput, tenant: tenant.business_name });
-          
-          // Emit raw user message event
-          eventBus.emit('USER_MESSAGE', {
-            tenantId: tenant.id,
-            userId: from,
-            message: userInput,
-            timestamp: Date.now()
-          });
-
-          // --- Debug Admin ---
-          const adminPhone = process.env.ADMIN_WHATSAPP_PHONE;
-          console.log('[WA DEBUG] Admin Check:', { incoming: from, expected: adminPhone, match: from === adminPhone });
-
-          if (adminPhone && from === adminPhone) {
-            const handled = await handleAdminCommand(from, userInput, tenant.whatsapp_token, metadata.phone_number_id);
-            if (handled) continue;
-          }
-
-          // 2. Detect Intent
-          const nlu = detectIntent(userInput);
-          
-          updateContext(from, { lastUserMessage: userInput, tenantId: tenant.id });
-
-          // 3. Check if bot is paused (Human intervened)
-          const ctx = getContext(from);
-          if (ctx.botPaused) {
-            console.log(`[WA] Bot paused for ${from}, skipping AI response.`);
-            continue;
-          }
-
-          // 4. Execute brain (Multi-tenant aware)
-          const output = await getBotResponse({
-            message: userInput,
-            phone: from,
-            tenantId: tenant.id
-          });
-
-          // 5. Update context
-          await logConversation({
-            phone: from,
-            user_message: userInput,
-            bot_response: output.text,
-            intent: nlu.intent,
-            tenant_id: tenant.id
-          });
-
-          // Persistent memory (scoped)
-          extractAndSaveInsights(from, userInput, output.text).catch((e) => 
-            console.error('[WA] Insight error:', e)
-          );
-
-          // 6. Send Response — use interactive buttons if available
-          await sendBotResponse(
-            from,
-            output,
-            tenant.whatsapp_token,
-            metadata.phone_number_id
-          );
-
-          // Emit bot response event
-          eventBus.emit('BOT_RESPONSE', {
-            tenantId: tenant.id,
-            userId: from,
-            response: output.text,
-            intentDetected: nlu.intent,
-            timestamp: Date.now()
-          });
-        }
+        throw error;
       }
     }
 
@@ -196,6 +238,131 @@ export async function POST(req: NextRequest) {
     console.error('[WA] Error:', error);
     return NextResponse.json({ status: 'error' }, { status: 200 });
   }
+}
+
+async function processWebhookMessage(parsedMessage: ParsedWhatsAppMessage): Promise<void> {
+  const from = parsedMessage.from;
+  const userInput = getMessageContent(parsedMessage);
+
+  if (!userInput) {
+    console.log('[WA] Skipping unsupported message:', parsedMessage.type);
+    return;
+  }
+
+  if (!rateLimit(from, 5, 10000)) {
+    console.warn("[RATE LIMIT] WhatsApp sender:", from);
+    throw new Error('RATE_LIMITED');
+  }
+
+  const displayPhoneNumber = parsedMessage.metadata.displayPhoneNumber;
+  if (!displayPhoneNumber) {
+    console.error("[WA] Missing display_phone_number in metadata");
+    return;
+  }
+
+  const { getTenantByWhatsAppNumber } = await import('@/lib/tenant/tenantResolver');
+  const tenant = await getTenantByWhatsAppNumber(displayPhoneNumber);
+
+  if (!tenant) {
+    console.error(`[WA] No active tenant found for number: ${displayPhoneNumber}`);
+    return;
+  }
+
+  const deduped = await deduplicateMessage(parsedMessage.messageId, from, userInput, parsedMessage.type);
+  if (!deduped) {
+    console.log('[WA] Duplicate message, skipping:', parsedMessage.messageId);
+    return;
+  }
+
+  console.log('[WA] Processing:', {
+    from,
+    type: parsedMessage.type,
+    text: userInput,
+    tenant: tenant.business_name,
+  });
+
+  eventBus.emit('USER_MESSAGE', {
+    tenantId: tenant.id,
+    userId: from,
+    message: userInput,
+    timestamp: Date.now()
+  });
+
+  const adminPhone = process.env.ADMIN_WHATSAPP_PHONE;
+  console.log('[WA DEBUG] Admin Check:', { incoming: from, expected: adminPhone, match: from === adminPhone });
+
+  if (adminPhone && from === adminPhone) {
+    const handled = await handleAdminCommand(
+      from,
+      userInput,
+      tenant.whatsapp_token,
+      parsedMessage.metadata.phoneNumberId
+    );
+    if (handled) return;
+  }
+
+  const nlu = detectIntent(userInput);
+
+  updateContext(from, { lastUserMessage: userInput, tenantId: tenant.id });
+
+  const ctx = getContext(from);
+  if (ctx.botPaused) {
+    console.log(`[WA] Bot paused for ${from}, skipping AI response.`);
+    return;
+  }
+
+  const adapterResponse = await handleWhatsAppAdapterMessage({
+    from,
+    type: parsedMessage.type,
+    payload: parsedMessage.payload,
+    tenantId: tenant.id,
+  });
+  const output = toBotOutput(adapterResponse);
+
+  await logConversation({
+    phone: from,
+    user_message: userInput,
+    bot_response: output.text,
+    intent: nlu.intent,
+    tenant_id: tenant.id
+  });
+
+  extractAndSaveInsights(from, userInput, output.text).catch((e) =>
+    console.error('[WA] Insight error:', e)
+  );
+
+  await sendBotResponse(
+    from,
+    output,
+    tenant.whatsapp_token,
+    parsedMessage.metadata.phoneNumberId
+  );
+
+  eventBus.emit('BOT_RESPONSE', {
+    tenantId: tenant.id,
+    userId: from,
+    response: output.text,
+    intentDetected: nlu.intent,
+    timestamp: Date.now()
+  });
+}
+
+function toBotOutput(response: WhatsAppAdapterResponse): BotOutput {
+  if (response.type === 'text') {
+    return {
+      text: typeof response.content === 'string'
+        ? response.content
+        : String(response.content?.text || response.content?.message || ''),
+      type: 'text',
+    };
+  }
+
+  return {
+    text: response.content?.text || '',
+    type: response.content?.type,
+    actions: response.content?.actions,
+    ui: response.content?.ui,
+  };
 }
 
 /* =========================
@@ -263,7 +430,12 @@ async function handleAdminCommand(phone: string, text: string, token?: string, p
    Deduplication (DB Unique)
 ========================= */
 
-async function deduplicateMessage(messageId: string, phone: string, content: string): Promise<boolean> {
+async function deduplicateMessage(
+  messageId: string,
+  phone: string,
+  content: string,
+  messageType: NormalizedWhatsAppType = 'text'
+): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     console.error('[WA] No getSupabaseAdmin() client');
@@ -276,7 +448,7 @@ async function deduplicateMessage(messageId: string, phone: string, content: str
       wa_message_id: messageId,
       phone_number: phone,
       direction: 'inbound',
-      message_type: 'text',
+      message_type: messageType,
       content: content,
     });
 

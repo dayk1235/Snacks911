@@ -1,6 +1,7 @@
 'use client';
 
 import { useCartStore } from '@/lib/cartStore';
+import { ShoppingCart } from 'lucide-react';
 
 export default function CartBar() {
   const { totalItems, totalPrice } = useCartStore();
@@ -10,11 +11,11 @@ export default function CartBar() {
   return (
     <div 
       id="cartBar" 
-      className="glass cart-bar fixed bottom-[calc(40px+var(--safe-area-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-80px)] max-w-[700px] h-[90px] flex items-center justify-between px-10 z-[1000] transition-all duration-[800ms] border border-white/10"
+      className="glass cart-bar fixed bottom-[calc(40px+var(--safe-area-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-80px)] max-w-[700px] h-[90px] flex items-center justify-between px-10 z-30 transition-all duration-[800ms] border border-white/10"
     >
       <div className="flex items-center gap-4">
-        <div id="cartIcon" className="relative text-2xl">
-          🛒
+        <div id="cartIcon" className="relative">
+          <ShoppingCart size={24} strokeWidth={1.8} className="text-[var(--fg)]" />
           <span id="cartCount" className="absolute -top-2.5 -right-2.5 bg-[var(--accent)] text-[var(--bg)] text-[0.7rem] font-black w-[18px] h-[18px] rounded-full flex items-center justify-center animate-[pulse-glow_2s_infinite]">
             {totalItems}
           </span>
@@ -32,7 +33,7 @@ export default function CartBar() {
         className="btn btn-primary !py-2.5 !px-6 !text-[0.8rem] !font-black !tracking-widest"
         onClick={() => window.location.href = '/checkout'}
       >
-        CHECKOUT 🔥
+        CHECKOUT
       </button>
 
       <style jsx>{`

@@ -1,6 +1,17 @@
 /**
  * multiAiRouter.ts — Routes user intent to the best AI model.
  *
+ * ⚠️  CONSOLIDATION NOTE (Arquitectura Audit):
+ * Este módulo exporta `detectIntent(text): Intent` — KEYWORD/REGEX, sin IA.
+ * NO confundir con `detectIntent` de `src/ai/runtime/intentAgent.ts`
+ * que llama a Gemini y devuelve { intent, producto }.
+ *
+ * AMBOS COEXISTEN — dominios distintos:
+ *   - multiAiRouter.detectIntent  → enruta mensajes complejos al modelo AI correcto
+ *   - intentAgent.detectIntent    → clasifica la INTENCIÓN del cliente en el bot de ventas
+ *
+ * Importado por: multiAiOrchestrator.ts (para tareas admin/multi-modelo)
+ *
  * MAPEO:
  * ventas, estrategia, sistema → GPT
  * logica, codigo, estructura → QWEN

@@ -155,6 +155,28 @@ describe('UI Enhancements', () => {
     expect(checkoutAction).toBeDefined();
   });
 
+  test('beverage request returns beverage cards', async () => {
+    const res = await getBotResponse({ message: 'y algo para beber', phone });
+
+    expect(res.ui?.cards).toBeDefined();
+    expect(res.ui?.cards?.some((card: UICard) => /refresco|bebida/i.test(card.title))).toBe(true);
+  });
+
+  test('cart summary request returns account total', async () => {
+    const ctx = getContext(phone);
+    ctx.cart = {
+      items: [{ id: '8', productId: '8', name: 'Boneless 250g', quantity: 1, qty: 1, price: 139 }],
+      total: 139,
+    };
+    updateContext(phone, { cart: ctx.cart });
+
+    const res = await getBotResponse({ message: 'muéstrame mi cuenta', phone });
+
+    expect(res.text).toContain('Total: $139');
+    expect(res.ui?.cart?.total).toBe(139);
+    expect((res.actions as Action[]).some(action => action.type === 'checkout')).toBe(true);
+  });
+
   test('no checkout action when cart is empty', async () => {
     deleteContext(phone);
     const res = await getBotResponse({ message: 'hola', phone });

@@ -24,6 +24,35 @@ const failureLogs: AIFailureLog[] = [];
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+export interface IntentLog {
+  timestamp: string;
+  input: string;
+  intent: string;
+  confidence: number;
+  source: 'rule' | 'llm';
+  entities?: any;
+  intents?: string[];
+  primaryIntent?: string;
+}
+
+const intentLogs: IntentLog[] = [];
+
+/** Record a structured intent detection decision. */
+export function logIntentDecision(entry: Omit<IntentLog, 'timestamp'>): void {
+  const log: IntentLog = {
+    timestamp: new Date().toISOString(),
+    ...entry,
+  };
+
+  if (intentLogs.length >= MAX_LOGS) {
+    intentLogs.shift();
+  }
+  intentLogs.push(log);
+
+  // Structured JSON logging for production observability
+  console.log(JSON.stringify({ type: 'INTENT_DECISION', ...log }));
+}
+
 /** Record a structured AI failure event. */
 export function logAIFailure(entry: Omit<AIFailureLog, 'timestamp'>): void {
   const log: AIFailureLog = {

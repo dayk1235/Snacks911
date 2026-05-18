@@ -100,6 +100,8 @@ export interface ConversationState {
   recommendedProducts?: RecommendedProduct[];
   lastProductsShown?: string[];
   messages: ChatMessage[];
+  actionDecision?: any;
+  pendingActions?: string[];
 }
 
 export const INITIAL_STATE: ConversationState = {
@@ -249,6 +251,8 @@ export interface UserContext {
   userId: string;
   cart: Cart;
   state: string;
+  actionDecision?: any;
+  pendingActions?: string[];
 }
 
 export interface ProductRefs {

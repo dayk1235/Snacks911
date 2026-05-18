@@ -9,6 +9,20 @@
 
 import { Intent } from './types';
 import { isGreetingOnly } from './nluBaseline';
+import { detectIntent as detectIntentLLM } from '@/ai/runtime/intentAgent';
+import { logIntentDecision } from '@/lib/aiFailureLogger';
+
+export interface UnifiedIntent {
+  intent: string; // primaryIntent for backward compatibility
+  confidence: number;
+  source: 'rule' | 'llm';
+  entities?: {
+    product?: { value: string; confidence: number };
+    quantity?: { value: number; confidence: number };
+  };
+  intents?: string[];
+  primaryIntent?: string;
+}
 
 /**
  * Safely loads learned rules (server-only, lazy).
@@ -1005,6 +1019,197 @@ export function extractAllergies(message: string): string[] {
   // Remove duplicates and return
   const result = [...new Set(allergies)];
   return result;
+}
+
+/**
+ * Pipeline de detección de intención unificado.
+ * 1. Ejecuta intentDetector (reglas/regex).
+ * 2. Si la confianza es < 0.8, llama a intentAgent (LLM).
+ * 3. Devuelve formato unificado.
+ */
+export async function getUnifiedIntent(message: string): Promise<UnifiedIntent> {
+  const low = message.toLowerCase().trim();
+  const start = Date.now();
+
+  // 0. Empty/Short Input Handling
+  if (!low || low.length < 2) {
+    const res: UnifiedIntent = {
+      intent: 'unknown',
+      confidence: 0.1,
+      source: 'rule',
+      intents: ['unknown'],
+      primaryIntent: 'unknown'
+    };
+    logIntentDecision({ input: message, ...res });
+    return res;
+  }
+
+  // 1. Negation Detection (High Priority)
+  const negationPatterns = [
+    /\bno\s+quiero\b/i,
+    /\bsin\b/i,
+    /\bquita\b/i,
+    /\bno\s+me\s+des\b/i,
+    /\belimina\b/i,
+    /\borra\b/i
+  ];
+  
+  if (negationPatterns.some(p => p.test(low))) {
+    const ruleResult = detectIntent(message);
+    const ruleEntities = parseEntitiesRecord(ruleResult.entities);
+    
+    const res: UnifiedIntent = {
+      intent: 'reject_item',
+      confidence: 0.9,
+      source: 'rule',
+      entities: {
+        product: ruleEntities.products[0] ? { value: ruleEntities.products[0], confidence: 0.95 } : undefined,
+        quantity: ruleEntities.qty[0] ? { value: ruleEntities.qty[0], confidence: 0.95 } : undefined
+      },
+      intents: ['reject_item'],
+      primaryIntent: 'reject_item'
+    };
+    logIntentDecision({ input: message, ...res });
+    return res;
+  }
+
+  // 2. Multi-intent Detection Logic
+  const intentTriggers = [
+    { pattern: /menu|carta|ver|mostrar|enseñ/i, intent: 'browse_menu' },
+    { pattern: /combos|paquetes/i, intent: 'browse_menu' },
+    { pattern: /quiero|dame|agrega|ponme|pide|pedir|orden|encarga/i, intent: 'order' },
+    { pattern: /recomienda|que es lo mejor|sugiere|sorprende/i, intent: 'fallback' }
+  ];
+
+  const detectedIntents = intentTriggers
+    .filter(t => t.pattern.test(low))
+    .map(t => t.intent);
+
+  // 3. Fast Path: Preloaded Patterns (from multiModelRouter)
+  if (/^(ver\s+)?combos?$/i.test(low)) {
+    const res: UnifiedIntent = { 
+      intent: 'browse_menu', 
+      confidence: 0.95, 
+      source: 'rule',
+      intents: ['browse_menu'],
+      primaryIntent: 'browse_menu'
+    };
+    logIntentDecision({ input: message, ...res });
+    return res;
+  }
+  if (/^(ver\s+)?men[uú]|(ver\s+)?carta|(ver\s+)?todo(\s+el)?(\s+men[uú])?$/i.test(low)) {
+    const res: UnifiedIntent = { 
+      intent: 'browse_menu', 
+      confidence: 0.95, 
+      source: 'rule',
+      intents: ['browse_menu'],
+      primaryIntent: 'browse_menu'
+    };
+    logIntentDecision({ input: message, ...res });
+    return res;
+  }
+  
+  // Specific order detection (quantity + product)
+  if (/^\d+\s+(alitas|boneless|papas|refresco|combo)/i.test(low)) {
+    const res: UnifiedIntent = { 
+      intent: 'order', 
+      confidence: 0.9, 
+      source: 'rule',
+      intents: ['order'],
+      primaryIntent: 'order'
+    };
+    // Entities extracted in Step 4 below
+  }
+
+  // 4. Step 1: Rule-based detector
+  const ruleResult = detectIntent(message);
+  
+  const intentMap: Record<string, string> = {
+    'pedido': 'order',
+    'ADD_TO_CART': 'order',
+    'list_products': 'browse_menu',
+    'SHOW_CATEGORY': 'browse_menu',
+    'SHOW_MENU': 'browse_menu',
+    'combos': 'browse_menu',
+    'menu': 'browse_menu',
+    'saludo': 'saludo',
+    'GREETING': 'saludo',
+    'rechazo_fuerte': 'rechazar',
+    'rechazo': 'rechazar',
+    'aceptacion': 'confirmar',
+    'CHECKOUT': 'confirmar',
+    'CONFIRM_ORDER': 'confirmar',
+    'duda': 'fallback',
+    'RECOMMEND': 'fallback',
+    'recomendacion': 'fallback',
+    'precio': 'otro',
+    'exploracion': 'browse_menu',
+    'browsing': 'saludo',
+    'gratitud': 'otro',
+    'despedida': 'otro',
+    'VIEW_CART': 'otro',
+    'vacio': 'fallback',
+    'otro': 'fallback'
+  };
+
+  // Confidence Calibration
+  let baseConfidence = ruleResult.confidence;
+  const hasVerb = /quiero|ver|dame|ponme|pide/i.test(low);
+  const hasProduct = /alitas|boneless|papas|combo|refresco/i.test(low);
+  
+  if (hasVerb && hasProduct) baseConfidence = 0.92;
+  else if (hasProduct || hasVerb) baseConfidence = 0.75;
+  else baseConfidence = 0.55;
+
+  if (baseConfidence >= 0.4) {
+    const ruleEntities = parseEntitiesRecord(ruleResult.entities);
+    
+    let finalIntent = intentMap[ruleResult.intent] || ruleResult.intent;
+    if (finalIntent === 'browse_menu' && ruleEntities.products.length > 0 && !low.includes('ver') && !low.includes('que hay')) {
+      finalIntent = 'order';
+    }
+
+    const res: UnifiedIntent = {
+      intent: finalIntent,
+      confidence: baseConfidence,
+      source: 'rule',
+      entities: {
+        product: ruleEntities.products[0] ? { value: ruleEntities.products[0], confidence: baseConfidence } : undefined,
+        quantity: ruleEntities.qty[0] ? { value: ruleEntities.qty[0], confidence: baseConfidence } : undefined
+      },
+      intents: [...new Set([...detectedIntents, finalIntent])],
+      primaryIntent: finalIntent
+    };
+    logIntentDecision({ input: message, ...res });
+    return res;
+  }
+
+  // 5. Step 2: LLM Fallback
+  console.log(`[intentDetector] Low confidence (${baseConfidence}), calling LLM fallback...`);
+  const llmResult = await detectIntentLLM(message);
+  
+  let llmIntent = intentMap[llmResult.intent] || llmResult.intent;
+  if (llmIntent === 'producto') llmIntent = 'order';
+  if (llmIntent === 'recomendacion') llmIntent = 'fallback';
+
+  const res: UnifiedIntent = {
+    intent: llmIntent,
+    confidence: 0.85, // LLM fallback confidence calibrated
+    source: 'llm',
+    entities: {
+      product: llmResult.producto ? { value: llmResult.producto, confidence: 0.8 } : undefined
+    },
+    intents: [llmIntent],
+    primaryIntent: llmIntent
+  };
+
+  if (res.confidence < 0.4) {
+    res.intent = 'unknown';
+    res.primaryIntent = 'unknown';
+  }
+
+  logIntentDecision({ input: message, ...res });
+  return res;
 }
 
 function mapToGlobalIntent(intent: string): string {

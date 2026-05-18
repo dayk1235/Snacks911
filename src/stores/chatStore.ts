@@ -18,6 +18,7 @@ interface ChatStore {
   
   // Cart Actions
   addToCart: (product: Product) => void;
+  syncCart: (items: CartItem[]) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   getTotal: () => number;
@@ -45,6 +46,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set({ cart: [...cart, { ...product, qty: 1 }] });
     }
   },
+
+  syncCart: (items) => set({ cart: items }),
 
   removeFromCart: (id) => {
     const { cart } = get();

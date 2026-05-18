@@ -14,6 +14,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logAIFailure } from '@/lib/aiFailureLogger';
 import type { AgentResponse } from './aiAgent';
+import { getUnifiedIntent, type UnifiedIntent } from '../intentDetector';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -89,120 +90,7 @@ ${cartStr}
 `.trim();
 }
 
-// ─── Preloaded Popular Intents ───────────────────────────────────────────
-/**
- * Instant responses for the most common queries.
- * Skips AI entirely for sub-5ms response time on high-frequency intents.
- *
- * Each pattern maps to a response_text that botEngine recognizes and
- * uses to build product cards via its existing getLocalFallbackResponse.
- */
-const PRELOADED_PATTERNS: Array<{ pattern: RegExp; response: AgentResponse; label: string }> = [
-  {
-    pattern: /^(ver\s+)?combos?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🔥 Aquí tienes nuestros combos más rifados:' },
-    label: 'ver_combos',
-  },
-  {
-    pattern: /^(ver\s+)?men[uú]|(ver\s+)?carta|(ver\s+)?todo(\s+el)?(\s+men[uú])?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '📋 Te muestro todo nuestro menú. ¿Qué se te antoja?' },
-    label: 'ver_menu',
-  },
-  {
-    pattern: /^(ver\s+)?alitas?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🍗 ¡Las alitas más crujientes del barrio!' },
-    label: 'ver_alitas',
-  },
-  {
-    pattern: /^(ver\s+)?boneless$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '💪 ¡Boneless recién hechos para ti! ¿Cuántos te mando?' },
-    label: 'ver_boneless',
-  },
-  {
-    pattern: /^(ver\s+)?papas?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🍟 Papas crujientes y bien sazonadas:' },
-    label: 'ver_papas',
-  },
-  {
-    pattern: /^(ver\s+)?bebidas?|(ver\s+)?refrescos?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🥤 ¡Algo frío para acompañar!' },
-    label: 'ver_bebidas',
-  },
-  {
-    pattern: /^(ver\s+)?postres?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🍰 ¡El cierre perfecto para tu pedido!' },
-    label: 'ver_postres',
-  },
-  {
-    pattern: /^(ver\s+)?salsas?|(ver\s+)?dips?|(ver\s+)?aderezos?$/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🌶️ ¡Dale sabor! Tenemos salsas BBQ, Mango Habanero y Tamarindo. ¿Cuál puedes elegir?' },
-    label: 'ver_salsas',
-  },
-  {
-    pattern: /^(y\s+)?(algo|qu[eé])\s+m[aá]s\b|^(algo|qu[eé])\s+adicional/i,
-    response: { actions: [{ type: 'TALK' }], response_text: '🔥 Para acompañar, te recomiendo unas papas, un dip extra o una bebida bien fría:' },
-    label: 'add_complement',
-  },
-];
-
-function getPreloadedResponse(message: string): AgentResponse | null {
-  const normalized = message.toLowerCase().trim();
-  for (const entry of PRELOADED_PATTERNS) {
-    if (entry.pattern.test(normalized)) {
-      console.log(`[MultiModelRouter] Preloaded cache HIT: ${entry.label}`);
-      return entry.response;
-    }
-  }
-  return null;
-}
-
-/**
- * Enforce rule-based intent detection BEFORE AI
- */
-/**
- * Enforce rule-based intent detection BEFORE AI
- */
-function detectIntentRule(input: string, hasCart: boolean): DetectedIntent | null {
-  const low = input.toLowerCase();
-
-  // 1. Context Rules (Priority)
-  if (low.includes("algo más") || low.includes("y algo más") || low.includes("qué más")) {
-    if (hasCart) return "ADD_COMPLEMENT";
-  }
-
-  // 2. Vague Hunger / Recommendations (Priority over categories if vague)
-  if (low.includes("quiero algo") || low.includes("qué recomiendas") || low.includes("tengo hambre")) {
-    return "CLARIFY";
-  }
-
-  // 3. Keyword Rules
-  if (low.includes("salsa")) return "VIEW_SAUCES" as any;
-  if (low.includes("combo")) return "SHOW_COMBOS" as any;
-  if (low.includes("boneless")) return "SHOW_BONELESS" as any;
-
-  return null;
-}
-
-export type DetectedIntent = 'ORDER' | 'BROWSE' | 'CHECKOUT' | 'GREETING' | 'CLEAR_CART' | 'QUESTION' | 'ADD_COMPLEMENT' | 'CLARIFY' | 'UNKNOWN';
-
-/**
- * Lightweight intent detection from the user message.
- * Used to validate whether the AI response is aligned.
- */
-export function detectUserIntent(message: string, hasCart: boolean = false): DetectedIntent {
-  const m = message.toLowerCase().trim();
-
-  if (/^(hola|hey|holi|buenas|buenos dias|buen dia|saludos|qué tal|que tal)\b/.test(m) && m.length < 20) return 'GREETING';
-  if (/\?|cu[aá]nto|precio|cuesta|vale|cu[eé]ntame|c[oó]mo funciona|qu[eé] es|tienen\b|hay\b|horario|abren|servicio|llega/i.test(m)) return 'QUESTION';
-  if (/vaciar|quitar todo|limpiar carrito|clear|borrar carrito/.test(m)) return 'CLEAR_CART';
-  if (/confirmar|checkout|pedir ya|ordenar ya|listo|proceder|pagar/.test(m)) return 'CHECKOUT';
-  if (/^(y\s+)?(algo|qu[eé])\s+m[aá]s\b|^(algo|qu[eé])\s+adicional|para\s+acompa[ñn]ar|y\s+qu[eé]\s+(me\s+)?(recomiendas|sugieres|pones|das)/i.test(m)) return 'ADD_COMPLEMENT';
-  if (/quiero|dame|agrega|pon|añade|me das|pidamos|ordenar\b|encargar|agregame/.test(m)) return 'ORDER';
-  if (/menu|carta|combos|que (hay|tienen|vendes|venden)|muestrame|enseñame|ver\s/.test(m)) return 'BROWSE';
-  
-  // Default fallback instead of UNKNOWN
-  return hasCart ? 'ADD_COMPLEMENT' : 'CLARIFY';
-}
+// Intents logic moved to src/core/intentDetector.ts
 
 /**
  * Check if a product name from the catalog appears in a text string.
@@ -232,8 +120,8 @@ function evaluateConfidence(
   response: AgentResponse,
   message: string,
   availableProducts: any[],
+  intent: string
 ): number {
-  const intent = detectUserIntent(message);
   const text = (response.response_text || '').trim();
   const actions = response.actions || [];
   const productIds = availableProducts.map((p: any) => String(p.id));
@@ -467,7 +355,7 @@ export interface RouterResult {
   confidence: number;
   latencyMs: number;
   cascadeReason?: string;
-  detectedIntent?: DetectedIntent;
+  detectedIntent?: string;
   isError?: boolean;
 }
 
@@ -491,45 +379,30 @@ export async function processWithRouter(
 ): Promise<RouterResult> {
   const start = Date.now();
   const hasCart = cart.length > 0;
-  const detectedIntent = detectUserIntent(message, hasCart);
+  
+  // ── Unified Intent Pipeline ──────────────
+  const unifiedIntent = await getUnifiedIntent(message);
+  const detectedIntent = unifiedIntent.intent as any;
 
-  // ── Tier 0: Rule-based & Preloaded intents (instant) ──────────────
-  const forcedIntent = detectIntentRule(message, hasCart);
-  if (forcedIntent) {
-    if (forcedIntent === 'CLARIFY') {
+  // ── Fast Path for Preloaded/High-Confidence Rules ──────────────
+  if (unifiedIntent.source === 'rule' && unifiedIntent.confidence >= 0.9) {
+    const prebakedResponses: Record<string, string> = {
+      'combos': '🔥 Aquí tienes nuestros combos más rifados:',
+      'menu': '📋 Te muestro todo nuestro menú. ¿Qué se te antoja?',
+      'browse_menu': '📋 Te muestro todo nuestro menú. ¿Qué se te antoja?',
+      'recomendacion': '🔥 Te recomiendo el Combo Mixto 911😏\n¿Lo quieres con papas y bebida?',
+      'fallback': '🔥 Te recomiendo el Combo Mixto 911😏\n¿Lo quieres con papas y bebida?'
+    };
+
+    if (prebakedResponses[detectedIntent]) {
       return {
-        response: {
-          actions: [
-            { type: 'TALK' as any },
-          ],
-          response_text: "🔥 ¿Qué se te antoja?\n¿Algo como alitas, boneless o papas?"
-        },
+        response: { actions: [{ type: 'TALK' }], response_text: prebakedResponses[detectedIntent] },
         modelUsed: 'rule-based',
-        confidence: 1.0,
+        confidence: unifiedIntent.confidence,
         latencyMs: Date.now() - start,
-        detectedIntent: 'CLARIFY',
+        detectedIntent,
       };
     }
-
-    const preloaded = getPreloadedResponse(message);
-    return {
-      response: preloaded || localFallbackResponse(),
-      modelUsed: 'rule-based',
-      confidence: 1.0,
-      latencyMs: Date.now() - start,
-      detectedIntent: forcedIntent as any,
-    };
-  }
-
-  const preloaded = getPreloadedResponse(message);
-  if (preloaded) {
-    return {
-      response: preloaded,
-      modelUsed: 'rule-based',
-      confidence: 0.85,
-      latencyMs: Date.now() - start,
-      detectedIntent,
-    };
   }
 
   const prompt = buildPrompt(message, cart, availableProducts, businessName);
@@ -549,7 +422,7 @@ export async function processWithRouter(
   // ── Gemini won the race (responded before 2s and didn't throw) ────────────────────────
   if (raceResult !== 'DEADLINE' && raceResult.type === 'gemini') {
     const geminiResponse = raceResult.response;
-    const confidence = evaluateConfidence(geminiResponse, message, availableProducts);
+    const confidence = evaluateConfidence(geminiResponse, message, availableProducts, detectedIntent);
 
     if (confidence >= LOW_CONFIDENCE_THRESHOLD) {
       return {
